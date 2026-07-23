@@ -11,7 +11,8 @@ import {
   Star, Brain, Target, Eye, Languages, RefreshCw, BarChart3, Bot,
   ChevronRight, BookOpen, FlaskConical, History, Info, Sparkles, Code2,
   FileText, UserCheck, TrendingUp, MessageSquare, Lightbulb, HeartHandshake,
-  Layers, AlignLeft, Shuffle, Palette, BadgeCheck, Award, Feather
+  Layers, AlignLeft, Shuffle, Palette, BadgeCheck, Award, Feather,
+  Chrome, Download
 } from 'lucide-react';
 
 // ─── Stats ─────────────────────────────────────────────────────────────────
@@ -729,6 +730,109 @@ export default function HumanizerSections() {
                 </Link>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Chrome Extension Promo ─────────────────────────────────────── */}
+      <section className="py-16 px-4 md:px-6 bg-muted/40 border-t border-border/50" aria-labelledby="chrome-promo-heading">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* left — copy */}
+              <div className="p-8 md:p-10 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Chrome className="w-5 h-5 text-primary" aria-hidden="true" />
+                  </div>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 font-medium">Chrome Extension</Badge>
+                </div>
+                <h2 id="chrome-promo-heading" className="text-2xl font-bold mb-3 text-balance">
+                  Humanize Text Without Leaving Any Webpage
+                </h2>
+                <p className="text-muted-foreground text-sm mb-6 text-pretty">
+                  Install the free <strong>AI Humanizer Chrome Extension</strong> and rewrite AI-generated text
+                  in one click — directly inside Google Docs, Gmail, WordPress, or any browser tab.
+                  No copy-pasting. No tab-switching.
+                </p>
+                <ul className="space-y-2 mb-7" aria-label="Extension highlights">
+                  {[
+                    'One-click humanize on any selected text',
+                    'Right-click context menu — instant rewrite',
+                    'Four humanization modes (Light → Stealth)',
+                    'Works on Google Docs, Gmail, WordPress & more',
+                    'Manifest V3 · Privacy-first · Free to install',
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-3">
+                  <Button className="gap-2 font-semibold" asChild>
+                    <Link to="/chrome-extension">
+                      <Download className="w-4 h-4" aria-hidden="true" />
+                      Install Chrome Extension
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="gap-2" asChild>
+                    <Link to="/chrome-extension">
+                      <Eye className="w-4 h-4" aria-hidden="true" />
+                      View Install Guide
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+              {/* right — visual */}
+              <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10 p-8 border-l border-border/50">
+                <div className="w-full max-w-[260px] bg-background border border-border rounded-2xl shadow-xl overflow-hidden">
+                  {/* fake browser bar */}
+                  <div className="bg-muted/70 px-3 py-2 flex items-center gap-2 border-b border-border">
+                    <div className="flex gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/50" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-success/50" />
+                    </div>
+                    <div className="flex-1 bg-background rounded text-[10px] text-muted-foreground px-2 py-0.5 border border-border/50 truncate">
+                      docs.google.com/document/d/…
+                    </div>
+                    <div className="w-5 h-5 rounded bg-primary flex items-center justify-center shrink-0">
+                      <Chrome className="w-3 h-3 text-primary-foreground" aria-hidden="true" />
+                    </div>
+                  </div>
+                  {/* page content + popup */}
+                  <div className="p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      <div className="h-2.5 bg-muted rounded w-full" />
+                      <div className="bg-primary/15 border border-primary/25 rounded px-2 py-1 text-[9px] text-foreground/70 leading-tight">
+                        "It is noteworthy to acknowledge that…"
+                      </div>
+                      <div className="h-2.5 bg-muted rounded w-3/4" />
+                    </div>
+                    {/* popup card */}
+                    <div className="bg-card border border-border rounded-xl p-3 shadow-lg space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <Wand2 className="w-3 h-3 text-primary" aria-hidden="true" />
+                        <span className="text-[10px] font-semibold">AI Humanizer</span>
+                        <Badge className="ml-auto text-[9px] bg-success/10 text-success border-success/20 px-1 py-0">Ready</Badge>
+                      </div>
+                      <div className="text-[9px] text-muted-foreground leading-relaxed bg-muted/50 rounded px-2 py-1.5">
+                        "Worth noting is that this approach…"
+                      </div>
+                      <div className="flex gap-1.5">
+                        <div className="flex-1 h-6 rounded-md bg-primary flex items-center justify-center">
+                          <span className="text-[9px] font-semibold text-primary-foreground">Apply</span>
+                        </div>
+                        <div className="flex-1 h-6 rounded-md border border-border flex items-center justify-center">
+                          <span className="text-[9px] text-muted-foreground">More modes</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
