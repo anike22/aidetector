@@ -1,0 +1,1 @@
+ALTER TABLE feature_flags ADD COLUMN required_plan text DEFAULT 'free';

@@ -1,0 +1,4 @@
+ALTER TABLE prospecting_companies 
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS email TEXT,
+ADD COLUMN IF NOT EXISTS score_reason TEXT;

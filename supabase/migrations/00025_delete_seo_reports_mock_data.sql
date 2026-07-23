@@ -1,0 +1,1 @@
+DELETE FROM seo_reports WHERE data_source ILIKE '%Sample%';
