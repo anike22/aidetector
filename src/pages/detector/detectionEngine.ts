@@ -493,7 +493,7 @@ export interface VerifiedSource {
   doi: string | null;
   url: string;
   publisher: string;
-  provider: 'crossref' | 'openalex' | 'unpaywall';
+  provider: 'crossref' | 'openalex' | 'unpaywall' | 'web';
   /** Percentage of submitted document matched against this source (0–100). */
   matchContribution: number;
   citedMaterial: boolean;
@@ -525,6 +525,7 @@ export interface PlagiarismAnalysisResult {
     openalex: 'ok' | 'failed' | 'skipped';
     unpaywall: 'ok' | 'failed' | 'skipped';
     gemini: 'ok' | 'failed' | 'skipped';
+    webSearch: 'ok' | 'failed' | 'skipped';
   };
   errorMessage?: string;
   /** Entitlement metadata forwarded from server when upgrade is required. */

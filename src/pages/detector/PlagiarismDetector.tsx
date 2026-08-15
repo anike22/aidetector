@@ -7,9 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import {
   TextSearch, AlertTriangle, CheckCircle2,
   RefreshCw, Download, Link2, ExternalLink,
-  Info, WifiOff, BookOpen,
+  Info, WifiOff, BookOpen, Globe,
 } from 'lucide-react';
 import { analyzePlagiarism, type PlagiarismAnalysisResult } from './detectionEngine';
+import HighlightedText, { HighlightLegend } from '@/components/plagiarism/HighlightedText';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import UpgradeModal from '@/components/common/UpgradeModal';
@@ -109,13 +110,24 @@ export default function PlagiarismDetector() {
                 Input Text for Plagiarism Check
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 relative">
-              <Textarea
-                placeholder="Paste text here — minimum 30 words. Searches Crossref and OpenAlex scholarly databases."
-                className="w-full h-full resize-none border-0 focus-visible:ring-0 rounded-none p-5 text-base leading-relaxed bg-transparent"
-                value={content}
-                onChange={(e) => { setContent(e.target.value); setResult(null); }}
-              />
+            <CardContent className="p-0 flex-1 overflow-y-auto relative">
+              {/* Highlighted overlay — shown after analysis with matches */}
+              {result && result.sources.length > 0 && !isAnalyzing ? (
+                <div className="p-5">
+                  <HighlightedText
+                    text={content}
+                    spans={result.sources.flatMap(s => s.matchedSpans)}
+                  />
+                  <HighlightLegend />
+                </div>
+              ) : (
+                <Textarea
+                  placeholder="Paste text here — minimum 30 words. Searches Crossref, OpenAlex and live web pages."
+                  className="w-full h-full resize-none border-0 focus-visible:ring-0 rounded-none p-5 text-base leading-relaxed bg-transparent"
+                  value={content}
+                  onChange={(e) => { setContent(e.target.value); setResult(null); }}
+                />
+              )}
             </CardContent>
             <div className="p-4 bg-muted/30 border-t border-border flex items-center justify-between">
               <span className={`text-sm font-medium ${wordCount < 30 ? 'text-warning' : 'text-muted-foreground'}`}>
@@ -273,8 +285,12 @@ export default function PlagiarismDetector() {
                           </div>
                           <div className="flex justify-between items-center text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3" /> {source.matchType}
+                              {source.provider === 'web'
+                                ? <Globe className="w-3 h-3" />
+                                : <BookOpen className="w-3 h-3" />}
+                              {source.matchType}
                               {source.doi && <span className="ml-1 font-mono text-[10px]">DOI</span>}
+                              {source.provider === 'web' && <span className="ml-1 text-[10px] bg-primary/10 text-primary px-1 rounded">Web</span>}
                             </span>
                             <a href={source.url} target="_blank" rel="noreferrer"
                               className="flex items-center gap-1 text-primary hover:underline">
@@ -291,7 +307,25 @@ export default function PlagiarismDetector() {
               {/* Coverage note */}
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2.5">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span className="text-pretty">{result.coverageNote ?? 'Searches Crossref and OpenAlex scholarly databases only.'}</span>
+                <div>
+                  <span className="text-pretty">{result.coverageNote ?? 'Searches Crossref, OpenAlex and live web pages.'}</span>
+                  {result.providerStatus && (() => {
+                    const ps = result.providerStatus;
+                    const searched: string[] = [];
+                    const failed: string[] = [];
+                    if (ps.crossref === 'ok') searched.push('Crossref');
+                    else if (ps.crossref === 'failed') failed.push('Crossref');
+                    if (ps.openalex === 'ok') searched.push('OpenAlex');
+                    else if (ps.openalex === 'failed') failed.push('OpenAlex');
+                    if (ps.webSearch === 'ok') searched.push('Web');
+                    else if (ps.webSearch === 'failed') failed.push('Web Search');
+                    const parts = [
+                      searched.length ? `Searched: ${searched.join(', ')}` : '',
+                      failed.length   ? `Unavailable: ${failed.join(', ')}` : '',
+                    ].filter(Boolean).join(' · ');
+                    return parts ? <p className="mt-1 opacity-70">{parts}</p> : null;
+                  })()}
+                </div>
               </div>
 
               {result.sources.length > 0 && (

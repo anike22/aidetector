@@ -12,9 +12,10 @@ import {
   TextSearch, AlertTriangle, CheckCircle2, RefreshCw, Download,
   Link2, ExternalLink, X, ClipboardPaste, FileText, Shield,
   GraduationCap, Briefcase, Newspaper, PenTool, Users, Bot,
-  Info, BookOpen, WifiOff
+  Info, BookOpen, WifiOff, Globe
 } from 'lucide-react';
 import { analyzePlagiarism, type PlagiarismAnalysisResult } from './detector/detectionEngine';
+import HighlightedText, { HighlightLegend } from '@/components/plagiarism/HighlightedText';
 import { useCustomerDataPlatform } from '@/contexts/CustomerDataPlatformContext';
 import { trackLifecycleEvent } from '@/lib/trackLifecycleEvent';
 import { trackBehaviorEvent } from '@/lib/personalizationApi';
@@ -89,6 +90,8 @@ function coverageSummary(result: PlagiarismAnalysisResult): string {
   else if (ps.crossref === 'failed') failed.push('Crossref');
   if (ps.openalex === 'ok') searched.push('OpenAlex');
   else if (ps.openalex === 'failed') failed.push('OpenAlex');
+  if (ps.webSearch === 'ok') searched.push('Web');
+  else if (ps.webSearch === 'failed') failed.push('Web Search');
   const parts: string[] = [];
   if (searched.length) parts.push(`Searched: ${searched.join(', ')}`);
   if (failed.length) parts.push(`Unavailable: ${failed.join(', ')}`);
@@ -268,12 +271,23 @@ export default function PlagiarismCheckerPage() {
 
                 {/* Textarea */}
                 <div className="relative flex-1">
-                  <Textarea
-                    placeholder="Paste or type your text here to check for plagiarism, paraphrased content, and AI-generated writing (minimum 20 words)..."
-                    className="w-full min-h-[280px] resize-none border-0 focus-visible:ring-0 rounded-none p-5 text-base leading-relaxed bg-transparent"
-                    value={content}
-                    onChange={e => { setContent(e.target.value); setResult(null); setError(null); }}
-                  />
+                  {/* Highlighted overlay — shown after analysis, hidden while editing */}
+                  {result && result.sources.length > 0 && !isAnalyzing ? (
+                    <div className="p-5 min-h-[280px] overflow-y-auto">
+                      <HighlightedText
+                        text={content}
+                        spans={result.sources.flatMap(s => s.matchedSpans)}
+                      />
+                      <HighlightLegend />
+                    </div>
+                  ) : (
+                    <Textarea
+                      placeholder="Paste or type your text here to check for plagiarism, paraphrased content, and AI-generated writing (minimum 20 words)..."
+                      className="w-full min-h-[280px] resize-none border-0 focus-visible:ring-0 rounded-none p-5 text-base leading-relaxed bg-transparent"
+                      value={content}
+                      onChange={e => { setContent(e.target.value); setResult(null); setError(null); }}
+                    />
+                  )}
                 </div>
 
                 {/* Footer row */}
@@ -347,7 +361,9 @@ export default function PlagiarismCheckerPage() {
                       'Exact-match detection against academic sources',
                       'Near-match / fuzzy detection',
                       'Semantic paraphrase detection via Gemini',
-                      'Searches Crossref & OpenAlex databases',
+                      'Searches Crossref, OpenAlex & live web pages',
+                      'PDF source text extraction',
+                      'Inline passage highlighting',
                     ].map(f => (
                       <div key={f} className="flex items-center gap-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" /> {f}
@@ -473,8 +489,12 @@ export default function PlagiarismCheckerPage() {
                               </div>
                               <div className="flex justify-between items-center text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
+                                  {source.provider === 'web'
+                                    ? <Globe className="w-3 h-3" />
+                                    : <BookOpen className="w-3 h-3" />}
                                   {source.matchType}
                                   {source.doi && <span className="ml-1 font-mono text-[10px] bg-muted px-1 rounded">DOI</span>}
+                                  {source.provider === 'web' && <span className="ml-1 text-[10px] bg-primary/10 text-primary px-1 rounded">Web</span>}
                                 </span>
                                 <a
                                   href={source.url}
