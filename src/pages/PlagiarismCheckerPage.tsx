@@ -92,6 +92,7 @@ function coverageSummary(result: PlagiarismAnalysisResult): string {
   else if (ps.openalex === 'failed') failed.push('OpenAlex');
   if (ps.webSearch === 'ok') searched.push('Web');
   else if (ps.webSearch === 'failed') failed.push('Web Search');
+  else if (ps.webSearch === 'not_configured') failed.push('Web Search (not configured)');
   const parts: string[] = [];
   if (searched.length) parts.push(`Searched: ${searched.join(', ')}`);
   if (failed.length) parts.push(`Unavailable: ${failed.join(', ')}`);

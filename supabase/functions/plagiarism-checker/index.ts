@@ -284,7 +284,7 @@ type PlagStatus =
   | "completed" | "partial" | "no_verified_matches"
   | "insufficient_text" | "provider_unavailable" | "analysis_failed";
 
-type ProvStatus = "ok" | "failed" | "skipped";
+type ProvStatus = "ok" | "failed" | "skipped" | "not_configured";
 
 interface MatchedSpan {
   submittedStart: number; submittedEnd: number;
@@ -440,35 +440,33 @@ async function enrichUnpaywall(c: Candidate, sig: AbortSignal): Promise<Candidat
 async function discoverWeb(text: string, sig: AbortSignal): Promise<Candidate[]> {
   const apiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "";
   const cx     = Deno.env.get("GOOGLE_SEARCH_CX") ?? "";
-  if (!apiKey || !cx) return [];
+  if (!apiKey || !cx) throw new Error("Google Custom Search not configured");
 
   const phrases = extractPhrases(text);
   const results: Candidate[] = [];
   const seen = new Set<string>();
 
   for (const phrase of phrases.slice(0, 3)) {
-    try {
-      const url =
-        `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}` +
-        `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(`"${phrase}"`)}&num=5`;
-      const resp = await fetch(url, { signal: sig });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      for (const item of (data?.items ?? []) as Record<string, unknown>[]) {
-        const link = (item.link as string | undefined) ?? "";
-        if (!link || !isSafeUrl(link) || seen.has(link)) continue;
-        seen.add(link);
-        results.push({
-          title:     (item.title as string)   ?? link,
-          doi:       null,
-          url:       link,
-          publisher: (item.displayLink as string) ?? new URL(link).hostname,
-          provider:  "web",
-          abstract:  (item.snippet as string | null) ?? null,
-        });
-        if (results.length >= MAX_WEB_CANDIDATES) break;
-      }
-    } catch { /* continue */ }
+    const url =
+      `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}` +
+      `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(`"${phrase}"`)}&num=5`;
+    const resp = await fetch(url, { signal: sig });
+    if (!resp.ok) throw new Error(`Google search HTTP ${resp.status}`);
+    const data = await resp.json();
+    for (const item of (data?.items ?? []) as Record<string, unknown>[]) {
+      const link = (item.link as string | undefined) ?? "";
+      if (!link || !isSafeUrl(link) || seen.has(link)) continue;
+      seen.add(link);
+      results.push({
+        title:     (item.title as string)   ?? link,
+        doi:       null,
+        url:       link,
+        publisher: (item.displayLink as string) ?? new URL(link).hostname,
+        provider:  "web",
+        abstract:  (item.snippet as string | null) ?? null,
+      });
+      if (results.length >= MAX_WEB_CANDIDATES) break;
+    }
     if (results.length >= MAX_WEB_CANDIDATES) break;
   }
   return results;
@@ -734,13 +732,19 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     return { status: "insufficient_text", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps, errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` };
   }
 
-  // Discovery — Crossref + OpenAlex + Google Web in parallel
+  // Discovery — Crossref + OpenAlex always run in parallel; web search only if configured
+  const webApiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "";
+  const webCx     = Deno.env.get("GOOGLE_SEARCH_CX") ?? "";
+  const webConfigured = webApiKey.length > 0 && webCx.length > 0;
+
   const discCtrl = new AbortController();
   const discTimer = setTimeout(() => discCtrl.abort(), PROVIDER_TO_MS);
   const [crRes, oaRes, webRes] = await Promise.allSettled([
     discoverCrossref(eligibleText, discCtrl.signal),
     discoverOpenAlex(eligibleText, discCtrl.signal),
-    discoverWeb(eligibleText, discCtrl.signal),
+    webConfigured
+      ? discoverWeb(eligibleText, discCtrl.signal)
+      : Promise.reject(new Error("Google Custom Search not configured")),
   ]);
   clearTimeout(discTimer);
 
@@ -750,7 +754,11 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
 
   ps.crossref  = crRes.status  === "fulfilled" ? (crCands.length  ? "ok" : "skipped") : "failed";
   ps.openalex  = oaRes.status  === "fulfilled" ? (oaCands.length  ? "ok" : "skipped") : "failed";
-  ps.webSearch = webRes.status === "fulfilled" ? (webCands.length ? "ok" : "skipped") : "failed";
+  if (!webConfigured) {
+    ps.webSearch = "not_configured";
+  } else {
+    ps.webSearch = webRes.status === "fulfilled" ? (webCands.length ? "ok" : "skipped") : "failed";
+  }
 
   // Deduplicate across all providers (DOI first, then URL)
   const deduped: Candidate[] = [];
@@ -767,11 +775,13 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
 
   if (!deduped.length) {
     const allAcademicFailed = ps.crossref === "failed" && ps.openalex === "failed";
+    const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
     return {
-      status: allAcademicFailed ? "provider_unavailable" : "no_verified_matches",
+      status: allAcademicFailed ? "provider_unavailable" : (anyFailed ? "partial" : "no_verified_matches"),
       similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0,
       riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
-      ...(allAcademicFailed ? { errorMessage: "Source discovery providers could not be reached." } : {}),
+      ...(allAcademicFailed ? { errorMessage: "Source discovery providers could not be reached." } :
+          anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
     };
   }
 
@@ -829,7 +839,13 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   ps.gemini = geminiUsed ? "ok" : "skipped";
 
   if (!sources.length) {
-    return { status: "no_verified_matches", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps };
+    const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
+    return {
+      status: anyFailed ? "partial" : "no_verified_matches",
+      similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0,
+      riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
+      ...(anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
+    };
   }
 
   const simScore  = Math.round((uniqueCoverage([...allExact, ...allNear, ...allSem], eligibleChars) / eligibleChars) * 100);

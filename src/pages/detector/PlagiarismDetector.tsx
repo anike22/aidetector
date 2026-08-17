@@ -319,6 +319,7 @@ export default function PlagiarismDetector() {
                     else if (ps.openalex === 'failed') failed.push('OpenAlex');
                     if (ps.webSearch === 'ok') searched.push('Web');
                     else if (ps.webSearch === 'failed') failed.push('Web Search');
+                    else if (ps.webSearch === 'not_configured') failed.push('Web Search (not configured)');
                     const parts = [
                       searched.length ? `Searched: ${searched.join(', ')}` : '',
                       failed.length   ? `Unavailable: ${failed.join(', ')}` : '',

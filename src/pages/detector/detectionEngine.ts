@@ -525,7 +525,7 @@ export interface PlagiarismAnalysisResult {
     openalex: 'ok' | 'failed' | 'skipped';
     unpaywall: 'ok' | 'failed' | 'skipped';
     gemini: 'ok' | 'failed' | 'skipped';
-    webSearch: 'ok' | 'failed' | 'skipped';
+    webSearch: 'ok' | 'failed' | 'skipped' | 'not_configured';
   };
   errorMessage?: string;
   /** Entitlement metadata forwarded from server when upgrade is required. */
