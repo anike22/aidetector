@@ -90,9 +90,10 @@ function coverageSummary(result: PlagiarismAnalysisResult): string {
   else if (ps.crossref === 'failed') failed.push('Crossref');
   if (ps.openalex === 'ok') searched.push('OpenAlex');
   else if (ps.openalex === 'failed') failed.push('OpenAlex');
+  if (ps.unpaywall === 'ok') searched.push('Unpaywall');
+  else if (ps.unpaywall === 'failed') failed.push('Unpaywall');
   if (ps.webSearch === 'ok') searched.push('Web');
   else if (ps.webSearch === 'failed') failed.push('Web Search');
-  else if (ps.webSearch === 'not_configured') failed.push('Web Search (not configured)');
   const parts: string[] = [];
   if (searched.length) parts.push(`Searched: ${searched.join(', ')}`);
   if (failed.length) parts.push(`Unavailable: ${failed.join(', ')}`);
@@ -362,7 +363,7 @@ export default function PlagiarismCheckerPage() {
                       'Exact-match detection against academic sources',
                       'Near-match / fuzzy detection',
                       'Semantic paraphrase detection via Gemini',
-                      'Searches Crossref, OpenAlex & live web pages',
+                      'Searches Crossref, OpenAlex & Unpaywall',
                       'PDF source text extraction',
                       'Inline passage highlighting',
                     ].map(f => (
@@ -403,8 +404,8 @@ export default function PlagiarismCheckerPage() {
                         <div>
                           <p className="text-sm font-semibold text-success mb-0.5">No matches found in checked sources</p>
                           <p className="text-xs text-muted-foreground text-pretty">
-                            No verified matches were found in the academic databases searched.
-                            This does not confirm full originality — general websites, news articles and recent publications may not be covered.
+                            No verified matches were found in the academic sources searched.
+                            This does not confirm complete originality — sources not covered by Crossref, OpenAlex or Unpaywall may not be detected.
                           </p>
                         </div>
                       </CardContent>
@@ -554,8 +555,8 @@ export default function PlagiarismCheckerPage() {
                 What is a Plagiarism Checker?
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4 text-pretty">
-                A plagiarism checker is a tool that compares submitted text against a large database of published
-                web pages, academic journals, books, and other sources to detect copied or reworded content.
+                A plagiarism checker is a tool that compares submitted text against verified source databases to detect copied or reworded content.
+                AIDetector.cx checks academic sources from Crossref, OpenAlex and Unpaywall, including open-access papers and journals.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4 text-pretty">
                 AIDetector.cx goes beyond standard plagiarism detection by combining two analyses in one:

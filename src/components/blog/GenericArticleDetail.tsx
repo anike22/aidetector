@@ -262,7 +262,7 @@ function RecommendedTools() {
   const tools = [
     { title: 'AI Detector', href: '/detector', desc: 'Analyze text for AI-generated patterns.' },
     { title: 'AI Humanizer', href: '/humanizer', desc: 'Make AI-generated text sound more human.' },
-    { title: 'Plagiarism Checker', href: '/plagiarism-checker', desc: 'Verify originality across billions of sources.' },
+    { title: 'Plagiarism Checker', href: '/plagiarism-checker', desc: 'Verify originality against academic sources.' },
   ];
   return (
     <div className="my-10">

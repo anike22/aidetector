@@ -36,10 +36,9 @@ const GUEST_DAILY_LIMIT   = 3;
 const PDF_CHAR_LIMIT      = 40_000;
 
 const COVERAGE_NOTE =
-  "This checker searches Crossref, OpenAlex scholarly databases and live web pages via Google Custom Search. " +
+  "This checker compares submitted text against verified academic sources from Crossref, OpenAlex and Unpaywall. " +
   "Social media, paywalled content, and very recent publications may not be fully indexed. " +
-  '"No verified matches" means no matches were found in the sources checked — ' +
-  "it does not guarantee the text is original.";
+  "No verified matches were found in the sources successfully searched. This does not confirm complete originality.";
 
 const GATEWAY =
   "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com";
@@ -732,32 +731,43 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     return { status: "insufficient_text", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps, errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` };
   }
 
-  // Discovery — Crossref + OpenAlex always run in parallel; web search only if configured
-  const webApiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "";
-  const webCx     = Deno.env.get("GOOGLE_SEARCH_CX") ?? "";
-  const webConfigured = webApiKey.length > 0 && webCx.length > 0;
+  // Discovery — Crossref + OpenAlex always run in parallel.
+  // Google Custom Search is disabled by default because it is not currently
+  // available for this project. It remains an optional future provider; set
+  // ENABLE_WEB_SEARCH=true and provide GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX
+  // to activate it.
+  const webEnabled = Deno.env.get("ENABLE_WEB_SEARCH") === "true";
+  const webConfigured = webEnabled &&
+    (Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "").length > 0 &&
+    (Deno.env.get("GOOGLE_SEARCH_CX") ?? "").length > 0;
 
   const discCtrl = new AbortController();
   const discTimer = setTimeout(() => discCtrl.abort(), PROVIDER_TO_MS);
-  const [crRes, oaRes, webRes] = await Promise.allSettled([
+  const [crRes, oaRes] = await Promise.allSettled([
     discoverCrossref(eligibleText, discCtrl.signal),
     discoverOpenAlex(eligibleText, discCtrl.signal),
-    webConfigured
-      ? discoverWeb(eligibleText, discCtrl.signal)
-      : Promise.reject(new Error("Google Custom Search not configured")),
   ]);
   clearTimeout(discTimer);
 
-  const crCands  = crRes.status  === "fulfilled" ? crRes.value  : [];
-  const oaCands  = oaRes.status  === "fulfilled" ? oaRes.value  : [];
-  const webCands = webRes.status === "fulfilled" ? webRes.value : [];
+  const crCands = crRes.status === "fulfilled" ? crRes.value : [];
+  const oaCands = oaRes.status === "fulfilled" ? oaRes.value : [];
+  let webCands: Candidate[] = [];
 
-  ps.crossref  = crRes.status  === "fulfilled" ? (crCands.length  ? "ok" : "skipped") : "failed";
-  ps.openalex  = oaRes.status  === "fulfilled" ? (oaCands.length  ? "ok" : "skipped") : "failed";
-  if (!webConfigured) {
-    ps.webSearch = "not_configured";
-  } else {
-    ps.webSearch = webRes.status === "fulfilled" ? (webCands.length ? "ok" : "skipped") : "failed";
+  ps.crossref = crRes.status === "fulfilled" ? (crCands.length ? "ok" : "skipped") : "failed";
+  ps.openalex = oaRes.status === "fulfilled" ? (oaCands.length ? "ok" : "skipped") : "failed";
+  ps.webSearch = webConfigured ? "skipped" : "not_configured";
+
+  if (webConfigured) {
+    const webCtrl = new AbortController();
+    const webTimer = setTimeout(() => webCtrl.abort(), PROVIDER_TO_MS);
+    try {
+      webCands = await discoverWeb(eligibleText, webCtrl.signal);
+      ps.webSearch = webCands.length ? "ok" : "skipped";
+    } catch {
+      ps.webSearch = "failed";
+    } finally {
+      clearTimeout(webTimer);
+    }
   }
 
   // Deduplicate across all providers (DOI first, then URL)

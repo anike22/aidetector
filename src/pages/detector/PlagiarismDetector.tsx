@@ -122,7 +122,7 @@ export default function PlagiarismDetector() {
                 </div>
               ) : (
                 <Textarea
-                  placeholder="Paste text here — minimum 30 words. Searches Crossref, OpenAlex and live web pages."
+                  placeholder="Paste text here — minimum 30 words. Searches Crossref, OpenAlex and Unpaywall."
                   className="w-full h-full resize-none border-0 focus-visible:ring-0 rounded-none p-5 text-base leading-relaxed bg-transparent"
                   value={content}
                   onChange={(e) => { setContent(e.target.value); setResult(null); }}
@@ -308,7 +308,7 @@ export default function PlagiarismDetector() {
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2.5">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 <div>
-                  <span className="text-pretty">{result.coverageNote ?? 'Searches Crossref, OpenAlex and live web pages.'}</span>
+                  <span className="text-pretty">{result.coverageNote ?? 'Searches Crossref, OpenAlex and Unpaywall.'}</span>
                   {result.providerStatus && (() => {
                     const ps = result.providerStatus;
                     const searched: string[] = [];
@@ -317,9 +317,10 @@ export default function PlagiarismDetector() {
                     else if (ps.crossref === 'failed') failed.push('Crossref');
                     if (ps.openalex === 'ok') searched.push('OpenAlex');
                     else if (ps.openalex === 'failed') failed.push('OpenAlex');
+                    if (ps.unpaywall === 'ok') searched.push('Unpaywall');
+                    else if (ps.unpaywall === 'failed') failed.push('Unpaywall');
                     if (ps.webSearch === 'ok') searched.push('Web');
                     else if (ps.webSearch === 'failed') failed.push('Web Search');
-                    else if (ps.webSearch === 'not_configured') failed.push('Web Search (not configured)');
                     const parts = [
                       searched.length ? `Searched: ${searched.join(', ')}` : '',
                       failed.length   ? `Unavailable: ${failed.join(', ')}` : '',
