@@ -47,6 +47,20 @@ const COVERAGE_NOTE =
   "Social media, paywalled content, and very recent publications may not be fully indexed. " +
   "No verified matches were found in the sources successfully searched. This does not confirm complete originality.";
 
+// Discovery query generation limits
+const MAX_DISCOVERY_QUERIES = 6;
+const MAX_QUERY_TERMS = 6;
+const MIN_QUERY_TERM_LEN = 2;
+
+// Verified paraphrase thresholds — semantic evidence must be supported by
+// lexical, entity, or factual overlap so topic similarity alone is insufficient.
+const PARA_SEM_COSINE_MIN = 0.82;
+const PARA_RARE_OVERLAP_MIN = 0.40;
+const PARA_ENTITY_OVERLAP_MIN = 0.55;
+const PARA_LEX_JACCARD_MIN = 0.20;
+const PARA_MIN_TOKENS = 6;
+const PARA_MAX_WINDOW_TOKENS = 50;
+
 const GATEWAY =
   "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com";
 
@@ -323,7 +337,7 @@ type ProvStatus = "ok" | "failed" | "skipped" | "not_configured";
 interface MatchedSpan {
   submittedStart: number; submittedEnd: number;
   submittedPassage: string; sourcePassage: string;
-  matchType: "exact" | "near" | "candidate";
+  matchType: "exact" | "near" | "paraphrase" | "candidate";
   spanSimilarity: number;
 }
 
@@ -332,14 +346,18 @@ interface VerifiedSource {
   publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web";
   matchContribution: number; citedMaterial: boolean;
   matchedSpans: MatchedSpan[]; similarity: number;
-  matchType: "Exact" | "Near Match" | "Candidate Similarity" | "Mixed";
+  matchType: "Exact" | "Near Match" | "Verified Paraphrase" | "Candidate Similarity" | "Mixed";
   verified: boolean;
+  /** Discovery metadata: how many independent queries recovered this source. */
+  queryRecovery?: number;
+  /** Optional discovery score for ranking only. */
+  discoveryScore?: number;
 }
 
 interface PlagResult {
   status: PlagStatus;
   similarityScore: number; originalityScore: number;
-  exactMatchScore: number; nearMatchScore: number; semanticMatchScore: number;
+  exactMatchScore: number; nearMatchScore: number; paraphraseMatchScore: number; semanticMatchScore: number;
   riskLevel: "None" | "Low" | "Medium" | "High" | "Critical";
   sources: VerifiedSource[];
   coverageNote: string;
@@ -352,6 +370,12 @@ interface Candidate {
   title: string; doi: string | null; url: string;
   publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web";
   abstract: string | null;
+  /** Number of independent discovery queries that returned this candidate. */
+  queryRecovery: number;
+  /** Optional discovery score used only for ranking; never plagiarism scoring. */
+  discoveryScore: number;
+  /** Query strings that recovered this candidate. */
+  recoveredQueries: string[];
 }
 
 // ─── Source Discovery ─────────────────────────────────────────────────────────
@@ -359,6 +383,138 @@ interface Candidate {
 function contentWordRatio(tokens: string[]): number {
   if (!tokens.length) return 0;
   return tokens.filter((t) => !STOP.has(t)).length / tokens.length;
+}
+
+const COMMON_ACADEMIC = new Set([
+  "abstract","introduction","method","methods","results","discussion","conclusion",
+  "study","paper","article","research","analysis","data","model","models","system",
+  "systems","approach","proposed","using","used","show","shows","shown","result",
+  "based","new","novel","performance","accuracy","task","tasks","dataset","datasets",
+  "training","test","validation","experiment","experiments","evaluation","proposed",
+  "architecture","framework","algorithm","algorithms","network","networks","deep",
+  "learning","machine","artificial","intelligence","language","natural","text","word",
+  "words","sentence","sentences","document","documents","feature","features","input",
+  "output","function","functions","parameter","parameters","layer","layers","state",
+  "neural","attention","gpt","bert","llm","llms",
+]);
+
+function isRareToken(t: string, freq = new Map<string, number>()): boolean {
+  if (t.length <= MIN_QUERY_TERM_LEN) return false;
+  if (STOP.has(t)) return false;
+  if (COMMON_ACADEMIC.has(t)) return false;
+  // numbers, hyphenated technical terms, all-caps acronyms, capitalised proper nouns
+  if (/^\d+(?:\.\d+)?$/.test(t)) return true;
+  if (/^[a-z]+-[a-z]+$/.test(t)) return true;
+  if (/^[A-Z]{2,}$/.test(t)) return true;
+  if (/^[A-Z][a-z]+(?:-[A-Za-z]+)?$/.test(t) && !COMMON_ACADEMIC.has(t.toLowerCase())) return true;
+  // short technical acronyms that appear in lowercase after normalisation (e.g., wmt, bleu, gpu)
+  if (/^[a-z]{2,5}$/.test(t) && !COMMON_ACADEMIC.has(t)) return true;
+  // infrequent content tokens (model names, proper nouns) are distinctive
+  if (t.length > 3 && (freq.get(t) ?? 0) <= 2 && !COMMON_ACADEMIC.has(t)) return true;
+  return false;
+}
+
+export function rareTokenSet(text: string): Set<string> {
+  const toks = tokenise(text);
+  const freq = new Map<string, number>();
+  for (const t of toks) freq.set(t, (freq.get(t) ?? 0) + 1);
+  const rare = toks.filter((t) => isRareToken(t, freq));
+  // Also include capitalised proper nouns / model names from the original text
+  const capRe = /\b[A-Z][a-z]+(?:-[A-Za-z]+)?\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = capRe.exec(text)) !== null) {
+    const w = normalise(m[0]);
+    if (w.length > 2 && !COMMON_ACADEMIC.has(w)) rare.push(w);
+  }
+  return new Set(rare);
+}
+
+export function entityAndFactTokens(text: string): string[] {
+  const found: string[] = [];
+  // numbers with optional units (e.g., 28.4 BLEU, eight GPUs)
+  const numRe = /\b\d+(?:\.\d+)?\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = numRe.exec(text)) !== null) found.push(m[0]);
+  // hyphenated technical terms: English-to-German, English-to-French
+  const hyphenRe = /\b[a-z]+-[a-z]+(?:-[a-z]+)?\b/gi;
+  while ((m = hyphenRe.exec(text)) !== null) found.push(m[0]);
+  // all-caps acronyms (WMT, BLEU, GPUs)
+  const acroRe = /\b[A-Z]{2,}\b/g;
+  while ((m = acroRe.exec(text)) !== null) found.push(m[0]);
+  // capitalised proper nouns / model names
+  const capRe = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/g;
+  while ((m = capRe.exec(text)) !== null) {
+    const w = m[0].toLowerCase();
+    if (!COMMON_ACADEMIC.has(w)) found.push(m[0]);
+  }
+  return [...new Set(found.map((x) => normalise(x)))];
+}
+
+function extractDistinctivePhrases(text: string): string[] {
+  const sentences = splitSentences(text);
+  const scored: Array<{ phrase: string; contentRatio: number; rareCount: number }> = [];
+  const allToks = tokenise(text);
+  const freq = new Map<string, number>();
+  for (const t of allToks) freq.set(t, (freq.get(t) ?? 0) + 1);
+  for (const s of sentences.slice(0, 24)) {
+    const toks = tokenise(s.text);
+    if (toks.length < 8) continue;
+    for (let start = 0; start <= Math.min(toks.length - 6, 8); start++) {
+      const len = Math.min(6, toks.length - start);
+      const phrase = toks.slice(start, start + len).join(" ");
+      const ratio = contentWordRatio(toks.slice(start, start + len));
+      const rareCount = toks.slice(start, start + len).filter((t) => isRareToken(t, freq)).length;
+      if (ratio < 0.45) continue;
+      if (rareCount < 2) continue;
+      scored.push({ phrase, contentRatio: ratio, rareCount });
+    }
+  }
+  scored.sort((a, b) => b.rareCount - a.rareCount || b.contentRatio - a.contentRatio);
+  return scored.slice(0, 3).map((s) => s.phrase);
+}
+
+function extractEntityFactQueries(text: string): string[] {
+  const facts = entityAndFactTokens(text);
+  if (facts.length < 3) return [];
+  const queries: string[] = [];
+  // Build compact query combinations from discriminative tokens.
+  const rare = [...rareTokenSet(text)].slice(0, 12);
+  for (let i = 0; i < rare.length && queries.length < 3; i++) {
+    for (let j = i + 1; j < rare.length && queries.length < 3; j++) {
+      const q = [rare[i], rare[j]].filter((x) => x.length > 1).slice(0, MAX_QUERY_TERMS).join(" ");
+      if (q.split(" ").length >= 2) queries.push(q);
+    }
+  }
+  // Add explicit rare-token-only queries (best for retrieving specific papers).
+  const top = rare.slice(0, Math.min(4, rare.length));
+  if (top.length >= 2) queries.push(top.join(" "));
+  return [...new Set(queries)].slice(0, 3);
+}
+
+function extractRareTokenQueries(text: string): string[] {
+  const rare = [...rareTokenSet(text)].slice(0, 10);
+  if (rare.length < 4) return [];
+  return [
+    rare.slice(0, Math.min(4, rare.length)).join(" "),
+    rare.slice(0, Math.min(6, rare.length)).join(" "),
+  ].filter((q) => q.split(" ").length >= 2);
+}
+
+export function buildDiscoveryQueries(text: string): string[] {
+  const phrases = extractDistinctivePhrases(text);
+  const entity = extractEntityFactQueries(text);
+  const rare = extractRareTokenQueries(text);
+  const all = [...phrases, ...entity, ...rare];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const q of all) {
+    const key = q.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+    if (out.length >= MAX_DISCOVERY_QUERIES) break;
+  }
+  return out;
 }
 
 export function extractPhrases(text: string): string[] {
@@ -378,10 +534,10 @@ export function extractPhrases(text: string): string[] {
 }
 
 async function discoverCrossref(text: string, sig: AbortSignal): Promise<Candidate[]> {
-  const phrases = extractPhrases(text);
-  const results: Candidate[] = [];
+  const queries = buildDiscoveryQueries(text);
+  const results = new Map<string, Candidate>();
   const seen = new Set<string>();
-  for (const phrase of phrases.slice(0, 3)) {
+  for (const phrase of queries) {
     try {
       const url =
         `https://api.crossref.org/works?query=${encodeURIComponent(phrase)}` +
@@ -399,27 +555,37 @@ async function discoverCrossref(text: string, sig: AbortSignal): Promise<Candida
           ? rawUrl
           : doi ? `https://doi.org/${doi}` : null;
         if (!resolvedUrl) continue;
-        results.push({
-          title: (item.title as string[])?.[0] ?? doi ?? resolvedUrl,
+        const title = (item.title as string[])?.[0] ?? doi ?? resolvedUrl;
+        const existing = results.get(key);
+        if (existing) {
+          existing.queryRecovery += 1;
+          existing.recoveredQueries.push(phrase);
+          continue;
+        }
+        results.set(key, {
+          title,
           doi: doi ?? null,
           url: resolvedUrl,
           publisher: (item.publisher as string) ?? "Crossref",
           provider: "crossref",
           abstract: (item.abstract as string | null) ?? null,
+          queryRecovery: 1,
+          discoveryScore: 0,
+          recoveredQueries: [phrase],
         });
-        if (results.length >= MAX_CANDIDATES) break;
+        if (results.size >= MAX_CANDIDATES) break;
       }
     } catch { /* continue */ }
-    if (results.length >= MAX_CANDIDATES) break;
+    if (results.size >= MAX_CANDIDATES) break;
   }
-  return results;
+  return Array.from(results.values());
 }
 
 async function discoverOpenAlex(text: string, sig: AbortSignal): Promise<Candidate[]> {
-  const phrases = extractPhrases(text);
-  const results: Candidate[] = [];
+  const queries = buildDiscoveryQueries(text);
+  const results = new Map<string, Candidate>();
   const seen = new Set<string>();
-  for (const phrase of phrases.slice(0, 3)) {
+  for (const phrase of queries) {
     try {
       const url =
         `https://api.openalex.org/works?search=${encodeURIComponent(phrase)}` +
@@ -450,20 +616,51 @@ async function discoverOpenAlex(text: string, sig: AbortSignal): Promise<Candida
             ? landingUrl
             : doi ? `https://doi.org/${doi}` : null;
         if (!resolvedUrl) continue;
-        results.push({
-          title: (item.title as string) ?? resolvedUrl,
+        const title = (item.title as string) ?? resolvedUrl;
+        const existing = results.get(key);
+        if (existing) {
+          existing.queryRecovery += 1;
+          existing.recoveredQueries.push(phrase);
+          continue;
+        }
+        results.set(key, {
+          title,
           doi,
           url: resolvedUrl,
           publisher: ((loc?.source as Record<string, unknown> | null)?.display_name as string) ?? "OpenAlex",
           provider: "openalex",
           abstract,
+          queryRecovery: 1,
+          discoveryScore: 0,
+          recoveredQueries: [phrase],
         });
-        if (results.length >= MAX_CANDIDATES) break;
+        if (results.size >= MAX_CANDIDATES) break;
       }
     } catch { /* continue */ }
-    if (results.length >= MAX_CANDIDATES) break;
+    if (results.size >= MAX_CANDIDATES) break;
   }
-  return results;
+  return Array.from(results.values());
+}
+
+function candidateDiscoveryScore(cand: Candidate, submitted: string): number {
+  // Score is used ONLY for ranking which candidates to investigate; it never
+  // contributes to plagiarism percentage.
+  const rare = rareTokenSet(submitted);
+  const titleToks = new Set(tokenise(cand.title));
+  const abstractToks = cand.abstract ? new Set(tokenise(cand.abstract)) : new Set<string>();
+  let overlap = 0;
+  for (const t of rare) {
+    if (titleToks.has(t) || abstractToks.has(t)) overlap += 1;
+  }
+  const rareOverlap = rare.size ? overlap / rare.size : 0;
+  const entityOverlap = cand.recoveredQueries.some((q) => entityAndFactTokens(q).length > 0) ? 0.15 : 0;
+  return Math.min(1, cand.queryRecovery * 0.12 + rareOverlap * 0.6 + entityOverlap + (cand.abstract ? 0.05 : 0));
+}
+
+function rankCandidates(candidates: Candidate[], submitted: string): Candidate[] {
+  return candidates
+    .map((c) => ({ ...c, discoveryScore: candidateDiscoveryScore(c, submitted) }))
+    .sort((a, b) => b.discoveryScore - a.discoveryScore || b.queryRecovery - a.queryRecovery);
 }
 
 async function enrichUnpaywall(c: Candidate, sig: AbortSignal): Promise<Candidate> {
@@ -487,14 +684,14 @@ async function discoverWeb(text: string, sig: AbortSignal): Promise<Candidate[]>
   const cx     = Deno.env.get("GOOGLE_SEARCH_CX") ?? "";
   if (!apiKey || !cx) throw new Error("Google Custom Search not configured");
 
-  const phrases = extractPhrases(text);
-  const results: Candidate[] = [];
+  const queries = buildDiscoveryQueries(text);
+  const results = new Map<string, Candidate>();
   const seen = new Set<string>();
 
-  for (const phrase of phrases.slice(0, 3)) {
+  for (const phrase of queries) {
     const url =
       `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}` +
-      `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(`"${phrase}"`)}&num=5`;
+      `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(phrase)}&num=5`;
     const resp = await fetch(url, { signal: sig });
     if (!resp.ok) throw new Error(`Google search HTTP ${resp.status}`);
     const data = await resp.json();
@@ -502,19 +699,29 @@ async function discoverWeb(text: string, sig: AbortSignal): Promise<Candidate[]>
       const link = (item.link as string | undefined) ?? "";
       if (!link || !isSafeUrl(link) || seen.has(link)) continue;
       seen.add(link);
-      results.push({
-        title:     (item.title as string)   ?? link,
-        doi:       null,
-        url:       link,
+      const title = (item.title as string) ?? link;
+      const existing = results.get(link);
+      if (existing) {
+        existing.queryRecovery += 1;
+        existing.recoveredQueries.push(phrase);
+        continue;
+      }
+      results.set(link, {
+        title,
+        doi: null,
+        url: link,
         publisher: (item.displayLink as string) ?? new URL(link).hostname,
         provider:  "web",
         abstract:  (item.snippet as string | null) ?? null,
+        queryRecovery: 1,
+        discoveryScore: 0,
+        recoveredQueries: [phrase],
       });
-      if (results.length >= MAX_WEB_CANDIDATES) break;
+      if (results.size >= MAX_WEB_CANDIDATES) break;
     }
-    if (results.length >= MAX_WEB_CANDIDATES) break;
+    if (results.size >= MAX_WEB_CANDIDATES) break;
   }
-  return results;
+  return Array.from(results.values());
 }
 
 // ─── Source Retrieval (HTML + PDF) ────────────────────────────────────────────
@@ -755,6 +962,16 @@ function cosineSim(a: number[], b: number[]): number {
   return d === 0 ? 0 : dot / d;
 }
 
+/**
+ * Semantic/paraphrase layer. Returns two classes of span:
+ *  - Verified Paraphrase: high semantic similarity AND additional lexical,
+ *    entity, or factual evidence (e.g., rare token overlap).
+ *  - Candidate Similarity: high semantic similarity but insufficient additional
+ *    evidence. Does NOT count toward plagiarism percentage.
+ *
+ * Embeddings are only computed for candidate pairs that already share some
+ * lexical/entity signal, keeping API calls focused and bounded.
+ */
 async function runSemantic(
   submitted: string, sourceText: string,
   apiKey: string, existingRanges: Array<[number,number]>, sig: AbortSignal
@@ -768,18 +985,30 @@ async function runSemantic(
   });
   if (!uncovered.length || !srcSents.length) return { spans: [], ranges: [], used: false };
 
-  const pairs: Array<{ ss: typeof subSents[0]; ts: typeof srcSents[0] }> = [];
+  const pairs: Array<{ ss: typeof subSents[0]; ts: typeof srcSents[0]; lexJaccard: number; rareOverlap: number; entityOverlap: number }> = [];
   for (const ss of uncovered.slice(0, 10)) {
     const sToks = tokenise(ss.text);
     if (sToks.length < SEM_MIN_TOKENS) continue;
+    const rareSub = rareTokenSet(ss.text);
+    const entitySub = new Set(entityAndFactTokens(ss.text));
     for (const ts of srcSents.slice(0, 30)) {
       const tToks = tokenise(ts.text);
       if (tToks.length < SEM_MIN_TOKENS) continue;
-      const jac = jaccardSim(sToks, tToks);
-      // Only consider pairs with very low lexical overlap to avoid double-counting
-      if (jac < SEM_JACCARD_MAX && jac > 0.03) { pairs.push({ ss, ts }); if (pairs.length >= 5) break; }
+      const lexJaccard = jaccardSim(sToks, tToks);
+      const rareSrc = rareTokenSet(ts.text);
+      const entitySrc = new Set(entityAndFactTokens(ts.text));
+      const rareOverlap = rareSub.size ? [...rareSub].filter((t) => rareSrc.has(t)).length / rareSub.size : 0;
+      const entityOverlap = entitySub.size ? [...entitySub].filter((t) => entitySrc.has(t)).length / entitySub.size : 0;
+      // Accept pairs with some evidence, or very low lexical overlap for pure candidate similarity
+      if (lexJaccard > SEM_JACCARD_MAX) {
+        if (rareOverlap < 0.08 && entityOverlap < 0.08) continue;
+      } else if (lexJaccard <= 0.03) {
+        continue;
+      }
+      pairs.push({ ss, ts, lexJaccard, rareOverlap, entityOverlap });
+      if (pairs.length >= 6) break;
     }
-    if (pairs.length >= 5) break;
+    if (pairs.length >= 6) break;
   }
   if (!pairs.length) return { spans: [], ranges: [], used: false };
 
@@ -796,11 +1025,25 @@ async function runSemantic(
 
   const spans: MatchedSpan[] = [];
   const ranges: Array<[number, number]> = [];
-  for (const { ss, ts } of pairs) {
+  for (const { ss, ts, lexJaccard, rareOverlap, entityOverlap } of pairs) {
     const va = cache.get(ss.text), vb = cache.get(ts.text);
     if (!va || !vb) continue;
     const cos = cosineSim(va, vb);
-    if (cos >= SEM_COSINE_MIN) {
+
+    const hasEvidence = rareOverlap >= PARA_RARE_OVERLAP_MIN || entityOverlap >= PARA_ENTITY_OVERLAP_MIN || lexJaccard >= PARA_LEX_JACCARD_MIN;
+    if (cos >= PARA_SEM_COSINE_MIN && hasEvidence) {
+      // Verified Paraphrase: strong semantic + additional lexical/entity/factual evidence
+      ranges.push([ss.start, ss.start + ss.text.length]);
+      spans.push({
+        submittedStart: ss.start,
+        submittedEnd: ss.start + ss.text.length,
+        submittedPassage: ss.text,
+        sourcePassage: ts.text,
+        matchType: "paraphrase",
+        spanSimilarity: Math.round(cos * 100) / 100,
+      });
+    } else if (cos >= SEM_COSINE_MIN && lexJaccard < SEM_JACCARD_MAX) {
+      // Candidate Similarity: semantic-only signal, not counted as verified plagiarism
       ranges.push([ss.start, ss.start + ss.text.length]);
       spans.push({
         submittedStart: ss.start,
@@ -827,11 +1070,13 @@ function riskLevel(sim: number): PlagResult["riskLevel"] {
 
 function dominantType(spans: MatchedSpan[]): VerifiedSource["matchType"] {
   if (!spans.length) return "Exact";
-  const c = { exact: 0, near: 0, candidate: 0 };
+  const c = { exact: 0, near: 0, paraphrase: 0, candidate: 0 };
   for (const s of spans) c[s.matchType]++;
-  const hasVerified = c.exact > 0 || c.near > 0;
-  if (c.exact >= c.near && c.exact >= c.candidate) return (c.near || c.candidate) && hasVerified ? "Mixed" : "Exact";
-  if (c.near >= c.candidate) return (c.exact || c.candidate) && hasVerified ? "Mixed" : "Near Match";
+  const hasVerified = c.exact > 0 || c.near > 0 || c.paraphrase > 0;
+  const max = Math.max(c.exact, c.near, c.paraphrase, c.candidate);
+  if (c.exact === max) return (c.near || c.paraphrase || c.candidate) && hasVerified ? "Mixed" : "Exact";
+  if (c.near === max) return (c.exact || c.paraphrase || c.candidate) && hasVerified ? "Mixed" : "Near Match";
+  if (c.paraphrase === max) return (c.exact || c.near || c.candidate) && hasVerified ? "Mixed" : "Verified Paraphrase";
   if (!hasVerified) return "Candidate Similarity";
   return "Mixed";
 }
@@ -848,7 +1093,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   const eligibleChars = eligibleText.length;
 
   if (tokenise(eligibleText).length < MIN_TEXT_WORDS) {
-    return { status: "insufficient_text", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps, errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` };
+    return { status: "insufficient_text", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, paraphraseMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps, errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` };
   }
 
   // Discovery — Crossref + OpenAlex always run in parallel.
@@ -908,18 +1153,21 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
     return {
       status: allAcademicFailed ? "provider_unavailable" : (anyFailed ? "partial" : "no_verified_matches"),
-      similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, semanticMatchScore: 0,
+      similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, paraphraseMatchScore: 0, semanticMatchScore: 0,
       riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
       ...(allAcademicFailed ? { errorMessage: "Source discovery providers could not be reached." } :
           anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
     };
   }
 
+  // Rank candidates by discovery-only score before spending retrieval budget.
+  const ranked = rankCandidates(deduped, eligibleText);
+
   // Unpaywall enrichment (academic candidates only)
   const upCtrl = new AbortController();
   const upTimer = setTimeout(() => upCtrl.abort(), 5_000);
   const enriched = await Promise.all(
-    deduped.map((c) => c.provider !== "web" ? enrichUnpaywall(c, upCtrl.signal) : Promise.resolve(c))
+    ranked.map((c) => c.provider !== "web" ? enrichUnpaywall(c, upCtrl.signal) : Promise.resolve(c))
   );
   clearTimeout(upTimer);
   ps.unpaywall = enriched.some((c) => c.provider === "unpaywall") ? "ok" : "skipped";
@@ -928,6 +1176,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   const sources: VerifiedSource[] = [];
   const allExact: Array<[number,number]> = [];
   const allNear:  Array<[number,number]> = [];
+  const allParaphrase: Array<[number,number]> = [];
   const allSem:   Array<[number,number]> = [];
   let geminiUsed = false;
 
@@ -960,14 +1209,15 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     clearTimeout(semTimer);
     if (sem.used) geminiUsed = true;
 
-    const verifiedSpans = [...exact.spans, ...near.spans];
-    const verifiedRanges = [...exact.ranges, ...near.ranges];
-    const allSpans = [...verifiedSpans, ...sem.spans];
+    const verifiedSpans = [...exact.spans, ...near.spans, ...sem.spans.filter((s) => s.matchType === "paraphrase")];
+    const verifiedRanges = [...exact.ranges, ...near.ranges, ...sem.spans.filter((s) => s.matchType === "paraphrase").map((s) => [s.submittedStart, s.submittedEnd] as [number, number])];
+    const candidateSpans = sem.spans.filter((s) => s.matchType === "candidate");
+    const allSpans = [...verifiedSpans, ...candidateSpans];
     if (!allSpans.length) continue;
 
     const verifiedCoverage = uniqueCoverage(verifiedRanges, eligibleChars);
     const sourceCov = Math.round((verifiedCoverage / eligibleChars) * 100);
-    if (!sourceCov && !sem.spans.length) continue;
+    if (!sourceCov && !candidateSpans.length) continue;
 
     sources.push({
       title: cand.title, doi: cand.doi, url: cand.url, publisher: cand.publisher, provider: cand.provider,
@@ -975,19 +1225,23 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
       similarity: Math.round(Math.max(...allSpans.map((s) => s.spanSimilarity)) * 100),
       matchType: dominantType(allSpans),
       verified: retrievalStatus === "ok" && verifiedSpans.length > 0,
+      queryRecovery: cand.queryRecovery,
+      discoveryScore: cand.discoveryScore,
     });
     allExact.push(...exact.ranges);
     allNear.push(...near.ranges);
-    allSem.push(...sem.ranges);
+    allParaphrase.push(...sem.spans.filter((s) => s.matchType === "paraphrase").map((s) => [s.submittedStart, s.submittedEnd] as [number, number]));
+    allSem.push(...sem.spans.filter((s) => s.matchType === "candidate").map((s) => [s.submittedStart, s.submittedEnd] as [number, number]));
   }
 
   ps.gemini = geminiUsed ? "ok" : "skipped";
 
-  // Overall scores are computed from verified exact/near spans ONLY.
-  const verifiedRanges = [...allExact, ...allNear];
+  // Overall scores are computed from verified exact/near/paraphrase spans ONLY.
+  const verifiedRanges = [...allExact, ...allNear, ...allParaphrase];
   const simScore  = Math.round((uniqueCoverage(verifiedRanges, eligibleChars) / eligibleChars) * 100);
   const exactScore = Math.round((uniqueCoverage(allExact, eligibleChars) / eligibleChars) * 100);
   const nearScore  = Math.round((uniqueCoverage(allNear,  eligibleChars) / eligibleChars) * 100);
+  const paraphraseScore = Math.round((uniqueCoverage(allParaphrase, eligibleChars) / eligibleChars) * 100);
   const semScore   = Math.round((uniqueCoverage(allSem,   eligibleChars) / eligibleChars) * 100);
 
   const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
@@ -996,7 +1250,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     return {
       status: anyFailed ? "partial" : "no_verified_matches",
       similarityScore: simScore, originalityScore: 100 - simScore,
-      exactMatchScore: exactScore, nearMatchScore: nearScore, semanticMatchScore: semScore,
+      exactMatchScore: exactScore, nearMatchScore: nearScore, paraphraseMatchScore: paraphraseScore, semanticMatchScore: semScore,
       riskLevel: riskLevel(simScore), sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
       ...(anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
     };
@@ -1005,7 +1259,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   return {
     status: anyFailed ? "partial" : "completed",
     similarityScore: simScore, originalityScore: 100 - simScore,
-    exactMatchScore: exactScore, nearMatchScore: nearScore, semanticMatchScore: semScore,
+    exactMatchScore: exactScore, nearMatchScore: nearScore, paraphraseMatchScore: paraphraseScore, semanticMatchScore: semScore,
     riskLevel: riskLevel(simScore),
     sources: sources.sort((a, b) => b.matchContribution - a.matchContribution),
     coverageNote: COVERAGE_NOTE, providerStatus: ps,

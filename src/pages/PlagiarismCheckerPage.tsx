@@ -176,6 +176,7 @@ export default function PlagiarismCheckerPage() {
       `Risk Level: ${result.riskLevel}`,
       `Exact Match: ${result.exactMatchScore}%`,
       `Near Match: ${result.nearMatchScore}%`,
+      `Verified Paraphrase: ${result.paraphraseMatchScore}%`,
       `Candidate Similarity: ${result.semanticMatchScore}%`,
       '',
       `Coverage: ${result.coverageNote}`,
@@ -444,6 +445,7 @@ export default function PlagiarismCheckerPage() {
                             ['Originality', `${result.originalityScore}%`],
                             ['Exact Match', `${result.exactMatchScore}%`],
                             ['Near Match', `${result.nearMatchScore}%`],
+                            ['Verified Paraphrase', `${result.paraphraseMatchScore}%`],
                             ['Candidate Similarity', `${result.semanticMatchScore}%`],
                           ].map(([label, val]) => (
                             <div key={label} className="flex justify-between items-center">
@@ -566,7 +568,8 @@ export default function PlagiarismCheckerPage() {
               <div className="space-y-3 mt-5">
                 {[
                   ['Exact Match', 'Word-for-word copies of source material are flagged with full source URLs and matched passages.'],
-                  ['Near / Verified Paraphrase', 'Reworded source text is only reported when retrieved passages provide strong lexical evidence.'],
+                  ['Near Match', 'Limited lexical changes to source material are reported with evidence.'],
+                  ['Verified Paraphrase', 'Reworded source text is reported only when retrieved passages combine high semantic similarity with lexical, entity, or factual evidence.'],
                   ['Candidate Similarity', 'Semantic similarity can surface candidates but does not count as confirmed plagiarism.'],
                   ['AI-Generated Content', 'Text from ChatGPT, Claude, Gemini, and others is identified separately.'],
                 ].map(([title, desc]) => (

@@ -72,6 +72,7 @@ export default function PlagiarismDetector() {
       `Originality: ${result.originalityScore}%`,
       `Exact Match: ${result.exactMatchScore}%`,
       `Near Match: ${result.nearMatchScore}%`,
+      `Verified Paraphrase: ${result.paraphraseMatchScore}%`,
       `Candidate Similarity: ${result.semanticMatchScore}%`,
       '',
       `Coverage: ${result.coverageNote}`,
@@ -158,7 +159,7 @@ export default function PlagiarismDetector() {
                   <div key={i} className="text-xs rounded-md border border-warning/30 bg-warning/10 p-3">
                     <p className="font-semibold text-warning mb-1 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
-                      {span.matchType === 'exact' ? 'Exact match' : span.matchType === 'near' ? 'Near match' : 'Candidate similarity'}
+                      {span.matchType === 'exact' ? 'Exact match' : span.matchType === 'near' ? 'Near match' : span.matchType === 'paraphrase' ? 'Verified paraphrase' : 'Candidate similarity'}
                       {' '}· {Math.round(span.spanSimilarity * 100)}% similarity
                     </p>
                     <p className="text-foreground/80 italic line-clamp-2">"{span.submittedPassage}"</p>
@@ -245,6 +246,7 @@ export default function PlagiarismDetector() {
                         ['Originality', `${result.originalityScore}%`],
                         ['Exact Match', `${result.exactMatchScore}%`],
                         ['Near Match', `${result.nearMatchScore}%`],
+                        ['Verified Paraphrase', `${result.paraphraseMatchScore}%`],
                         ['Candidate Similarity', `${result.semanticMatchScore}%`],
                       ].map(([label, val]) => (
                         <div key={label} className="flex justify-between items-center">

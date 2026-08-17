@@ -4,7 +4,7 @@
  * Renders submitted text with inline colour overlays based on matchedSpan
  * character offsets returned by the plagiarism-checker Edge Function.
  *
- * Span priority (highest → lowest): exact > near > candidate
+ * Span priority (highest → lowest): exact > near > paraphrase > candidate
  * Colours follow the design-system semantic tokens so they work in dark mode.
  * Candidate spans are semantic-only candidates and are shown distinctly.
  */
@@ -14,7 +14,7 @@ import type { MatchedSpan } from '@/pages/detector/detectionEngine';
 
 interface SpanSegment {
   text: string;
-  type: 'exact' | 'near' | 'candidate' | null;
+  type: 'exact' | 'near' | 'paraphrase' | 'candidate' | null;
   /** Tooltip label for hover */
   label?: string;
 }
@@ -28,22 +28,31 @@ interface Props {
 
 // Priority order for overlapping spans
 const PRIORITY: Record<MatchedSpan['matchType'], number> = {
-  exact: 3, near: 2, candidate: 1,
+  exact: 4, near: 3, paraphrase: 2, candidate: 1,
 };
 
 function buildSegments(text: string, spans: MatchedSpan[]): SpanSegment[] {
   if (!text || !spans.length) return [{ text, type: null }];
 
   // Build a per-character type map (highest priority wins)
-  const typeMap = new Uint8Array(text.length); // 0=none,1=candidate,2=near,3=exact
+  const typeMap = new Uint8Array(text.length); // 0=none,1=candidate,2=paraphrase,3=near,4=exact
   const labelMap: (string | undefined)[] = new Array(text.length);
+
+  function labelFor(span: MatchedSpan) {
+    switch (span.matchType) {
+      case 'exact': return 'Exact match';
+      case 'near': return 'Near match';
+      case 'paraphrase': return 'Verified paraphrase';
+      case 'candidate': return 'Candidate similarity';
+    }
+  }
 
   for (const span of spans) {
     const start = Math.max(0, span.submittedStart);
     const end   = Math.min(text.length, span.submittedEnd);
     if (start >= end) continue;
     const p = PRIORITY[span.matchType];
-    const label = `${span.matchType === 'exact' ? 'Exact' : span.matchType === 'near' ? 'Near' : 'Candidate'} similarity · ${Math.round(span.spanSimilarity * 100)}%`;
+    const label = `${labelFor(span)} · ${Math.round(span.spanSimilarity * 100)}%`;
     for (let i = start; i < end; i++) {
       if (p > typeMap[i]) {
         typeMap[i] = p;
@@ -59,7 +68,7 @@ function buildSegments(text: string, spans: MatchedSpan[]): SpanSegment[] {
     const code = typeMap[i];
     const lbl  = labelMap[i];
     const type: SpanSegment['type'] =
-      code === 3 ? 'exact' : code === 2 ? 'near' : code === 1 ? 'candidate' : null;
+      code === 4 ? 'exact' : code === 3 ? 'near' : code === 2 ? 'paraphrase' : code === 1 ? 'candidate' : null;
     let j = i + 1;
     while (j < text.length && typeMap[j] === code) j++;
     segments.push({ text: text.slice(i, j), type, label: lbl });
@@ -71,6 +80,7 @@ function buildSegments(text: string, spans: MatchedSpan[]): SpanSegment[] {
 const HIGHLIGHT_CLASSES: Record<NonNullable<SpanSegment['type']>, string> = {
   exact:    'bg-destructive/20 text-destructive underline decoration-destructive/60 decoration-wavy underline-offset-2 cursor-help',
   near:     'bg-warning/25 text-warning-foreground underline decoration-warning/60 decoration-wavy underline-offset-2 cursor-help',
+  paraphrase: 'bg-chart-3/20 text-foreground underline decoration-chart-3/60 decoration-wavy underline-offset-2 cursor-help',
   candidate: 'bg-muted text-muted-foreground underline decoration-border decoration-dashed underline-offset-2 cursor-help',
 };
 
@@ -111,11 +121,15 @@ export function HighlightLegend() {
       </span>
       <span className="flex items-center gap-1">
         <span className="inline-block w-3 h-3 rounded-sm bg-warning/30 border border-warning/40" />
-        Near / paraphrase
+        Near match
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block w-3 h-3 rounded-sm bg-yellow-200/60 dark:bg-yellow-400/25 border border-yellow-400/50" />
-        Semantic similarity
+        <span className="inline-block w-3 h-3 rounded-sm bg-chart-3/40 border border-chart-3/60" />
+        Verified paraphrase
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="inline-block w-3 h-3 rounded-sm bg-muted border border-border" />
+        Candidate similarity
       </span>
     </div>
   );

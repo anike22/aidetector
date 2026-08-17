@@ -4,11 +4,14 @@ import {
   assertNotEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  buildDiscoveryQueries,
   buildNgramMap,
+  entityAndFactTokens,
   extractPhrases,
   jaccardSim,
   longestCommonSubsequenceRatio,
   normalise,
+  rareTokenSet,
   runExact,
   runNear,
   tokenise,
@@ -157,4 +160,96 @@ Deno.test("multi-source copied passages are independently detected and overlap i
     allRanges.every((r) => r[0] >= 0 && r[1] <= total && r[1] > r[0]),
     "All offsets valid",
   );
+});
+
+// ─── Paraphrase detection regression tests ───────────────────────────────────
+
+const TRANSFORMER_PARAPHRASE = `We introduce a novel architecture called the Transformer, relying entirely on attention mechanisms and eliminating recurrence and convolution. On the WMT 2014 English-to-German translation task, our model achieved 28.4 BLEU, surpassing the previous best by 2.0 BLEU. On the WMT 2014 English-to-French task, it reached 41.8 BLEU after training on eight GPUs for 3.5 days.`;
+
+const TRANSFORMER_SOURCE = `In this work, we propose a new simple network architecture, the Transformer, based solely on attention mechanisms, and dispensing with recurrence and convolutions entirely. On WMT 2014 English-to-German translation, the model achieves a BLEU score of 28.4, outperforming the previous best by 2.0 BLEU. On WMT 2014 English-to-French translation, the model achieves a BLEU score of 41.8, training on eight GPUs for 3.5 days.`;
+
+const TRANSFORMER_VERBATIM = `In this work, we propose a new simple network architecture, the Transformer, based solely on attention mechanisms, and dispensing with recurrence and convolutions entirely. On WMT 2014 English-to-German translation, the model achieves a BLEU score of 28.4, outperforming the previous best by 2.0 BLEU. On WMT 2014 English-to-French translation, the model achieves a BLEU score of 41.8, training on eight GPUs for 3.5 days.`;
+
+Deno.test("paraphrase contains distinctive facts and rare tokens preserved from source", () => {
+  const rareSub = rareTokenSet(TRANSFORMER_PARAPHRASE);
+  const rareSrc = rareTokenSet(TRANSFORMER_SOURCE);
+  const common = [...rareSub].filter((t) => rareSrc.has(t));
+  assert(common.includes("wmt"), "WMT should be preserved");
+  assert(common.includes("bleu"), "BLEU should be preserved");
+  assert(common.includes("2014"), "2014 should be preserved");
+  assert(common.includes("transformer"), "Transformer should be preserved");
+  const entities = entityAndFactTokens(TRANSFORMER_PARAPHRASE);
+  assert(entities.some((e: string) => e.includes("28.4")), "Numeric fact 28.4 should be extracted");
+  assert(entities.some((e: string) => e.includes("41.8")), "Numeric fact 41.8 should be extracted");
+  assert(entities.some((e: string) => e.includes("english-to-german")), "English-to-German should be extracted");
+});
+
+Deno.test("discovery queries include entity/fact combinations for paraphrase", () => {
+  const queries = buildDiscoveryQueries(TRANSFORMER_PARAPHRASE);
+  assert(queries.length > 0, "Queries should be generated for paraphrase");
+  const all = queries.join(" ").toLowerCase();
+  assert(all.includes("transformer"), "Transformer should be in query");
+  assert(all.includes("wmt") || all.includes("bleu") || all.includes("2014"), "Distinctive facts should be present");
+  for (const q of queries) {
+    const toks = q.split(" ");
+    assert(toks.length <= 6, "Queries should be compact");
+  }
+});
+
+Deno.test("verbatim Transformer passage is exact match", () => {
+  const exact = runExact(TRANSFORMER_VERBATIM, TRANSFORMER_SOURCE);
+  assert(exact.spans.length > 0, "Verbatim passage should be exact match");
+});
+
+Deno.test("paraphrased Transformer passage is not exact match", () => {
+  const exact = runExact(TRANSFORMER_PARAPHRASE, TRANSFORMER_SOURCE);
+  assertEquals(exact.spans.length, 0, "Paraphrase should not trigger exact match");
+});
+
+Deno.test("topic-only Transformers text shares rare tokens but has low entity/fact overlap", () => {
+  const topic = `Transformers are a type of neural network architecture that has become widely used in natural language processing. They rely on attention mechanisms to model relationships between tokens. Researchers have applied them to many tasks, including machine translation, text summarization, and question answering. The architecture has been extended in many directions since its introduction.`;
+  const rareTopic = rareTokenSet(topic);
+  const rareSource = rareTokenSet(TRANSFORMER_SOURCE);
+  const common = [...rareTopic].filter((t) => rareSource.has(t));
+  // Rare token overlap may be moderate; entity/fact overlap should be low because
+  // topic text does not include specific numbers, benchmarks, or measurements.
+  const entitiesTopic = entityAndFactTokens(topic);
+  const entitiesSource = entityAndFactTokens(TRANSFORMER_SOURCE);
+  const entityCommon = entitiesTopic.filter((t: string) => entitiesSource.includes(t)).length;
+  assert(entityCommon < 2, "Topic-only text should have low entity/fact overlap with source");
+});
+
+Deno.test("mixed document with exact and paraphrase chunks has correct coverage ranges", () => {
+  const original = "This is original introductory text that is not found elsewhere. ";
+  const exactChunk = `In this work, we propose a new simple network architecture, the Transformer, based solely on attention mechanisms.`;
+  const paraphraseChunk = `On the WMT 2014 English-to-German task, our model achieved 28.4 BLEU, surpassing the previous best by 2.0 BLEU.`;
+  const submitted = `${original}${exactChunk} ${original}${paraphraseChunk} ${original}`;
+  const source = TRANSFORMER_SOURCE;
+  const exact = runExact(submitted, source);
+  // Exact chunk should match verbatim.
+  assert(exact.spans.length > 0, "Exact chunk should be detected in mixed document");
+  // Paraphrase chunk should not be exact.
+  const paraphraseExact = runExact(paraphraseChunk, source);
+  assertEquals(paraphraseExact.spans.length, 0, "Paraphrase chunk should not be exact");
+  // All ranges should be within the document and coverage should be capped.
+  const allRanges = exact.ranges;
+  const total = submitted.length;
+  const cov = uniqueCoverage(allRanges, total);
+  assert(cov <= total, "Coverage should not exceed document length");
+  assert(allRanges.every((r) => r[0] >= 0 && r[1] <= total && r[1] > r[0]), "All ranges valid");
+});
+
+Deno.test("original human article about cities produces no evidence against generic AI source", () => {
+  const submitted = `How Small Daily Decisions Shape the Future of Modern Cities. Every day, millions of people decide how to travel, where to live, and how to consume energy. These choices accumulate and shape the infrastructure of modern cities. Urban planners have long studied traffic patterns, zoning laws, and public transport, but the emerging field of urban informatics is revealing how individual behaviour drives systemic outcomes. When a resident chooses to walk rather than drive, that decision reduces congestion, lowers emissions, and reshapes demand for parking. When households shift to renewable energy, utilities must adapt grids and storage capacity. Cities are complex systems where small daily decisions ripple outward into housing markets, transit networks, and environmental footprints. Decision-making at the street level is now visible through mobile data, sensors, and open government datasets. Planners can see where people gather, how they move, and where services are lacking. This visibility creates opportunities for responsive design: bus routes can be adjusted in real time, public spaces can be remodelled, and resources can be directed to underserved neighbourhoods. Yet it also raises questions about privacy, equity, and who benefits from algorithmic governance. The future of urban life depends on aligning individual choices with collective goals. Technology, policy, and community engagement must work together to make sustainable decisions easy and attractive. The most resilient cities will be those that treat residents as active participants in shaping their environment, not merely as consumers of infrastructure.`.repeat(
+    3,
+  );
+  const queries = buildDiscoveryQueries(submitted);
+  // The city article may still produce a few generic queries, but they should not
+  // include the rare factual tokens that would retrieve a specific AI paper.
+  const all = queries.join(" ").toLowerCase();
+  assert(!all.includes("wmt") && !all.includes("bleu") && !all.includes("transformer"), "City article should not generate Transformer-specific discovery queries");
+  const exact = runExact(submitted, TRANSFORMER_SOURCE);
+  assertEquals(exact.spans.length, 0, "City article should not have exact overlap with Transformer source");
+  const near = runNear(submitted, TRANSFORMER_SOURCE);
+  assertEquals(near.spans.length, 0, "City article should not have near overlap with Transformer source");
 });

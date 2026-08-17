@@ -483,8 +483,8 @@ export interface MatchedSpan {
   submittedEnd: number;
   submittedPassage: string;
   sourcePassage: string;
-  /** Exact = verbatim; Near = limited lexical changes; Candidate = semantic similarity only. */
-  matchType: 'exact' | 'near' | 'candidate';
+  /** Exact = verbatim; Near = limited lexical changes; Paraphrase = semantic similarity + lexical/entity/factual evidence; Candidate = semantic similarity only. */
+  matchType: 'exact' | 'near' | 'paraphrase' | 'candidate';
   spanSimilarity: number;
 }
 
@@ -501,16 +501,20 @@ export interface VerifiedSource {
   matchedSpans: MatchedSpan[];
   /** Highest span similarity across all spans (0–100). */
   similarity: number;
-  matchType: 'Exact' | 'Near Match' | 'Candidate Similarity' | 'Mixed';
+  matchType: 'Exact' | 'Near Match' | 'Verified Paraphrase' | 'Candidate Similarity' | 'Mixed';
   /** False if source text could not be retrieved; such sources cannot be verified. */
   verified: boolean;
+  /** Number of independent discovery queries that recovered this source. */
+  queryRecovery?: number;
+  /** Optional discovery-only ranking score; never used for plagiarism percentage. */
+  discoveryScore?: number;
 }
 
 /** Full plagiarism result — every score is derived from verified evidence. */
 export interface PlagiarismAnalysisResult {
   status: PlagiarismStatus;
   /**
-   * Percentage of eligible text covered by ≥1 verified exact or near match.
+   * Percentage of eligible text covered by ≥1 verified exact, near, or paraphrase match.
    * Formula: uniqueMatchedChars / eligibleChars * 100
    */
   similarityScore: number;
@@ -518,7 +522,9 @@ export interface PlagiarismAnalysisResult {
   originalityScore: number;
   exactMatchScore: number;
   nearMatchScore: number;
-  /** Candidate similarity coverage; semantic matches are NOT counted in similarityScore. */
+  /** Verified paraphrase coverage; counts toward similarityScore. */
+  paraphraseMatchScore: number;
+  /** Candidate similarity coverage; semantic-only matches are NOT counted in similarityScore. */
   semanticMatchScore: number;
   riskLevel: 'None' | 'Low' | 'Medium' | 'High' | 'Critical';
   sources: VerifiedSource[];
