@@ -789,6 +789,30 @@ async function discoverWeb(text: string, sig: AbortSignal): Promise<Candidate[]>
   return Array.from(results.values());
 }
 
+// ─── Exa content retrieval (fallback/supplement for known URLs) ──────────────
+async function fetchExaContents(url: string, sig: AbortSignal): Promise<string | null> {
+  const apiKey = Deno.env.get("EXA_API_KEY") ?? "";
+  if (!apiKey) return null;
+  try {
+    const exa = new Exa(apiKey);
+    const promise = exa.getContents([url], {
+      text: { maxCharacters: 15000 },
+      maxAgeHours: 24,
+    });
+    const res = await (sig.aborted
+      ? Promise.reject(new Error("aborted"))
+      : Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          sig.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+        }),
+      ]));
+    const item = (res.results ?? [])[0] as Record<string, unknown> | undefined;
+    const text = (item?.text as string | undefined) ?? "";
+    return text.length > 100 ? text : null;
+  } catch { return null; }
+}
+
 // ─── Source Retrieval (HTML + PDF) ────────────────────────────────────────────
 
 /**
@@ -1254,10 +1278,17 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     let retrievalStatus: "ok" | "failed" = "failed";
     let srcText: string | null = null;
 
-    // Prefer full text if available; otherwise use abstract only as a fallback.
+    // Prefer direct full text retrieval; fall back to Exa /contents for known URLs.
     if (cand.url && isSafeUrl(cand.url)) {
       srcText = await fetchSourceText(cand.url);
       if (srcText && normalise(srcText).length >= 100) retrievalStatus = "ok";
+      if (retrievalStatus === "failed") {
+        const fetchCtrl = new AbortController();
+        const fetchTimer = setTimeout(() => fetchCtrl.abort(), FETCH_TO_MS);
+        srcText = await fetchExaContents(cand.url, fetchCtrl.signal);
+        clearTimeout(fetchTimer);
+        if (srcText && normalise(srcText).length >= 100) retrievalStatus = "ok";
+      }
     }
     if (retrievalStatus === "failed" && cand.abstract && cand.abstract.length > 150) {
       srcText = cand.abstract;
