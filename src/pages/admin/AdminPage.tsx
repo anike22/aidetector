@@ -109,7 +109,7 @@ const STATUS_COLORS: Record<string, string> = {
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -148,14 +148,21 @@ export default function AdminPage() {
     }
   };
 
-  // Guard: redirect non-admins
+  // Guard: redirect non-admins — wait for auth to resolve first
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { navigate('/login'); return; }
     if (profile && profile.role !== 'admin') {
       toast.error('Access denied. Admin only.');
       navigate('/');
     }
-  }, [user, profile, navigate]);
+  }, [authLoading, user, profile, navigate]);
+
+  if (authLoading) return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+    </div>
+  );
 
   if (!user || (profile && profile.role !== 'admin')) return null;
 
