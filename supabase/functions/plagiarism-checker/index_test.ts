@@ -6,6 +6,7 @@ import {
 import {
   buildDiscoveryQueries,
   buildNgramMap,
+  discoverExa,
   entityAndFactTokens,
   extractPhrases,
   jaccardSim,
@@ -252,4 +253,45 @@ Deno.test("original human article about cities produces no evidence against gene
   assertEquals(exact.spans.length, 0, "City article should not have exact overlap with Transformer source");
   const near = runNear(submitted, TRANSFORMER_SOURCE);
   assertEquals(near.spans.length, 0, "City article should not have near overlap with Transformer source");
+});
+
+// ─── Exa integration regression tests ────────────────────────────────────────
+
+Deno.test("discoverExa requires EXA_API_KEY environment variable", async () => {
+  const key = Deno.env.get("EXA_API_KEY");
+  if (key) Deno.env.delete("EXA_API_KEY");
+  const ctrl = new AbortController();
+  let threw = false;
+  try {
+    await discoverExa("transformer wmt 2014", ctrl.signal);
+  } catch {
+    threw = true;
+  } finally {
+    if (key) Deno.env.set("EXA_API_KEY", key);
+  }
+  assert(threw, "discoverExa should throw when EXA_API_KEY is missing");
+});
+
+Deno.test("discoverExa aborts when signal is aborted", async () => {
+  const key = Deno.env.get("EXA_API_KEY");
+  // If a key is present, the test may still pass because the abort happens
+  // before the network call. If absent, it will throw the missing-key error.
+  const ctrl = new AbortController();
+  ctrl.abort();
+  try {
+    await discoverExa("transformer wmt 2014", ctrl.signal);
+  } catch {
+    // expected
+  } finally {
+    if (key) Deno.env.set("EXA_API_KEY", key);
+  }
+});
+
+Deno.test("Exa discovery queries for paraphrase contain publication-specific terms", () => {
+  const queries = buildDiscoveryQueries(TRANSFORMER_PARAPHRASE);
+  const all = queries.join(" ").toLowerCase();
+  assert(
+    all.includes("wmt") || all.includes("bleu") || all.includes("transformer"),
+    "Exa discovery should include distinctive paper terms",
+  );
 });

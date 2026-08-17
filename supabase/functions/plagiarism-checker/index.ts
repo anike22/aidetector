@@ -18,12 +18,14 @@
 
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Exa from "https://esm.sh/exa-js@2.14.0";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_TEXT_CHARS      = 15_000;
 const MIN_TEXT_WORDS      = 30;
 const MAX_CANDIDATES      = 8;   // per academic provider
 const MAX_WEB_CANDIDATES  = 6;   // from Google Custom Search
+const MAX_EXA_CANDIDATES  = 8;   // from Exa search
 const PROVIDER_TO_MS      = 8_000;
 const FETCH_TO_MS         = 5_000;
 const GUEST_DAILY_LIMIT   = 3;
@@ -343,7 +345,7 @@ interface MatchedSpan {
 
 interface VerifiedSource {
   title: string; doi: string | null; url: string;
-  publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web";
+  publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web" | "exa";
   matchContribution: number; citedMaterial: boolean;
   matchedSpans: MatchedSpan[]; similarity: number;
   matchType: "Exact" | "Near Match" | "Verified Paraphrase" | "Candidate Similarity" | "Mixed";
@@ -361,14 +363,14 @@ interface PlagResult {
   riskLevel: "None" | "Low" | "Medium" | "High" | "Critical";
   sources: VerifiedSource[];
   coverageNote: string;
-  providerStatus: { crossref: ProvStatus; openalex: ProvStatus; unpaywall: ProvStatus; gemini: ProvStatus; webSearch: ProvStatus };
+  providerStatus: { crossref: ProvStatus; openalex: ProvStatus; unpaywall: ProvStatus; gemini: ProvStatus; webSearch: ProvStatus; exa: ProvStatus };
   errorMessage?: string;
   upgrade_required?: boolean; remaining?: number | null; limit?: number | null;
 }
 
 interface Candidate {
   title: string; doi: string | null; url: string;
-  publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web";
+  publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web" | "exa";
   abstract: string | null;
   /** Number of independent discovery queries that returned this candidate. */
   queryRecovery: number;
@@ -638,6 +640,69 @@ async function discoverOpenAlex(text: string, sig: AbortSignal): Promise<Candida
       }
     } catch { /* continue */ }
     if (results.size >= MAX_CANDIDATES) break;
+  }
+  return Array.from(results.values());
+}
+
+// ─── Exa web discovery ───────────────────────────────────────────────────────
+export async function discoverExa(text: string, sig: AbortSignal): Promise<Candidate[]> {
+  const apiKey = Deno.env.get("EXA_API_KEY") ?? "";
+  if (!apiKey) throw new Error("Exa API key not configured");
+
+  const exa = new Exa(apiKey);
+  const queries = buildDiscoveryQueries(text);
+  const results = new Map<string, Candidate>();
+  const seen = new Set<string>();
+
+  for (const phrase of queries) {
+    try {
+      const searchPromise = exa.search(phrase, {
+        type: "auto",
+        numResults: 6,
+        // Exa docs canonical category is "publication" for scholarly papers;
+        // the exa-js@2.14.0 type declarations still say "research paper".
+        category: "publication" as any,
+        contents: { highlights: { query: phrase } },
+      });
+      const res = await (sig.aborted
+        ? Promise.reject(new Error("aborted"))
+        : Promise.race([
+          searchPromise,
+          new Promise<never>((_, reject) => {
+            sig.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+        ]));
+
+      for (const item of (res.results ?? []) as Record<string, unknown>[]) {
+        const link = (item.url as string | undefined) ?? "";
+        if (!link || !isSafeUrl(link) || seen.has(link)) continue;
+        seen.add(link);
+        const title = (item.title as string) ?? link;
+        const highlight = (item.highlights as string[] | undefined)?.[0] ?? null;
+        const author = (item.author as string | null) ?? null;
+        const publisher = author ? `${author}` : (new URL(link).hostname);
+
+        const existing = results.get(link);
+        if (existing) {
+          existing.queryRecovery += 1;
+          existing.recoveredQueries.push(phrase);
+          continue;
+        }
+        results.set(link, {
+          title,
+          doi: null,
+          url: link,
+          publisher,
+          provider: "exa",
+          abstract: highlight,
+          queryRecovery: 1,
+          discoveryScore: 0,
+          recoveredQueries: [phrase],
+        });
+        if (results.size >= MAX_EXA_CANDIDATES) break;
+      }
+    } catch { /* continue to next query */ }
+    if (results.size >= MAX_EXA_CANDIDATES) break;
   }
   return Array.from(results.values());
 }
@@ -1086,7 +1151,7 @@ function dominantType(spans: MatchedSpan[]): VerifiedSource["matchType"] {
 async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult> {
   const ps: PlagResult["providerStatus"] = {
     crossref: "skipped", openalex: "skipped", unpaywall: "skipped",
-    gemini: "skipped", webSearch: "skipped",
+    gemini: "skipped", webSearch: "skipped", exa: "skipped",
   };
 
   const { body: eligibleText, hasCitations } = prepareText(rawText);
@@ -1106,20 +1171,25 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
     (Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "").length > 0 &&
     (Deno.env.get("GOOGLE_SEARCH_CX") ?? "").length > 0;
 
+  const exaEnabled = (Deno.env.get("EXA_API_KEY") ?? "").length > 0;
+
   const discCtrl = new AbortController();
   const discTimer = setTimeout(() => discCtrl.abort(), PROVIDER_TO_MS);
-  const [crRes, oaRes] = await Promise.allSettled([
+  const [crRes, oaRes, exaRes] = await Promise.allSettled([
     discoverCrossref(eligibleText, discCtrl.signal),
     discoverOpenAlex(eligibleText, discCtrl.signal),
+    exaEnabled ? discoverExa(eligibleText, discCtrl.signal) : Promise.resolve([]),
   ]);
   clearTimeout(discTimer);
 
   const crCands = crRes.status === "fulfilled" ? crRes.value : [];
   const oaCands = oaRes.status === "fulfilled" ? oaRes.value : [];
+  const exaCands = exaRes.status === "fulfilled" ? exaRes.value : [];
   let webCands: Candidate[] = [];
 
   ps.crossref = crRes.status === "fulfilled" ? (crCands.length ? "ok" : "skipped") : "failed";
   ps.openalex = oaRes.status === "fulfilled" ? (oaCands.length ? "ok" : "skipped") : "failed";
+  ps.exa = exaRes.status === "fulfilled" ? (exaCands.length ? "ok" : "skipped") : "failed";
   ps.webSearch = webConfigured ? "skipped" : "not_configured";
 
   if (webConfigured) {
@@ -1138,7 +1208,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   // Deduplicate across all providers (DOI first, then URL)
   const deduped: Candidate[] = [];
   const seenDoi = new Set<string>(), seenUrl = new Set<string>();
-  for (const c of [...crCands, ...oaCands, ...webCands]) {
+  for (const c of [...crCands, ...oaCands, ...exaCands, ...webCands]) {
     const key = c.doi ?? c.url;
     if (c.doi && seenDoi.has(c.doi)) continue;
     if (seenUrl.has(c.url)) continue;
@@ -1149,8 +1219,8 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   }
 
   if (!deduped.length) {
-    const allAcademicFailed = ps.crossref === "failed" && ps.openalex === "failed";
-    const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
+    const allAcademicFailed = ps.crossref === "failed" && ps.openalex === "failed" && ps.exa === "failed";
+    const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.exa === "failed" || ps.webSearch === "failed";
     return {
       status: allAcademicFailed ? "provider_unavailable" : (anyFailed ? "partial" : "no_verified_matches"),
       similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, paraphraseMatchScore: 0, semanticMatchScore: 0,
@@ -1244,7 +1314,7 @@ async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult>
   const paraphraseScore = Math.round((uniqueCoverage(allParaphrase, eligibleChars) / eligibleChars) * 100);
   const semScore   = Math.round((uniqueCoverage(allSem,   eligibleChars) / eligibleChars) * 100);
 
-  const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.webSearch === "failed";
+  const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.exa === "failed" || ps.webSearch === "failed";
 
   if (!sources.length) {
     return {

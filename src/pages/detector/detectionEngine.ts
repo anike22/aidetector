@@ -494,7 +494,7 @@ export interface VerifiedSource {
   doi: string | null;
   url: string;
   publisher: string;
-  provider: 'crossref' | 'openalex' | 'unpaywall' | 'web';
+  provider: 'crossref' | 'openalex' | 'unpaywall' | 'web' | 'exa';
   /** Percentage of submitted document matched against this source (0–100). */
   matchContribution: number;
   citedMaterial: boolean;

@@ -12,7 +12,10 @@
     "https://esm.sh/iceberg-js@^0.8.1?target=denonext": "https://esm.sh/iceberg-js@0.8.1?target=denonext",
     "https://esm.sh/tr46@~0.0.3?target=denonext": "https://esm.sh/tr46@0.0.3?target=denonext",
     "https://esm.sh/webidl-conversions@^3.0.0?target=denonext": "https://esm.sh/webidl-conversions@3.0.1?target=denonext",
-    "https://esm.sh/whatwg-url@^5.0.0?target=denonext": "https://esm.sh/whatwg-url@5.0.0?target=denonext"
+    "https://esm.sh/whatwg-url@^5.0.0?target=denonext": "https://esm.sh/whatwg-url@5.0.0?target=denonext",
+    "https://esm.sh/zod-to-json-schema@^3.20.0?target=denonext": "https://esm.sh/zod-to-json-schema@3.25.2?target=denonext",
+    "https://esm.sh/zod@^3.22.0?target=denonext": "https://esm.sh/zod@3.25.76?target=denonext",
+    "https://esm.sh/zod@^3.25.28%20||%20^4/v3?target=denonext": "https://esm.sh/zod@4.4.3/v3?target=denonext"
   },
   "remote": {
     "https://deno.land/std@0.168.0/async/abortable.ts": "80b2ac399f142cc528f95a037a7d0e653296352d95c681e284533765961de409",
@@ -113,6 +116,8 @@
     "https://esm.sh/@supabase/supabase-js@2.112.3/denonext/supabase-js.mjs": "546d90fcc225da82acc3cd383db2f0a9301ff67b156d3e0638923830804c1d30",
     "https://esm.sh/@supabase/supabase-js@2.39.3": "832d7714491bd1c8a9008a332b35cb099f24b451ad79e755ecf4d71985fd6610",
     "https://esm.sh/@supabase/supabase-js@2.39.3/denonext/supabase-js.mjs": "054f4cd1560fa814cdc10d06c0809b00d0817dc06a072fa983e4c023e4346439",
+    "https://esm.sh/exa-js@2.14.0": "f1a110cc437072b2949f5bf836607434b89e46478bfc773e07e6be22321e9c42",
+    "https://esm.sh/exa-js@2.14.0/denonext/exa-js.mjs": "cdf59463a67afcedadfa33b9b6a89e4711ae00f67ef54b373bda5c6d168d67a3",
     "https://esm.sh/iceberg-js@0.8.1/denonext/iceberg-js.mjs": "d839d81a2e3966500ca2cdd0c1cb458e9608bacfc91f7bb67a69b2e878dcdb4f",
     "https://esm.sh/iceberg-js@0.8.1?target=denonext": "58c849d7fe2bf4eca4a84eb501e83c161a7d8c34ca1bec15a962b3bec3062633",
     "https://esm.sh/tr46@0.0.3/denonext/tr46.mjs": "5753ec0a99414f4055f0c1f97691100f13d88e48a8443b00aebb90a512785fa2",
@@ -121,7 +126,18 @@
     "https://esm.sh/webidl-conversions@3.0.1/denonext/webidl-conversions.mjs": "238cd0743827707cbc1c2d7c2cf1027dbc536fb53ec9a3fde0ff8026a3ac5385",
     "https://esm.sh/webidl-conversions@3.0.1?target=denonext": "4e20318d50528084616c79d7b3f6e7f0fe7b6d09013bd01b3974d7448d767e29",
     "https://esm.sh/whatwg-url@5.0.0/denonext/whatwg-url.mjs": "29b16d74ee72624c915745bbd25b617cfd2248c6af0f5120d131e232a9a9af79",
-    "https://esm.sh/whatwg-url@5.0.0?target=denonext": "f001a2cadf81312d214ca330033f474e74d81a003e21e8c5d70a1f46dc97b02d"
+    "https://esm.sh/whatwg-url@5.0.0?target=denonext": "f001a2cadf81312d214ca330033f474e74d81a003e21e8c5d70a1f46dc97b02d",
+    "https://esm.sh/zod-to-json-schema@3.25.2/denonext/zod-to-json-schema.mjs": "657903cd13e311d357576392563bc56e7c780e6a8362e73559e70eb1e7c2ca70",
+    "https://esm.sh/zod-to-json-schema@3.25.2?target=denonext": "c0d062b77cb951961c76ec2e6ee9c348505168a924ad432a87423b1bca9c53c8",
+    "https://esm.sh/zod@3.25.76/denonext/v3/ZodError.mjs": "7cb18052dad1b35a84cb7a3c1dc825e455f6c3fec0d89c4c4cc4059120042e30",
+    "https://esm.sh/zod@3.25.76/denonext/v3/errors.mjs": "9a89b379ac5877d8c0bf4d14d6535ec5e6ab3afb526922acdc61299bac97790c",
+    "https://esm.sh/zod@3.25.76/denonext/v3/external.mjs": "21935d798cd2c0c9709cabf9abfb0ed16b884a354beeaa214bfbe5f536267dcf",
+    "https://esm.sh/zod@3.25.76/denonext/v3/helpers/util.mjs": "06f7d99705d93b009c1929407b1636e9c78fa69069f89361ceb3998e3b78b053",
+    "https://esm.sh/zod@3.25.76/denonext/v3/locales/en.mjs": "6562956f1dd23d6a2d98b44b9e8116835a9fa6a7ec9cedd7f1d48d9e9dd1a7a0",
+    "https://esm.sh/zod@3.25.76/denonext/zod.mjs": "c5134912da19c386fa022c7c5be6a68ef4c8679e42f435324208ef6e76a64161",
+    "https://esm.sh/zod@3.25.76?target=denonext": "3fb2d6fc9ba6facc140a9875710339f90e89befb26fd9b39da83644d4dd6a701",
+    "https://esm.sh/zod@4.4.3/denonext/v3.mjs": "a30fcbd86f1b8d75c3cebd0d2abd02366e761a8962d1cddddcc8c8315d60671a",
+    "https://esm.sh/zod@4.4.3/v3?target=denonext": "dd7269eb9e4c88423936914fe2011a9225ebaadd0512a96b788e2804634fe5ef"
   },
   "workspace": {
     "packageJson": {
