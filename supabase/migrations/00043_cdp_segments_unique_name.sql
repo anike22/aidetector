@@ -1,0 +1,1 @@
+ALTER TABLE customer_segments ADD CONSTRAINT customer_segments_name_unique UNIQUE (name);

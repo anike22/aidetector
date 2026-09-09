@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>AIDetector.cx All</title>
+  <link>https://aidetector.cx/all</link>
+  <description>Latest all from AIDetector.cx</description>
+  <language>en</language>
+  <lastBuildDate>Mon, 01 Aug 2026 00:00:00 +0000</lastBuildDate>
+  <atom:link href="https://aidetector.cx/all.xml" rel="self" type="application/rss+xml" />
+  <item>
+    <title>Can Universities Detect ChatGPT? Complete 2026 Guide</title>
+    <link>https://aidetector.cx/guides/can-universities-detect-chatgpt</link>
+    <guid isPermaLink="true">https://aidetector.cx/guides/can-universities-detect-chatgpt</guid>
+    <description>Universities do not detect ChatGPT directly. Learn how AI detectors, stylometry, draft history, citations, and human judgment are used, what the limits are, and how to use AI responsibly in academic work.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Best AI Detector in 2026: Definitive Comparison</title>
+    <link>https://aidetector.cx/guides/best-ai-detector</link>
+    <guid isPermaLink="true">https://aidetector.cx/guides/best-ai-detector</guid>
+    <description>We tested AIDetector.cx, GPTZero, Originality.ai, Copyleaks, Winston AI, and ZeroGPT against GPT-5.5 and Gemini. See which detector wins for SEO, academic, and enterprise use.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Why Was My Essay Flagged as AI? Complete Guide 2026</title>
+    <link>https://aidetector.cx/guides/why-was-my-essay-flagged-as-ai</link>
+    <guid isPermaLink="true">https://aidetector.cx/guides/why-was-my-essay-flagged-as-ai</guid>
+    <description>Discover why AI detectors flag human essays, how detection works, and what to do if your writing is incorrectly identified as AI-generated. Evidence-based guide with original research.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>List of Words That Trigger AI Detection: What Actually Makes Text Look AI-Generated</title>
+    <link>https://aidetector.cx/guides/words-that-trigger-ai-detection</link>
+    <guid isPermaLink="true">https://aidetector.cx/guides/words-that-trigger-ai-detection</guid>
+    <description>No magic list of forbidden words exists. Learn what AI detectors really analyze, which phrases are commonly associated with AI output, and how to write more naturally.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Turnitin vs AIDetector.cx: 2026 Comparison</title>
+    <link>https://aidetector.cx/comparisons/turnitin-vs-aidetector-cx</link>
+    <guid isPermaLink="true">https://aidetector.cx/comparisons/turnitin-vs-aidetector-cx</guid>
+    <description>A detailed comparison of Turnitin and AIDetector.cx for universities, publishers, SEO agencies, and recruiters. Accuracy, pricing, workflows, and final verdicts by audience.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>How AI Detection Works: The Complete Technical Guide</title>
+    <link>https://aidetector.cx/guides/how-ai-detection-works</link>
+    <guid isPermaLink="true">https://aidetector.cx/guides/how-ai-detection-works</guid>
+    <description>Learn how AI detectors identify machine-generated text through perplexity, burstiness, entropy, neural classifiers, and ensemble models.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>AI Detection Accuracy Tests: Transparent Benchmark</title>
+    <link>https://aidetector.cx/research/ai-detection-accuracy-tests</link>
+    <guid isPermaLink="true">https://aidetector.cx/research/ai-detection-accuracy-tests</guid>
+    <description>Independent benchmark of AIDetector.cx, Turnitin, GPTZero, Originality.ai, Copyleaks, Winston AI, and ZeroGPT across 400 documents.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>ChatGPT Detector Comparison: GPT-4 vs GPT-5.5</title>
+    <link>https://aidetector.cx/comparisons/chatgpt-detector-comparison</link>
+    <guid isPermaLink="true">https://aidetector.cx/comparisons/chatgpt-detector-comparison</guid>
+    <description>Compare how top AI detectors handle raw and edited ChatGPT outputs from GPT-4, GPT-4o, and GPT-5.5 across academic, SEO, and marketing use cases.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>GPT-5.5 vs Gemini Detection: Algorithmic Differences</title>
+    <link>https://aidetector.cx/research/gpt-5-vs-gemini-detection</link>
+    <guid isPermaLink="true">https://aidetector.cx/research/gpt-5-vs-gemini-detection</guid>
+    <description>Understand why GPT-5.5 and Gemini produce different AI detection scores and how modern detectors analyze their writing patterns.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+</channel>
+</rss>

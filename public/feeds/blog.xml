@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>AIDetector.cx Blog</title>
+  <link>https://aidetector.cx/blog</link>
+  <description>Latest blog from AIDetector.cx</description>
+  <language>en</language>
+  <lastBuildDate>Mon, 01 Aug 2026 00:00:00 +0000</lastBuildDate>
+  <atom:link href="https://aidetector.cx/blog.xml" rel="self" type="application/rss+xml" />
+</channel>
+</rss>

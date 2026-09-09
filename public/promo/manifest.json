@@ -1,0 +1,102 @@
+{
+  "project": "AIDetector.cx Promotional Video Suite",
+  "version": "1.0.0",
+  "brand": {
+    "name": "AIDetector.cx",
+    "tagline": "Before you trust it, check it.",
+    "website": "https://aidetector.cx",
+    "primary_color": "#6366f1",
+    "font_family": "Carlito, sans-serif"
+  },
+  "exports": [
+    {
+      "id": "main_60s_clean",
+      "title": "AIDetector.cx Official Product Overview (60s Landscape - Clean)",
+      "filename": "aidetector-promo-main-60s.mp4",
+      "url": "/promo/aidetector-promo-main-60s.mp4",
+      "resolution": "1920x1080",
+      "aspect_ratio": "16:9",
+      "duration_sec": 60.0,
+      "channels": ["YouTube", "Website Hero", "Product Demos", "Keynotes"],
+      "has_burned_captions": false,
+      "audio_track": "/promo/promo_audio_60s.wav",
+      "captions": {
+        "webvtt": "/promo/promo-captions.vtt",
+        "srt": "/promo/promo-captions.srt"
+      },
+      "poster": "/promo/promo-poster.jpg"
+    },
+    {
+      "id": "main_60s_captioned",
+      "title": "AIDetector.cx Official Product Overview (60s Landscape - Captioned)",
+      "filename": "aidetector-promo-main-60s-captioned.mp4",
+      "url": "/promo/aidetector-promo-main-60s-captioned.mp4",
+      "resolution": "1920x1080",
+      "aspect_ratio": "16:9",
+      "duration_sec": 60.0,
+      "channels": ["LinkedIn", "Twitter/X", "Facebook Video", "Web Player"],
+      "has_burned_captions": true,
+      "audio_track": "/promo/promo_audio_60s.wav",
+      "captions": {
+        "webvtt": "/promo/promo-captions.vtt",
+        "srt": "/promo/promo-captions.srt"
+      },
+      "poster": "/promo/promo-poster.jpg"
+    },
+    {
+      "id": "vertical_30s",
+      "title": "AIDetector.cx Vertical Story Edit (30s Vertical)",
+      "filename": "aidetector-promo-vertical-30s.mp4",
+      "url": "/promo/aidetector-promo-vertical-30s.mp4",
+      "resolution": "1080x1920",
+      "aspect_ratio": "9:16",
+      "duration_sec": 30.0,
+      "channels": ["TikTok", "Instagram Reels", "YouTube Shorts"],
+      "has_burned_captions": true,
+      "poster": "/promo/promo-poster-vertical.jpg"
+    },
+    {
+      "id": "feed_30s",
+      "title": "AIDetector.cx Feed Square/Portrait Edit (30s Feed)",
+      "filename": "aidetector-promo-feed-30s.mp4",
+      "url": "/promo/aidetector-promo-feed-30s.mp4",
+      "resolution": "1080x1350",
+      "aspect_ratio": "4:5",
+      "duration_sec": 30.0,
+      "channels": ["Instagram Feed", "LinkedIn Feed", "Pinterest"],
+      "has_burned_captions": true,
+      "poster": "/promo/promo-poster.jpg"
+    },
+    {
+      "id": "teaser_15s",
+      "title": "AIDetector.cx Short Teaser (15s Vertical)",
+      "filename": "aidetector-promo-teaser-15s.mp4",
+      "url": "/promo/aidetector-promo-teaser-15s.mp4",
+      "resolution": "1080x1920",
+      "aspect_ratio": "9:16",
+      "duration_sec": 15.0,
+      "channels": ["Instagram Stories", "Snapchat", "Paid Social Ads"],
+      "has_burned_captions": true,
+      "poster": "/promo/promo-poster-vertical.jpg"
+    }
+  ],
+  "audio": {
+    "voiceover": "Synthesized AI Voiceover (Clean Neutral English, LemonFox TTS 'heart')",
+    "music": "Harmonic ambient polyphonic tech bed (A minor / C major progression, 120 BPM, sidechain ducked)",
+    "master_wav": "/promo/promo_audio_60s.wav"
+  },
+  "subtitles": {
+    "vtt": "/promo/promo-captions.vtt",
+    "srt": "/promo/promo-captions.srt"
+  },
+  "posters": {
+    "landscape": "/promo/promo-poster.jpg",
+    "landscape_png": "/promo/promo-poster.png",
+    "vertical": "/promo/promo-poster-vertical.jpg"
+  },
+  "sources": {
+    "render_pipeline": "/tasks/promo_build/render_all_promos.py",
+    "audio_pipeline": "/tasks/promo_build/build_audio_and_subs.py",
+    "mp4_muxer": "/tasks/promo_build/mp4_muxer.py"
+  }
+}
