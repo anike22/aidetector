@@ -71,7 +71,9 @@ export function synthesizeAcademicPolicyGuidance(options: {
   const policyAvailable = !!interpretation && interpretation.status !== 'not-specified';
   const policyStatus = interpretation?.status || 'not-specified';
   const policyStatusSummary =
-    interpretation?.statusSummary || 'No assignment AI policy supplied. Check with your instructor.';
+    interpretation?.ruleSummary ||
+    interpretation?.statusSummary ||
+    'No assignment AI policy supplied. Check with your instructor.';
 
   // Evaluate Numerical Threshold
   let comparisonStatusText: string | undefined;

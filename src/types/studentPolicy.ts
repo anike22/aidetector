@@ -57,12 +57,34 @@ export interface PolicyRecordRetention {
 export interface PolicyExcerptItem {
   text: string;
   section?: string;
+  startIndex?: number;
+  endIndex?: number;
   confidenceNote?: string;
+}
+
+export type ActivityRuleStatus =
+  | 'permitted'
+  | 'permitted-with-conditions'
+  | 'prohibited'
+  | 'conditional'
+  | 'not-specified'
+  | 'conflicting';
+
+export interface ActivityRuleDefinition {
+  activityId: DeclaredAIActivity;
+  label: string;
+  status: ActivityRuleStatus;
+  scope?: string;
+  conditions?: string[];
+  exceptions?: string[];
+  sourceExcerpt?: string;
+  explanation?: string;
 }
 
 export interface StructuredPolicyInterpretation {
   status: AIUseStatus;
   statusSummary: string;
+  ruleSummary: string;
   institutionScope?: string;
   courseScope?: string;
   assignmentScope?: string;
@@ -73,10 +95,12 @@ export interface StructuredPolicyInterpretation {
   sourceType: PolicySourceType;
   sourceLabel: string;
   sourceIdentifier: string; // URL, file name, or "Pasted Text"
+  activityRules: Record<DeclaredAIActivity, ActivityRuleDefinition>;
   allowedActivities: PolicyRuleItem[];
   prohibitedActivities: PolicyRuleItem[];
   disclosureRequirement: PolicyDisclosureRequirement;
   recordRetentionRequirement: PolicyRecordRetention;
+  evidenceRequirements?: string;
   numericalThreshold: PolicyNumericalThreshold;
   ambiguities: string[];
   supportingExcerpts: string[];

@@ -267,6 +267,14 @@ export function generatePolicySummaryText(guidance: SynthesizedAcademicGuidance)
     lines.push(`Disclosure Details:  ${interp.disclosureRequirement.details}`);
   }
   lines.push(`Records Retention:   ${interp?.recordRetentionRequirement.required ? 'YES' : 'Not explicitly mandated'}`);
+  if (interp?.recordRetentionRequirement.details) {
+    lines.push(`Retention Details:   ${interp.recordRetentionRequirement.details}`);
+  }
+
+  if (interp?.evidenceRequirements) {
+    lines.push('\n─── EVIDENCE & WRITING STANDARDS ───');
+    lines.push(interp.evidenceRequirements);
+  }
 
   lines.push('\n─── DISCLAIMER ───');
   lines.push('AI detection is an estimate. Assignment compliance depends on the applicable rules and how you used AI.');

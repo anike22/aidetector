@@ -251,10 +251,8 @@ export function PolicyExcerptsDialog({
   onOpenChange,
   interpretation,
 }: PolicyExcerptsDialogProps) {
-  const excerpts =
-    interpretation?.supportingExcerpts && interpretation.supportingExcerpts.length > 0
-      ? interpretation.supportingExcerpts
-      : interpretation?.excerpts?.map((e) => e.text) || [];
+  const structuredExcerpts = interpretation?.excerpts || [];
+  const fallbackExcerpts = interpretation?.supportingExcerpts || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -270,12 +268,31 @@ export function PolicyExcerptsDialog({
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          {excerpts.length === 0 ? (
+          {structuredExcerpts.length === 0 && fallbackExcerpts.length === 0 ? (
             <p className="text-xs text-muted-foreground italic py-4 text-center">
               No specific policy quotes were extracted.
             </p>
+          ) : structuredExcerpts.length > 0 ? (
+            structuredExcerpts.map((item, idx: number) => (
+              <div
+                key={idx}
+                className="p-3 rounded-lg border border-border/60 bg-muted/20 flex flex-col gap-1"
+              >
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-semibold">
+                  <span>Quote #{idx + 1}</span>
+                  {item.section && (
+                    <Badge variant="outline" className="text-[10px] bg-background">
+                      {item.section}
+                    </Badge>
+                  )}
+                </div>
+                <blockquote className="text-xs text-foreground italic border-l-2 border-primary/50 pl-2.5 my-1">
+                  "{item.text}"
+                </blockquote>
+              </div>
+            ))
           ) : (
-            excerpts.map((text: string, idx: number) => (
+            fallbackExcerpts.map((text: string, idx: number) => (
               <div
                 key={idx}
                 className="p-3 rounded-lg border border-border/60 bg-muted/20 flex flex-col gap-1"

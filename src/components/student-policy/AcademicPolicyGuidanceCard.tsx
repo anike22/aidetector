@@ -365,6 +365,19 @@ export const AcademicPolicyGuidanceCard: React.FC<AcademicPolicyGuidanceCardProp
             </div>
           </div>
 
+          {/* Evidence / Assignment-Writing Requirements (Distinct from records retention!) */}
+          {interpretation.evidenceRequirements && (
+            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/10 space-y-1.5">
+              <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                Assignment Evidence & Writing Standards
+              </span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {interpretation.evidenceRequirements}
+              </p>
+            </div>
+          )}
+
           {/* Next Steps & Practical Guidance */}
           <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-1">
             <span className="font-bold text-xs text-foreground flex items-center gap-1.5">

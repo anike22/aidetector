@@ -117,13 +117,13 @@ export const DeclarationChecklist: React.FC<DeclarationChecklistProps> = ({
                     {evalResult.verdict === 'potential-conflict' && (
                       <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium">
                         <AlertTriangle className="w-3 h-3 mr-1" />
-                        Potential Policy Conflict
+                        Conflicts with supplied instructions
                       </Badge>
                     )}
                     {evalResult.verdict === 'unaddressed-by-policy' && (
                       <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground border-border font-medium">
                         <HelpCircle className="w-3 h-3 mr-1" />
-                        Unaddressed by Policy
+                        Not specified
                       </Badge>
                     )}
                   </div>
