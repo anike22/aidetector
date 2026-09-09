@@ -29,6 +29,8 @@ import type {
   PolicyExcerptItem,
 } from '@/types/studentPolicy';
 import { computeContentHash } from './policyExtractor';
+export { computeContentHash };
+
 
 export const DECLARED_ACTIVITIES_METADATA: Record<
   DeclaredAIActivity,
@@ -369,10 +371,10 @@ export async function interpretAcademicPolicy(options: {
   // Grammar & Spelling analysis
   const grammarPermitted =
     permittedSections.some((s) => /\b(grammar|spelling|proofreading|corrections?)\b/i.test(s.text)) ||
-    /\b(suggest spelling or grammar corrections|grammar and spelling corrections?|may use .* for grammar|grammar proofreading|permitted for .*grammar)\b/i.test(
+    /\b(suggest spelling or grammar corrections|grammar and spelling corrections?|may use .* for grammar|grammar proofreading|permitted for .*grammar|except (for )?.*(grammar|spelling)|with the exception of .*(grammar|spelling))\b/i.test(
       text
     ) ||
-    (/\b(grammar|spelling|proofreading)\b/i.test(text) && /\b(permitted|allowed)\b/i.test(text) && !/\b(no grammar|grammar.*prohibited)\b/i.test(text));
+    (/\b(grammar|spelling|proofreading)\b/i.test(text) && /\b(permitted|allowed|except|exception)\b/i.test(text) && !/\b(no grammar|grammar.*prohibited)\b/i.test(text));
 
   const grammarProhibited =
     prohibitedSections.some((s) => /\b(grammar|spelling)\b/i.test(s.text)) ||
@@ -424,16 +426,16 @@ export async function interpretAcademicPolicy(options: {
   // Generated sentences / Submission prose analysis
   const proseProhibited =
     prohibitedSections.some((s) =>
-      /\b(generate(d)? (sentences|paragraphs)|generation of (sentences|paragraphs)|submission|drafting|writing|prose|direct generation)\b/i.test(
+      /\b(generate(d)? (sentences|paragraphs)|generation of (sentences|paragraphs)|submission|drafting|writing|prose|direct generation|text generation)\b/i.test(
         s.text
       )
     ) ||
-    /\b(must not use ai to generate|generation of (sentences|paragraphs)|direct generation|generate sentences or paragraphs|ai-generated (text|sentences|paragraphs)|prohibited from generating|generation.*strictly prohibited)\b/i.test(
+    /\b(must not use ai to generate|generation of (sentences|paragraphs)|direct generation|generate sentences or paragraphs|ai-generated (text|sentences|paragraphs)|prohibited from generating|generation.*strictly prohibited|ai text generation is prohibited|text generation is prohibited)\b/i.test(
       text
     );
 
   if (proseProhibited) {
-    const quote = findSentenceMatching(/\b(generation of|generate sentences|direct generation|paragraphs.*prohibited)\b/i, 'prohibited');
+    const quote = findSentenceMatching(/\b(generation of|generate sentences|direct generation|paragraphs.*prohibited|text generation is prohibited|generation is prohibited)\b/i, 'prohibited');
     activityRules['generated-sentences'] = {
       activityId: 'generated-sentences',
       label: 'Generated sentences or paragraphs',
