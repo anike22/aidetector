@@ -94,6 +94,7 @@ export async function withBillingGuard(
       guestId,
       featureSlug,
       creditsCost: opts.defaultCost ?? 1,
+      unitQuantity: Math.max(1, String(body.text ?? body.content ?? body.input ?? body.prompt ?? body.keyword ?? body.domain ?? '').trim().split(/\s+/).filter(Boolean).length),
       timezone,
       idempotencyKey,
       metadata: { ...(opts.metadata || {}), is_api_key: isApiKey },
@@ -158,6 +159,16 @@ export async function withBillingGuard(
     return response;
   }
 
+  if (response.ok && response.body && response.headers.get('content-type')?.includes('text/event-stream') && reservation.reservationId) {
+    return settleBillingStream(response.body, supabase, reservation.reservationId, {
+      ...Object.fromEntries(response.headers),
+      'x-billing-plan': reservation.plan,
+      'x-trial-check': reservation.isTrialCheck ? 'true' : 'false',
+      'x-trial-remaining': String(Math.max(0, reservation.trialChecksRemaining)),
+      'x-credits-remaining': String(Math.max(0, reservation.remainingCredits)),
+    });
+  }
+
   // 5/6. Settle once: success keeps the charge; server errors release it.
   const outcome = response.ok ? "success" : "failed";
   if (reservation.reservationId) {
@@ -173,8 +184,30 @@ export async function withBillingGuard(
   const headers = new Headers(response.headers);
   headers.set("x-billing-plan", reservation.plan);
   headers.set("x-trial-check", reservation.isTrialCheck ? "true" : "false");
-  if (reservation.trialChecksRemaining > 0) {
-    headers.set("x-trial-remaining", String(reservation.trialChecksRemaining));
-  }
+  headers.set("x-trial-remaining", String(Math.max(0, reservation.trialChecksRemaining)));
+  headers.set("x-credits-remaining", String(Math.max(0, reservation.remainingCredits)));
   return new Response(response.body, { status: response.status, headers });
+}
+
+/** Keep the deduction for delivered output; release a stream that fails before output. */
+export function settleBillingStream(body: ReadableStream<Uint8Array>, supabase: ReturnType<typeof createServiceClient>, reservationId: string, headers: Record<string,string>): Response {
+  const reader = body.getReader();
+  let settled = false;
+  let delivered = false;
+  const settle = async (outcome: 'success'|'failed') => {
+    if (settled) return;
+    settled = true;
+    await finalizeReservation(supabase, { reservationId, outcome }).catch(console.error);
+  };
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const {value,done} = await reader.read();
+        if (done) { await settle(delivered ? 'success' : 'failed'); controller.close(); }
+        else { delivered = true; controller.enqueue(value); }
+      } catch (error) { await settle(delivered ? 'success' : 'failed'); controller.error(error); }
+    },
+    async cancel(reason) { try { await reader.cancel(reason); } finally { await settle(delivered ? 'success' : 'failed'); } },
+  });
+  return new Response(stream, {headers});
 }

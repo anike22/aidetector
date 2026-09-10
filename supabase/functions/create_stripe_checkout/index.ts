@@ -1,3 +1,4 @@
+import { billingInterval } from '../_shared/payments.ts';
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14.0.0";
 
@@ -66,7 +67,8 @@ Deno.serve(async (req) => {
 
         if (!user) throw new Error("Authentication required");
 
-        const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "sk_test_mock";
+        const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+        if (!stripeSecretKey) throw new Error("Stripe is not configured");
         const stripe = new Stripe(stripeSecretKey, {
             apiVersion: "2023-10-16",
         });
@@ -76,10 +78,13 @@ Deno.serve(async (req) => {
         // client's price field is ignored. Items are matched by their
         // metadata plan+interval (set by the checkout UI).
         const pricedItems = await Promise.all(request.items.map(async item => {
-            const m = item.metadata || {};
+            const m = item.metadata || request.metadata || {};
+            if (!Number.isInteger(item.quantity) || item.quantity < 1) throw new Error('Invalid quantity');
             const plan = String(m.plan || '').toLowerCase();
-            const interval = String(m.interval || 'month').toLowerCase() === 'year' ? 'year' : 'month';
+            const interval = billingInterval(m);
             if (plan) {
+                if (request.items.length !== 1 || item.quantity !== 1) throw new Error('A subscription checkout requires exactly one plan');
+                request.metadata = { type: 'subscription', plan, interval };
                 const { data: priceRow } = await supabase
                     .from('plan_prices')
                     .select('amount_cents, currency, credits')
@@ -111,15 +116,28 @@ Deno.serve(async (req) => {
 
         const formattedItems = pricedItems;
 
+        if (request.metadata?.plan) {
+            const { data: current } = await supabase.from('profiles')
+                .select('subscription_plan,subscription_status,plan_end_date')
+                .eq('id', user.id).maybeSingle();
+            const ranks: Record<string, number> = { free: 1, pro: 2, pro_plus: 3, 'pro+': 3, business: 4, enterprise: 5 };
+            const currentPlan = String(current?.subscription_plan || 'free').toLowerCase();
+            const currentActive = ['active','trialing','cancelled','canceled'].includes(String(current?.subscription_status || '').toLowerCase())
+                && !!current?.plan_end_date && new Date(current.plan_end_date) > new Date();
+            if (currentActive && (ranks[request.metadata.plan] || -1) < (ranks[currentPlan] || -1)) {
+                throw new Error('Downgrades can be purchased after the current paid period ends. Your existing access remains active.');
+            }
+        }
+
         const totalAmount = formattedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const currency = request.currency || "usd";
+        const currency = formattedItems[0].currency;
 
         const { data: order, error } = await supabase
             .from("orders")
             .insert({
                 user_id: user.id,
-                items: formattedItems,
-                total_amount: totalAmount,
+                items: formattedItems.map(item => ({ ...item, price: item.price / 100 })),
+                total_amount: totalAmount / 100,
                 currency: currency.toLowerCase(),
                 status: "pending",
                 metadata: request.metadata || {}

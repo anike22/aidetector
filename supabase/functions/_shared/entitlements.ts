@@ -11,6 +11,8 @@ export interface EntitlementReservationResult {
   trialChecksTotal: number;
   resetAt: string | null;
   isTrialCheck: boolean;
+  dailyRemaining: number | null;
+  dailyLimit: number | null;
 }
 
 export interface EntitlementFinalizeResult {
@@ -67,18 +69,21 @@ export async function resolveAuthUserOrGuest(
   if (token.startsWith('aid_')) {
     const { data: keyData } = await supabase
       .from('api_keys')
-      .select('user_id')
+      .select('user_id, owner_user_id, is_active, revoked_at')
       .eq('api_key', token)
       .maybeSingle();
 
-    if (keyData?.user_id) {
+    const keyOwnerId = keyData?.owner_user_id || keyData?.user_id;
+    if (keyOwnerId && keyData?.is_active === true && !keyData?.revoked_at) {
       await supabase
         .from('api_keys')
         .update({ last_used_at: new Date().toISOString() })
         .eq('api_key', token);
-      return { user: { id: keyData.user_id }, guestId: null, isApiKey: true };
+      return { user: { id: keyOwnerId }, guestId: null, isApiKey: true };
     }
   }
+
+  if (token.startsWith('aid_')) throw new Error('Invalid or revoked API key');
 
   // 2. Authenticated JWT token
   if (token && token.startsWith('eyJ')) {
@@ -96,13 +101,15 @@ export async function resolveAuthUserOrGuest(
   if (validGuestId) {
     const ip = getClientIp(req);
     const ua = req.headers.get('user-agent') || 'unknown';
-    const { data: issued } = await supabase.rpc('issue_or_validate_guest_session', {
+    const { data: issued, error } = await supabase.rpc('issue_or_validate_guest_session', {
       p_guest_id: validGuestId,
       p_ip: ip,
       p_user_agent: ua,
       p_timezone: getTimezone(req),
     });
+    if (error) throw new Error('Guest identity verification failed');
     const row = (issued || [])[0];
+    if (!row?.guest_id) throw new Error('Guest identity unavailable');
     if (row?.is_blocked) {
       // Rate-limited network (too many new sessions): do NOT surface a
       // usable identity — downstream reserve() would otherwise mint a
@@ -114,14 +121,15 @@ export async function resolveAuthUserOrGuest(
   if (!validGuestId) {
     const ip = getClientIp(req);
     const ua = req.headers.get('user-agent') || 'unknown';
-    const { data } = await supabase.rpc('issue_or_validate_guest_session', {
+    const { data, error } = await supabase.rpc('issue_or_validate_guest_session', {
       p_guest_id: null,
       p_ip: ip,
       p_user_agent: ua,
       p_timezone: getTimezone(req),
     });
     const row = (data || [])[0];
-    validGuestId = row?.guest_id || `gst_${crypto.randomUUID().replace(/-/g, '')}`;
+    if (error || !row?.guest_id || row.is_blocked) throw new Error('Guest session unavailable');
+    validGuestId = row.guest_id;
   }
 
   return { user: null, guestId: validGuestId, isApiKey: false };
@@ -161,14 +169,17 @@ export async function reserveEntitlement(
     throw new Error(`Entitlement reservation failed: ${error.message}`);
   }
 
-  const row = (data || [])[0] || {};
+  const row = (data || [])[0];
+  if (!row || (row.allowed === true && !row.reservation_id)) throw new Error('Invalid billing authorization response');
   return {
     allowed: row.allowed === true,
     reservationId: row.reservation_id ?? null,
     reason: row.reason ?? null,
     errorCode: row.error_code ?? null,
     plan: row.plan ?? 'guest',
-    remainingCredits: row.remaining_credits ?? 0,
+    remainingCredits: Number(row.credits_balance ?? 0),
+    dailyRemaining: row.daily_remaining == null ? null : Number(row.daily_remaining),
+    dailyLimit: row.daily_limit == null ? null : Number(row.daily_limit),
     trialChecksRemaining: row.trial_checks_remaining ?? 0,
     trialChecksTotal: row.trial_checks_total ?? 1,
     resetAt: row.reset_at ?? null,
@@ -202,7 +213,7 @@ export async function finalizeReservation(
     return { finalized: false, status: 'error', creditsRefunded: 0, newBalance: 0 };
   }
 
-  const row = (data || [])[0] || {};
+  const row = typeof data === 'boolean' ? { finalized: data, status: data ? 'settled' : 'already_settled' } : (data || [])[0] || {};
   return {
     finalized: row.finalized === true,
     status: row.status ?? 'unknown',

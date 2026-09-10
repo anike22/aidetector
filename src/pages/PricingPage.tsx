@@ -19,6 +19,7 @@ import { supabase } from '@/db/supabase';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { RATE_TABLE, type PlanTier } from '@/lib/entitlements';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 interface DisplayPlan {
   id: string;
@@ -196,6 +197,7 @@ const FAQS = [
 export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const { user, profile } = useAuth();
+  const { summary: billingSummary } = useEntitlement('ai_detector');
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
@@ -235,6 +237,7 @@ export default function PricingPage() {
             type: 'upgrade',
             plan: planId,
             billing,
+            interval: billing === 'annual' ? 'year' : 'month',
           },
         },
         headers: {
@@ -250,9 +253,7 @@ export default function PricingPage() {
       } else if (res.data?.message) {
         throw new Error(res.data.message);
       } else {
-        // Fallback simulate checkout redirect in development
-        toast.success(`Redirecting to ${plan?.name} checkout ($${amount} ${billing})...`);
-        navigate('/dashboard?upgrade=' + planId);
+        throw new Error('Checkout did not return a payment link. Please retry.');
       }
     } catch (err: any) {
       console.error('Upgrade error', err);
@@ -265,7 +266,9 @@ export default function PricingPage() {
     }
   };
 
-  const currentPlan = profile?.subscription_plan || (user ? 'free' : 'guest');
+  const currentPlan = billingSummary?.isPaidActive
+    ? billingSummary.plan
+    : (user ? 'free' : 'guest');
 
   return (
     <MainLayout>

@@ -60,6 +60,7 @@ serve(async (req) => {
       guestId,
       featureSlug: 'ai_detector',
       creditsCost: 1,
+      unitQuantity: Math.max(1, String(text || '').trim().split(/\s+/).filter(Boolean).length),
       timezone,
       idempotencyKey,
       metadata: { text_length: text?.length || 0, mode, type, isApiKey },

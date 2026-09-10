@@ -79,14 +79,11 @@ export async function executeIntegrityGate(
 
   // 1. Transactional Credit Entitlement Reservation
   let reservationId: string | undefined;
-  try {
-    const res = await reserveEntitlement('ai_detection', settings.registrationCreditCost);
-    if (res.success && res.reservationId) {
-      reservationId = res.reservationId;
-    }
-  } catch (resErr) {
-    console.warn('Entitlement reservation notice:', resErr);
+  const reservation = await reserveEntitlement('verified_authorship_register', settings.registrationCreditCost);
+  if (!reservation.allowed || !reservation.reservationId) {
+    throw new Error(reservation.reason || 'Billing authorization is required before authorship verification.');
   }
+  reservationId = reservation.reservationId;
 
   try {
     // 2. Execute Balanced AI Detector (Required eligibility check)
@@ -136,9 +133,10 @@ export async function executeIntegrityGate(
 
     const allPassed = balancedPassed && plagiarismPassed && duplicatePassed;
 
-    // Finalize credit reservation on successful registration gate pass
-    if (reservationId && allPassed) {
-      await finalizeReservation(reservationId, settings.registrationCreditCost, 'authorship_registration');
+    // The verification operation is billable once it completes, regardless of
+    // whether the submitted content passes the integrity gates.
+    if (reservationId) {
+      await finalizeReservation(reservationId, 'success', 'authorship_registration');
     }
 
     const summary: IntegrityGateSummary = {
@@ -205,6 +203,11 @@ export async function executeIntegrityGate(
     return summary;
   } catch (gateError: any) {
     console.error('Error executing integrity gate:', gateError);
+    if (reservationId) {
+      await finalizeReservation(reservationId, 'failed', {
+        errorReason: gateError?.message || 'integrity_gate_failed',
+      });
+    }
     throw new Error(gateError?.message || 'Integrity Gate execution encountered an unexpected error.');
   }
 }

@@ -9,9 +9,9 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
     return new Response('ok', { headers: corsHeaders });
   }
+  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
 
   try {
     const authHeader = req.headers.get('Authorization')!;

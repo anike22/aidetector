@@ -337,6 +337,13 @@ export const RATE_TABLE: Record<string, FeatureRateInfo> = {
   },
 };
 
+for (const [alias, canonical] of Object.entries({
+  ai_detector: 'text_detect_balanced', ai_detection: 'text_detect_balanced',
+  ai_humanizer: 'humanizer_rewrite', plagiarism_checker: 'plagiarism_check',
+  ai_image_detector: 'image_detect_standard', ai_video_detector: 'video_detect_balanced',
+  citation_verifier: 'citation_verify', hallucination_detector: 'hallucination_check',
+})) RATE_TABLE[alias] = { ...RATE_TABLE[canonical], featureSlug: alias };
+
 /**
  * Calculate exact credit cost based on units and rate table.
  */

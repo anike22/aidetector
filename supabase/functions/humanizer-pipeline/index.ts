@@ -58,13 +58,13 @@ interface AlternativeRecord {
 
 // Humanizer requires one atomic reservation per job, settled exactly once.
 const BILLABLE_ACTIONS = new Set(["create_job", "process_job", "retry_all", "regenerate"]);
-// Module-scoped reservation carrier for the current request's guard outcome.
-let pendingReservation: string | null = null;
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  let pendingReservation: string | null = null;
 
   try {
     const timezone = getTimezone(req);
@@ -99,6 +99,7 @@ serve(async (req) => {
           guestId: guestIdForHandlers,
           featureSlug: HUMANIZER_FEATURE_SLUG,
           creditsCost: 3,
+          unitQuantity: Math.max(1, String(text || '').trim().split(/\s+/).filter(Boolean).length),
           timezone,
           idempotencyKey: null,
           metadata: { action, input_length: (text || '').length },
@@ -117,12 +118,15 @@ serve(async (req) => {
         }
         pendingReservation = reservation.reservationId;
       } else if (action === "regenerate") {
+        const { job } = await loadOwnedJob(supabase, userId, guestIdForHandlers, job_id);
+        if (!job) return jsonResponse({ error: 'Job not found' }, 404);
         // Explicit new rewrite: charged per existing billing policy.
         const reservation = await reserveEntitlement(supabase, {
           userId,
           guestId: guestIdForHandlers,
           featureSlug: HUMANIZER_FEATURE_SLUG,
           creditsCost: 3,
+          unitQuantity: Math.max(1, String(sentence_context || job.original_text || '').trim().split(/\s+/).filter(Boolean).length),
           timezone,
           idempotencyKey: null,
           metadata: { action, job_id, operation },
@@ -146,7 +150,7 @@ serve(async (req) => {
         // to the job id. Legacy completed jobs display for free.
         const { data: jobRow } = await supabase
           .from("humanization_jobs")
-          .select("job_id, billing_reservation_id, usage_charged, user_id, guest_id")
+          .select("job_id, billing_reservation_id, usage_charged, user_id, guest_id, original_text")
           .eq("job_id", job_id)
           .maybeSingle();
 
@@ -166,6 +170,7 @@ serve(async (req) => {
             guestId: jobRow.guest_id,
             featureSlug: HUMANIZER_FEATURE_SLUG,
             creditsCost: 3,
+            unitQuantity: Math.max(1, String(jobRow.original_text || '').trim().split(/\s+/).filter(Boolean).length),
             timezone,
             idempotencyKey: `legacy_humanizer_${jobRow.job_id}`,
             metadata: { action, legacy: true },
@@ -191,7 +196,7 @@ serve(async (req) => {
     }
 
     if (action === "create_job") {
-      return await handleCreateJob(supabase, userId, guestIdForHandlers, text, settings, timezone);
+      return await handleCreateJob(supabase, userId, guestIdForHandlers, text, settings, timezone, pendingReservation);
     }
 
     if (action === "process_job" && job_id) {
@@ -213,7 +218,7 @@ serve(async (req) => {
     }
 
     if (action === "regenerate" && job_id && operation) {
-      return await handleRegenerate(supabase, userId, guestIdForHandlers, job_id, operation, sentence_context, timezone);
+      return await handleRegenerate(supabase, userId, guestIdForHandlers, job_id, operation, sentence_context, timezone, pendingReservation);
     }
 
     if (action === "submit_feedback" && job_id) {
@@ -242,6 +247,7 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid action" }, 400);
 
   } catch (err: any) {
+    if (pendingReservation) await finalizeReservation(supabase, { reservationId: pendingReservation, outcome: 'failed', errorReason: err?.message }).catch(console.error);
     console.error("Edge function error:", err);
     const isRetryable = typeof err?.message === 'string' && err.message.includes("Entitlement reservation failed");
     return jsonResponse({
@@ -284,7 +290,8 @@ async function handleCreateJob(
   guestId: string | null,
   text: string,
   settings: any,
-  timezone = 'UTC'
+  timezone = 'UTC',
+  pendingReservation: string | null = null
 ) {
   if (!text || text.length > 50000) {
     // Billing was already reserved by the guard — release it.
@@ -599,7 +606,8 @@ async function handleRegenerate(
   jobId: string,
   operation: string,
   sentenceContext?: string,
-  timezone = 'UTC'
+  timezone = 'UTC',
+  pendingReservation: string | null = null
 ) {
   const { job, error: jobError } = await loadOwnedJob(supabase, userId, guestId, jobId);
   if (jobError || !job) throw new Error("Job not found");

@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { trackLifecycleEvent } from '@/lib/trackLifecycleEvent';
 import { trackBehaviorEvent } from '@/lib/personalizationApi';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 // ── Pro Gate ──────────────────────────────────────────────────────────────────
 function ProGate() {
@@ -28,19 +29,19 @@ function ProGate() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
             <Lock className="w-7 h-7 text-primary" />
           </div>
-          <Badge className="bg-primary/10 text-primary border-0">Pro Feature</Badge>
-          <h2 className="text-xl font-bold text-navy">API Dashboard requires Pro</h2>
+          <Badge className="bg-primary/10 text-primary border-0">Business Feature</Badge>
+          <h2 className="text-xl font-bold text-navy">API Dashboard requires Business</h2>
           <p className="text-sm text-muted-foreground text-pretty">
-            Generate API keys, monitor usage, and manage your integrations — all available on the Pro plan and above.
+            Generate API keys, monitor shared-pool usage, and manage integrations on an active Business or Enterprise plan.
           </p>
           {user ? (
             <Button className="w-full bg-primary text-primary-foreground font-semibold gap-2" asChild>
-              <Link to="/pricing">Upgrade to Pro <ArrowRight className="w-4 h-4" /></Link>
+              <Link to="/pricing">Upgrade to Business <ArrowRight className="w-4 h-4" /></Link>
             </Button>
           ) : (
             <div className="flex flex-col gap-2 w-full">
               <Button className="w-full bg-primary text-primary-foreground font-semibold gap-2" asChild>
-                <Link to="/signup">Sign Up & Get Pro <ArrowRight className="w-4 h-4" /></Link>
+                <Link to="/signup">Create an account <ArrowRight className="w-4 h-4" /></Link>
               </Button>
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/login">Sign In</Link>
@@ -104,6 +105,7 @@ function StatCard({ icon: Icon, label, value, sub, color = 'text-primary' }: {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function ApiDashboardPage() {
   const { user, profile } = useAuth();
+  const { summary, loading: billingLoading } = useEntitlement('api_access');
   const [keys, setKeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('');
@@ -114,12 +116,11 @@ export default function ApiDashboardPage() {
   });
 
   // Plan check
-  const plan = profile?.subscription_plan || 'free';
+  const plan = summary?.plan || 'free';
   const isAdmin = profile?.role === 'admin';
-  const planLevels: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 };
-  const hasPro = isAdmin || planLevels[plan] >= 1;
-  const planLimit = plan === 'pro' ? 10000 : plan === 'business' || plan === 'enterprise' ? 999999 : 100;
-  const planLabel = plan === 'pro' ? 'Pro' : plan === 'business' ? 'Business' : plan === 'enterprise' ? 'Enterprise' : 'Free';
+  const hasPro = isAdmin || (summary?.isPaidActive === true && ['business', 'enterprise'].includes(plan));
+  const planLimit = summary?.monthlyCreditAllocation || 0;
+  const planLabel = plan === 'business' ? 'Business' : plan === 'enterprise' ? 'Enterprise' : 'Free';
 
   const fetchKeys = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -157,7 +158,7 @@ export default function ApiDashboardPage() {
 
   const generateKey = async () => {
     if (!user) { toast.error('Please sign in first.'); return; }
-    if (!hasPro) { toast.error('Pro plan required to generate API keys.'); return; }
+    if (!hasPro) { toast.error('An active Business plan is required to generate API keys.'); return; }
     setCreating(true);
     const arr = new Uint8Array(24);
     window.crypto.getRandomValues(arr);
@@ -165,7 +166,7 @@ export default function ApiDashboardPage() {
     const { data, error } = await supabase.from('api_keys').insert({
       user_id: user.id,
       name: newKeyName.trim() || 'Default Key',
-      key_value: keyValue,
+      api_key: keyValue,
     }).select().single();
     if (error) { toast.error('Failed to generate key: ' + error.message); }
     else {
@@ -183,10 +184,12 @@ export default function ApiDashboardPage() {
     else { setKeys(keys.filter(k => k.id !== id)); toast.success('API key revoked.'); }
   };
 
-  const quotaPercent = usageStats.limit > 0 ? Math.min((usageStats.monthly / usageStats.limit) * 100, 100) : 0;
+  const quotaPercent = planLimit > 0
+    ? Math.min(((planLimit - (summary?.creditsBalance || 0)) / planLimit) * 100, 100)
+    : 0;
 
   // If not authed or not pro → gate
-  if (!loading && (!user || !hasPro)) return <MainLayout><ProGate /></MainLayout>;
+  if (!loading && !billingLoading && (!user || !hasPro)) return <MainLayout><ProGate /></MainLayout>;
 
   return (
     <MainLayout>
@@ -230,19 +233,19 @@ export default function ApiDashboardPage() {
         <div>
           <h2 className="text-lg font-bold text-navy mb-4">Usage Statistics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={Activity}   label="Monthly Requests" value={usageStats.monthly.toLocaleString()} sub={`of ${usageStats.limit === 999999 ? 'Unlimited' : usageStats.limit.toLocaleString()} this month`} />
+            <StatCard icon={Activity} label="Monthly API Requests" value={usageStats.monthly.toLocaleString()} sub="Each request consumes the configured credit rate" />
             <StatCard icon={Calendar}   label="Today's Requests"  value={usageStats.daily.toLocaleString()} sub="reset at midnight UTC" />
             <StatCard icon={TrendingUp} label="Success Rate"      value={`${usageStats.successRate}%`} sub="last 30 days" color="text-success" />
-            <StatCard icon={Zap}        label="Remaining Quota"   value={usageStats.limit === 999999 ? '∞' : Math.max(0, usageStats.limit - usageStats.monthly).toLocaleString()} sub="resets next month" />
+            <StatCard icon={Zap} label="Shared Credits Remaining" value={(summary?.creditsBalance || 0).toLocaleString()} sub={`of ${planLimit.toLocaleString()} this billing period`} />
           </div>
 
           {/* Quota bar */}
-          {usageStats.limit !== 999999 && (
+          {planLimit > 0 && (
             <Card className="border-border shadow-card mt-4">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-navy">Monthly Quota Usage</span>
-                  <span className="text-sm text-muted-foreground">{usageStats.monthly.toLocaleString()} / {usageStats.limit.toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-navy">Shared Credit Pool</span>
+                  <span className="text-sm text-muted-foreground">{(summary?.creditsBalance || 0).toLocaleString()} / {planLimit.toLocaleString()} remaining</span>
                 </div>
                 <Progress value={quotaPercent} className="h-2.5" />
                 <div className="flex items-center justify-between mt-2">
@@ -326,7 +329,7 @@ export default function ApiDashboardPage() {
                     <div key={k.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 hover:bg-muted/20 transition-colors">
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm text-navy">{k.name}</p>
-                        <MaskedKey value={k.key_value} />
+                        <MaskedKey value={k.api_key} />
                         <p className="text-xs text-muted-foreground mt-1">
                           Created {new Date(k.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                         </p>
@@ -358,13 +361,13 @@ export default function ApiDashboardPage() {
                 <p className="font-semibold text-navy text-sm">Subscription Status</p>
                 <p className="text-xs text-muted-foreground">
                   Current plan: <span className="font-medium text-navy capitalize">{planLabel}</span>
-                  {usageStats.limit !== 999999 && ` · ${usageStats.limit.toLocaleString()} requests/month`}
+                  {` · ${(summary?.creditsBalance || 0).toLocaleString()} of ${planLimit.toLocaleString()} shared credits remaining`}
                 </p>
               </div>
             </div>
             {planLabel === 'Free' ? (
               <Button className="bg-primary text-primary-foreground font-semibold gap-2 shrink-0" asChild>
-                <Link to="/pricing">Upgrade to Pro <ArrowRight className="w-4 h-4" /></Link>
+                <Link to="/pricing">Upgrade to Business <ArrowRight className="w-4 h-4" /></Link>
               </Button>
             ) : (
               <Badge className="bg-success/10 text-success border-success/20 shrink-0">Active</Badge>

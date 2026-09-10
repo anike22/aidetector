@@ -35,8 +35,10 @@ import DashboardOverview from "./dashboard/DashboardOverview";
 import { RecommendationStrip } from '@/components/personalization/RecommendationStrip';
 import { TeamCreditManagement } from '@/components/dashboard/TeamCreditManagement';
 import { LiveUsagePanel } from '@/components/common/LiveUsagePanel';
+import { useEntitlement } from '@/hooks/useEntitlement';
 function APIKeysPanel() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { summary } = useEntitlement('api_access');
   const [keys, setKeys] = useState<{ id: string, name: string, api_key: string, created_at: string, last_used_at: string | null }[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [newKey, setNewKey] = useState('');
@@ -90,6 +92,20 @@ function APIKeysPanel() {
       toast.error('Failed to revoke key: ' + err.message);
     }
   };
+
+  const hasApiPlan = profile?.role === 'admin' ||
+    (summary?.isPaidActive === true && ['business', 'enterprise'].includes(summary.plan));
+  if (!hasApiPlan) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>REST API access</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">API keys require an active Business or Enterprise plan.</p>
+          <Button asChild><Link to="/pricing">View Business plans</Link></Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const toggleVisibility = (id: string) => {
     setVisibleKeys(prev => ({ ...prev, [id]: !prev[id] }));
@@ -296,14 +312,20 @@ const PLAN_DETAILS: Record<string, any> = {
   },
   pro: {
     name: 'Pro',
-    desc: '$19/month · Cancel anytime',
-    features: ['100 AI checks/month', 'Unlimited reports', 'API access', 'PDF Exports', 'Priority support'],
+    desc: '$12/month · Cancel anytime',
+    features: ['300 monthly credits', 'Advanced detector modes', 'PDF exports', 'Priority support'],
     icon: '⚡',
+  },
+  pro_plus: {
+    name: 'Pro Plus',
+    desc: '$29/month · Cancel anytime',
+    features: ['1,000 monthly credits', 'Forensic detector modes', 'Bulk processing', 'Priority support'],
+    icon: '✨',
   },
   business: {
     name: 'Business',
-    desc: '$49/month · Billed monthly',
-    features: ['Unlimited checks', '5 Team members', 'Advanced analytics', 'Custom integrations', '24/7 Support'],
+    desc: '$79/month · Billed monthly',
+    features: ['3,000 monthly credits', '5 team seats', 'REST API access', 'Shared team accounting'],
     icon: '🏢',
   }
 };
@@ -314,6 +336,7 @@ export default function DashboardPage() {
 
   // Auth
   const { user, profile, refreshProfile } = useAuth() as { user: any, profile: any, refreshProfile: any };
+  const { summary: billingSummary } = useEntitlement('ai_detector');
 
   // Settings form state
   const [settingsName, setSettingsName] = useState('');
@@ -420,7 +443,7 @@ export default function DashboardPage() {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  const currentPlanId = profile?.subscription_plan || 'free';
+  const currentPlanId = billingSummary?.isPaidActive ? billingSummary.plan : 'free';
   const planInfo = PLAN_DETAILS[currentPlanId] || PLAN_DETAILS.free;
 
   return (
@@ -437,7 +460,7 @@ export default function DashboardPage() {
                 <div className="font-semibold text-foreground/80 text-sm truncate">{displayName}</div>
                 <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
                 <div className="text-[10px] uppercase font-bold text-primary mt-0.5 tracking-wider">
-                  {profile?.subscription_plan === 'pro' ? 'Pro Plan' : profile?.subscription_plan === 'business' ? 'Business Plan' : 'Free Plan'}
+                  {planInfo.name} Plan
                 </div>
               </div>
             </div>

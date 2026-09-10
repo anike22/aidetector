@@ -8,9 +8,9 @@ const corsHeaders = {
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-  return withBillingGuard(req, { featureSlug: 'ai_detector', corsHeaders }, async (ctx) => {
     return new Response('ok', { headers: corsHeaders });
   }
+  return withBillingGuard(req, { featureSlug: 'ai_detector', corsHeaders }, async (ctx) => {
 
   try {
     const { text } = ctx.body;

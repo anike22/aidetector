@@ -6,7 +6,8 @@
     "dev": "echo 'Do not use this command, only use lint to check'",
     "build": "echo 'Do not use this command, only use lint to check'",
     "lint": "tsgo -p tsconfig.check.json; npx biome lint; .rules/check.sh;npx tailwindcss -i ./src/index.css -o /dev/null 2>&1 | grep -E '^(CssSyntaxError|Error):.*' || true;.rules/testBuild.sh",
-    "test:regression": "deno test --no-check --allow-all supabase/functions/_shared/detection/tests/ tests/subscription.test.ts"
+    "test:regression": "deno test --no-check --allow-all supabase/functions/_shared/detection/tests/ tests/subscription.test.ts",
+    "test:billing": "node tests/billing/database.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -95,6 +96,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@biomejs/biome": "2.4.5",
     "@tailwindcss/container-queries": "^0.1.1",
     "@testing-library/jest-dom": "^6.10.0",
@@ -102,6 +104,8 @@
     "@testing-library/user-event": "^14.6.4",
     "@types/bmapgl": "^0.0.7",
     "@types/lodash": "^4.17.24",
+    "@types/node": "^24.2.1",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/video-react": "^0.15.8",

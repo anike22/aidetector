@@ -39,11 +39,26 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    const { data: entitlementRows, error: entitlementError } = await supabaseAdmin.rpc(
+      'get_user_entitlement_summary',
+      { p_user_id: userId, p_guest_id: null, p_timezone: 'UTC' },
+    );
+    const entitlement = (entitlementRows || [])[0];
+    if (entitlementError || entitlement?.is_paid_active !== true ||
+      !['business', 'enterprise'].includes(String(entitlement?.plan || '').toLowerCase())) {
+      return new Response(JSON.stringify({ error: 'WordPress API access requires an active Business or Enterprise plan' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Look for existing wp API key
     const { data: existingKeys } = await supabaseAdmin
       .from('api_keys')
       .select('api_key')
       .eq('user_id', userId)
+      .eq('is_active', true)
+      .is('revoked_at', null)
       .like('api_key', 'aid_%')
       .order('created_at', { ascending: false })
       .limit(1);
@@ -61,7 +76,10 @@ serve(async (req) => {
         .from('api_keys')
         .insert({
           user_id: userId,
+          owner_user_id: userId,
+          name: 'WordPress Integration',
           api_key: apiKey,
+          is_active: true,
           created_at: new Date().toISOString()
         });
 

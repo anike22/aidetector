@@ -43,7 +43,7 @@ export default function ApiKeysManager() {
     const { data, error } = await supabase.from('api_keys').insert({
       user_id: session.user.id,
       name: newKeyName || 'Default Key',
-      key_value: keyString
+      api_key: keyString
     }).select().single();
     
     if (error) {
@@ -111,10 +111,10 @@ export default function ApiKeysManager() {
               <div key={key.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-card">
                 <div>
                   <p className="font-medium text-sm">{key.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground mt-1">{key.key_value}</p>
+                  <p className="font-mono text-xs text-muted-foreground mt-1">{key.api_key}</p>
                 </div>
                 <div className="flex gap-2 mt-3 sm:mt-0">
-                  <Button variant="outline" size="sm" onClick={() => copyKey(key.key_value)}>
+                  <Button variant="outline" size="sm" onClick={() => copyKey(key.api_key)}>
                     <Copy className="w-4 h-4 mr-2" /> Copy
                   </Button>
                   <Button variant="destructive" size="icon" onClick={() => deleteKey(key.id)}>

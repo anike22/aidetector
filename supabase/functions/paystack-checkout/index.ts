@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+import { billingInterval } from '../_shared/payments.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -27,7 +29,7 @@ serve(async (req) => {
     // server-side catalog (plan_prices) and is verified again on
     // verify-paystack-payment — client-supplied amounts are ignored.
     const plan = String(metadata?.plan || '').toLowerCase();
-    const interval = String(metadata?.interval || 'month').toLowerCase() === 'year' ? 'year' : 'month';
+    const interval = billingInterval(metadata);
     if (!plan) {
       throw new Error('Plan is required');
     }
@@ -54,13 +56,24 @@ serve(async (req) => {
     const { data: { user } } = await admin.auth.getUser(token);
     if (!user) throw new Error('Valid user session required');
 
+    const { data: current } = await admin.from('profiles')
+      .select('subscription_plan,subscription_status,plan_end_date')
+      .eq('id', user.id).maybeSingle();
+    const ranks: Record<string, number> = { free: 1, pro: 2, pro_plus: 3, 'pro+': 3, business: 4, enterprise: 5 };
+    const currentPlan = String(current?.subscription_plan || 'free').toLowerCase();
+    const currentActive = ['active','trialing','cancelled','canceled'].includes(String(current?.subscription_status || '').toLowerCase())
+      && !!current?.plan_end_date && new Date(current.plan_end_date) > new Date();
+    if (currentActive && (ranks[plan] || -1) < (ranks[currentPlan] || -1)) {
+      throw new Error('Downgrades can be purchased after the current paid period ends. Your existing access remains active.');
+    }
+
     const PAYSTACK_SECRET_KEY = Deno.env.get('PAYSTACK_SECRET_KEY');
     if (!PAYSTACK_SECRET_KEY) {
       throw new Error('PAYSTACK_SECRET_KEY is not configured');
     }
 
     const payload = {
-      email,
+      email: user.email,
       amount: priceRows.amount_cents, // Paystack expects lowest denomination
       currency: (priceRows.currency || 'usd').toUpperCase() === 'USD' ? 'USD' : priceRows.currency.toUpperCase(),
       callback_url: `${req.headers.get('origin')}/payment-success`, // Redirect here after payment
@@ -68,6 +81,7 @@ serve(async (req) => {
         type: (metadata?.type === 'upgrade' ? 'upgrade' : 'subscription'),
         plan,
         interval,
+        billing: interval === 'year' ? 'annual' : 'monthly',
         user_id: user.id, // server-resolved; never client-supplied
       }
     };

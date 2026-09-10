@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
     let failed = 0;
 
     for (const execution of executions) {
+      let reservationId: string | null = null;
       try {
         // Background automation obeys the owner's entitlement: reserve one
         // credit-backed run per execution; stop new work when the budget
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
           p_guest_id: null,
           p_feature_slug: 'automation_run',
           p_credits_cost: 1,
+          p_unit_quantity: 1,
           p_timezone: 'UTC',
           p_metadata: { execution_id: execution.id },
         });
@@ -51,12 +53,13 @@ Deno.serve(async (req) => {
           failed += 1;
           continue;
         }
+        reservationId = entRow.reservation_id;
         let settled = false;
         const settleRun = async (outcome: 'success' | 'failed', reason?: string) => {
           if (settled) return;
           settled = true;
           await supabase.rpc('finalize_credit_reservation', {
-            p_reservation_id: entRow.reservation_id,
+            p_reservation_id: reservationId,
             p_outcome: outcome,
             p_error_reason: reason ?? null,
           }).catch(() => {});
@@ -82,11 +85,17 @@ Deno.serve(async (req) => {
             edges: { source: string; target: string; sourceHandle?: 'yes' | 'no' }[];
           },
         });
-        settleRun('success');
+        await settleRun('success');
         processed += 1;
       } catch (e) {
         console.error('Failed to execute', execution.id, e);
-        settleRun('failed', e instanceof Error ? e.message : String(e));
+        if (reservationId) {
+          await supabase.rpc('finalize_credit_reservation', {
+            p_reservation_id: reservationId,
+            p_outcome: 'failed',
+            p_error_reason: e instanceof Error ? e.message : String(e),
+          }).catch(() => {});
+        }
         failed += 1;
         try {
           await supabase.rpc('mark_execution_status', {

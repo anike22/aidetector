@@ -321,9 +321,12 @@ export default function AITextDetector() {
       contentType,
       languageHint: languageHint === 'auto' ? undefined : languageHint,
       onGuestUsage: !user ? setGuestUsage : undefined,
+      engineCount: 2,
     });
 
-    const aggressivePromise = runAggressiveDetector(textToAnalyze);
+    // Both results share this scan's authorization. Never run the second
+    // engine when the billing check or the first analysis failed.
+    const aggressivePromise = balancedPromise.then(() => runAggressiveDetector(textToAnalyze));
 
     // ── Handle balanced result ────────────────────────────────────────────────
     balancedPromise

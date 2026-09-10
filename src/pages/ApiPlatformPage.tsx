@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import {
   Copy, Check, Shield, Zap, BarChart3, List, Layers, Globe, Lock,
   Rocket, Building2, GraduationCap, Newspaper, Briefcase, Users,
@@ -226,7 +227,7 @@ const softwareSchema = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
   description: 'REST API for detecting AI-generated content from ChatGPT, Gemini, Claude, DeepSeek, and more.',
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  offers: { '@type': 'Offer', price: '79', priceCurrency: 'USD' },
   url: 'https://aidetector.cx/api',
 };
 
@@ -244,16 +245,17 @@ const breadcrumbSchema = {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function ApiPlatformPage() {
   const { user, profile } = useAuth();
-  const plan = profile?.subscription_plan || 'free';
+  const { summary: billingSummary } = useEntitlement('api_access');
+  const plan = billingSummary?.plan || 'free';
   const isAdmin = profile?.role === 'admin';
-  const planLevels: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 };
-  const hasPro = isAdmin || planLevels[plan] >= 1;
+  const planLevels: Record<string, number> = { free: 0, pro: 1, pro_plus: 2, 'pro+': 2, business: 3, enterprise: 4 };
+  const hasPro = isAdmin || (billingSummary?.isPaidActive === true && planLevels[plan] >= 3);
 
   // Contextual CTA based on auth state
   const primaryCta = !user
     ? { label: 'Get Started Free', href: '/signup' }
     : !hasPro
-    ? { label: 'Upgrade to Pro', href: '/pricing' }
+    ? { label: 'Upgrade to Business', href: '/pricing' }
     : { label: 'Manage API', href: '/api/dashboard' };
 
   return (
@@ -263,15 +265,15 @@ export default function ApiPlatformPage() {
         scrollPercent={60}
         timeSeconds={45}
         showSticky={true}
-        stickyLabel="Generate Free API Key"
-        stickySubLabel="100 free requests/month — no credit card"
+        stickyLabel="Business API Access"
+        stickySubLabel="Usage draws from your monthly credit pool"
       />
       <PageMeta
         title="AI Detector API — Integrate AI Content Detection | AIDetector.cx"
         description="Integrate AI content detection into your application with AIDetector.cx REST API. Detect ChatGPT, Gemini, Claude, GPT-5.5, DeepSeek, Llama. Fast, secure, enterprise-ready."
         canonicalUrl="https://aidetector.cx/api"
         ogTitle="AI Detector API — Integrate AI Content Detection | AIDetector.cx"
-        ogDescription="Fast, secure REST API for detecting AI-generated content. Supports ChatGPT, Gemini, Claude, DeepSeek, and more. Free tier available."
+        ogDescription="Fast, secure REST API for detecting AI-generated content on active Business and Enterprise plans."
         schemas={[faqSchema, softwareSchema, breadcrumbSchema]}
       />
 
@@ -290,7 +292,7 @@ export default function ApiPlatformPage() {
                   Developer API
                 </Badge>
                 <Badge className="bg-warning/20 text-warning border-warning/30 px-3 py-1 text-xs font-semibold">
-                  Pro Feature
+                  Business Feature
                 </Badge>
               </div>
               <h1 className="text-4xl md:text-5xl xl:text-6xl font-extrabold text-white leading-tight mb-6">
@@ -310,7 +312,7 @@ export default function ApiPlatformPage() {
               </div>
               {/* trust row */}
               <div className="mt-8 flex flex-wrap items-center gap-5 text-sm text-white/50">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-success" /> No credit card for Free tier</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-success" /> Business credit-pool metering</span>
                 <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-success" /> Sub-200 ms latency</span>
                 <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-success" /> 99.9% uptime SLA</span>
               </div>
@@ -554,33 +556,33 @@ export default function ApiPlatformPage() {
         </div>
       </section>
 
-      {/* ── Pro Access Gate Section ──────────────────────────────────── */}
+      {/* ── Business Access Gate Section ─────────────────────────────── */}
       <section className="py-20 bg-background" aria-labelledby="access-heading">
         <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
           <Badge className="bg-warning/10 text-warning border-warning/30 mb-4 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
-            Pro Feature
+            Business Feature
           </Badge>
           <h2 id="access-heading" className="text-3xl md:text-4xl font-extrabold text-navy mb-4">
-            API Access is a Pro Exclusive
+            API Access is a Business Entitlement
           </h2>
           <p className="text-muted-foreground text-lg mb-10 leading-relaxed text-pretty">
             Generate API keys, access all detection endpoints, and monitor your usage — 
-            all available exclusively on the <strong className="text-navy">Pro plan</strong> and above.
+            available on active <strong className="text-navy">Business and Enterprise plans</strong>.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
             {[
               { label: 'Guest', icon: Users,     cta: 'Sign Up',       href: '/signup',   note: 'Create a free account to get started.',      variant: 'outline' as const },
-              { label: 'Free',  icon: Lock,      cta: 'Upgrade to Pro',href: '/pricing',  note: 'Upgrade your plan to unlock API access.',     variant: 'default' as const },
-              { label: 'Pro',   icon: KeyRound,  cta: 'Manage API',    href: '/api/dashboard', note: 'Full API access, dashboard, and keys.',  variant: 'default' as const },
+              { label: 'Free / Pro', icon: Lock, cta: 'Upgrade to Business',href: '/pricing', note: 'API keys are not included on these plans.', variant: 'default' as const },
+              { label: 'Business', icon: KeyRound, cta: 'Manage API', href: '/api/dashboard', note: 'API calls draw from the shared monthly credit pool.', variant: 'default' as const },
             ].map(({ label, icon: Icon, cta, href, note, variant }) => (
-              <Card key={label} className={`border text-center ${label === 'Pro' ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border shadow-card'}`}>
+              <Card key={label} className={`border text-center ${label === 'Business' ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border shadow-card'}`}>
                 <CardContent className="p-6 flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${label === 'Pro' ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <Icon className={`w-5 h-5 ${label === 'Pro' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${label === 'Business' ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <Icon className={`w-5 h-5 ${label === 'Business' ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
                   <p className="font-bold text-navy">{label} Plan</p>
                   <p className="text-xs text-muted-foreground text-pretty">{note}</p>
-                  <Button className={`w-full mt-1 font-semibold ${label === 'Pro' ? 'bg-primary text-primary-foreground' : ''}`} variant={variant} asChild>
+                  <Button className={`w-full mt-1 font-semibold ${label === 'Business' ? 'bg-primary text-primary-foreground' : ''}`} variant={variant} asChild>
                     <Link to={href}>{cta} <ArrowRight className="w-4 h-4 ml-1" /></Link>
                   </Button>
                 </CardContent>
@@ -590,7 +592,7 @@ export default function ApiPlatformPage() {
           {hasPro && (
             <div className="bg-success/5 border border-success/20 rounded-xl p-4 text-sm text-success flex items-center justify-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              You have Pro access. <Link to="/api/dashboard" className="font-semibold underline hover:text-success/80 ml-1">Open API Dashboard →</Link>
+              Your Business API entitlement is active. <Link to="/api/dashboard" className="font-semibold underline hover:text-success/80 ml-1">Open API Dashboard →</Link>
             </div>
           )}
         </div>
@@ -647,7 +649,7 @@ export default function ApiPlatformPage() {
             </Button>
           </div>
           <p className="mt-6 text-sm text-white/40">
-            Free tier available — no credit card required.{' '}
+            Available with active Business and Enterprise plans.{' '}
             <Link to="/pricing" className="text-white/60 hover:text-white underline transition-colors">View all pricing plans</Link>.
           </p>
         </div>

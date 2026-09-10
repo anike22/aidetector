@@ -47,19 +47,21 @@ export async function ensureGuestSession(): Promise<string> {
         p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
         p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       });
-      if (!error && data?.guest_id) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row?.guest_id) throw new Error('Guest session could not be verified. Please retry.');
+      if (row?.guest_id) {
         // Server is authoritative; adopt its id (same on upsert).
         try {
           if (typeof localStorage !== 'undefined' && localStorage.setItem) {
-            localStorage.setItem(VISITOR_KEY, data.guest_id);
+            localStorage.setItem(VISITOR_KEY, row.guest_id);
           }
         } catch { /* noop */ }
-        memoryLocalStore[VISITOR_KEY] = data.guest_id;
-        return data.guest_id as string;
+        memoryLocalStore[VISITOR_KEY] = row.guest_id;
+        return row.guest_id as string;
       }
     } catch (e) {
-      // Offline/failure: local id still works; the server will upsert on
-      // the next reserve call (fail-safe, not a bypass — server still gates).
+      serverSessionPromise = null;
+      throw e;
     }
     return localId;
   })();

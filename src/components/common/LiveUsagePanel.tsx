@@ -42,6 +42,8 @@ export function LiveUsagePanel({
   const plan = summary?.plan || entitlement?.plan || 'guest';
   const isAuthenticated = summary?.isAuthenticated ?? entitlement?.isAuthenticated ?? false;
   const isPaid = summary?.isPaidActive ?? false;
+  const wasPaidPlan = ['pro', 'pro_plus', 'pro+', 'business', 'enterprise'].includes(plan.toLowerCase());
+  const isExpiredPaidPlan = isAuthenticated && wasPaidPlan && !isPaid;
 
   const trialChecksRemaining = typeof summary?.trialChecksRemaining === 'number'
     ? summary.trialChecksRemaining
@@ -54,6 +56,7 @@ export function LiveUsagePanel({
   const creditsBalance = summary?.creditsBalance ?? 0;
   const monthlyAllocation = summary?.monthlyCreditAllocation ?? 0;
   const refillDate = summary?.creditsRefillDate;
+  const planEndDate = summary?.planEndDate;
 
   const trialEligible = isTrialEligibleOperation(featureSlug);
   const hasTrialRemaining = trialChecksRemaining > 0;
@@ -71,6 +74,11 @@ export function LiveUsagePanel({
       return null;
     }
   }, [refillDate]);
+  const formattedPlanEndDate = useMemo(() => {
+    if (!planEndDate) return null;
+    const date = new Date(planEndDate);
+    return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : null;
+  }, [planEndDate]);
 
   // Percentage calculations
   const progressPercent = useMemo(() => {
@@ -134,6 +142,8 @@ export function LiveUsagePanel({
                 <CardTitle className="text-sm sm:text-base font-bold text-foreground break-words text-pretty">
                   {isPaid
                     ? 'Active Paid Balance'
+                    : isExpiredPaidPlan
+                    ? 'Your paid entitlement has expired. Renew to continue.'
                     : !isAuthenticated
                     ? trialChecksRemaining > 0
                       ? 'You have 1 free check remaining. Register to unlock 4 additional free checks.'
@@ -152,6 +162,8 @@ export function LiveUsagePanel({
               <CardDescription className="text-xs text-muted-foreground mt-0.5 break-words text-pretty">
                 {isPaid
                   ? `Monthly credit grant refilled automatically on your billing cycle`
+                  : isExpiredPaidPlan
+                  ? `Plan ended${formattedPlanEndDate ? ` on ${formattedPlanEndDate}` : ''}; paid features and remaining period credits are inactive.`
                   : isAuthenticated
                   ? `One-time introductory trial allowance (authoritative server balance)`
                   : `Instant single check. Create a free account anytime to unlock 4 additional free checks.`}
@@ -241,6 +253,8 @@ export function LiveUsagePanel({
               <span>
                 {isPaid
                   ? 'Your monthly credit balance is depleted. Top up credits or upgrade your plan to continue.'
+                  : isExpiredPaidPlan
+                  ? 'Your subscription period has ended. Renew your plan to restore paid features and credits.'
                   : isAuthenticated
                   ? 'You’ve used all your free checks. Choose a plan to continue.'
                   : 'You’ve used your free guest check. Create an account to get 4 additional free checks.'}

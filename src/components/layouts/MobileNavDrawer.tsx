@@ -11,6 +11,8 @@ import { useLifecycle } from '@/contexts/LifecycleContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { navStructure, directLinks, mobileAuthGroups, NavGroup, findParentGroupIdByPath, matchRoute, getFilteredNavStructure } from '@/components/layouts/navData';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { isPaidSubscriptionActive } from '@/lib/subscription';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import type { Organization } from '@/types/team';
 import {
   Menu, X, LogOut, Search, FileSearch, FileEdit, DollarSign,
@@ -38,6 +40,7 @@ export function MobileNavDrawer({ mobileOpen, setMobileOpen, handleSignOut }: Mo
   const location = useLocation();
   const navigate = useNavigate();
   const { isFeatureVisible: checkFeatureVisible } = useFeatureFlags();
+  const { summary: billingSummary } = useEntitlement('ai_detector');
 
   const filteredNavStructure = useMemo(() => {
     return getFilteredNavStructure((href, surface) => checkFeatureVisible(href, surface));
@@ -75,8 +78,11 @@ export function MobileNavDrawer({ mobileOpen, setMobileOpen, handleSignOut }: Mo
     });
   };
 
-  const plan = (profile?.subscription_plan || 'free').toLowerCase();
-  const isPaid = plan !== 'free';
+  const storedPlan = (billingSummary?.isPaidActive ? billingSummary.plan : profile?.subscription_plan || 'free').toLowerCase();
+  const isPaid = billingSummary
+    ? billingSummary.isPaidActive
+    : isPaidSubscriptionActive(storedPlan, profile?.subscription_status, profile?.plan_end_date);
+  const plan = isPaid ? storedPlan : 'free';
   const isEnterprise = plan === 'enterprise';
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Account';
   const initials = displayName.slice(0, 2).toUpperCase();

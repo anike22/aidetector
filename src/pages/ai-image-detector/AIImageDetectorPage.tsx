@@ -231,12 +231,13 @@ const SCHEMAS = [
 ];
 
 export default function AIImageDetectorPage() {
-  const { entitlement, loading: entitlementLoading } = useEntitlement(FEATURE_SLUG);
+  const [analysisMode, setAnalysisMode] = useState<'balanced' | 'high_sensitivity'>('balanced');
+  const billingFeatureSlug = analysisMode === 'high_sensitivity' ? 'image_detect_advanced' : FEATURE_SLUG;
+  const { entitlement, loading: entitlementLoading } = useEntitlement(billingFeatureSlug);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
 
   // Scanner UI States
   const [activeTab, setActiveTab] = useState<'single' | 'compare' | 'batch'>('single');
-  const [analysisMode, setAnalysisMode] = useState<'balanced' | 'high_sensitivity'>('balanced');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -339,7 +340,7 @@ export default function AIImageDetectorPage() {
     let reservationId: string | null = null;
 
     try {
-      const reservation = await reserveImageScan(FEATURE_SLUG, 1);
+      const reservation = await reserveImageScan(billingFeatureSlug, analysisMode === 'high_sensitivity' ? 4 : 2);
       if (!reservation.allowed) {
         setScanning(false);
         openUpgradeModal({
@@ -370,13 +371,12 @@ export default function AIImageDetectorPage() {
       }
 
       setScanStep('Synthesizing multi-modal forensic evidence and cryptographic hashes...');
-      setResult(forensicResult);
-
       await finalizeImageScan(reservationId, 'committed', {
         sha256: forensicResult.sha256,
         verdict: forensicResult.aiGeneration.verdict,
         fileName: file.name,
       });
+      setResult(forensicResult);
 
       toast.success('Forensic image analysis complete.');
     } catch (err: any) {
@@ -482,7 +482,7 @@ export default function AIImageDetectorPage() {
       {/* ── SECTION 1: AI IMAGE DETECTOR TOOL (Primary Above-The-Fold Scanner) ── */}
       <section ref={scannerRef} className="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-6">
         {/* Live Usage Quota & Credit Cost */}
-        <LiveUsagePanel featureSlug={FEATURE_SLUG} operationCost={1} />
+        <LiveUsagePanel featureSlug={billingFeatureSlug} operationCost={analysisMode === 'high_sensitivity' ? 4 : 2} />
 
         {/* Scanner Card Container */}
         <Card className="border-border bg-card shadow-sm">

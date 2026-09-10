@@ -12,6 +12,8 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemi
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  let reservationId: string | null = null;
+  let billingClient: ReturnType<typeof createClient> | null = null;
   try {
     const { action, text, context } = await req.json();
 
@@ -22,12 +24,29 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+    billingClient = supabaseAdmin;
     
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (!user) {
       return new Response(JSON.stringify({ error: 'Authentication required. Please sign in.' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!text || text.trim().length < 10) {
+      return new Response(JSON.stringify({ error: 'Text too short for analysis' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const allowedActions = new Set([
+      'brainstorm','explain_concept','suggest_argument','strengthen_thesis',
+      'suggest_counterargument','improve_clarity','improve_grammar',
+      'make_concise','improve_academic_tone','generate_outline',
+    ]);
+    if (!allowedActions.has(action)) {
+      return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -41,6 +60,7 @@ serve(async (req) => {
       p_timezone: timezone,
       p_idempotency_key: req.headers.get('x-idempotency-key') || null,
       p_metadata: { action, length: text?.length || 0 },
+      p_unit_quantity: text.trim().split(/\s+/).length,
     });
 
     const [entRow] = entitlementData || [];
@@ -55,7 +75,7 @@ serve(async (req) => {
       });
     }
 
-    const reservationId = entRow.reservation_id;
+    reservationId = entRow.reservation_id;
     const settleReservation = async (outcome: 'success' | 'failed', reason?: string) => {
       if (!reservationId) return;
       await supabaseAdmin.rpc('finalize_credit_reservation', {
@@ -66,11 +86,6 @@ serve(async (req) => {
       }).then(undefined, () => {});
     };
 
-    if (!text || text.trim().length < 10) {
-      return new Response(JSON.stringify({ error: 'Text too short for analysis' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     const prompts: Record<string, string> = {
       brainstorm: `You are an academic writing assistant. The student is working on: ${context?.topic || 'an academic essay'} (${context?.essay_type || 'general'} essay, ${context?.academic_level || 'undergraduate'} level).\n\nBrainstorm 5 specific, relevant ideas or arguments for the following section or topic:\n\n"${text}"\n\nProvide concrete, actionable ideas. Be academic and focused. Do NOT write the essay for them.`,
@@ -95,11 +110,7 @@ serve(async (req) => {
     };
 
     const prompt = prompts[action];
-    if (!prompt) {
-      return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (!prompt) throw new Error('Essay action configuration missing');
 
     const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
@@ -129,7 +140,13 @@ serve(async (req) => {
 
   } catch (err: any) {
     console.error('essay-assist error:', err);
-    if (typeof (globalThis as any).__essaySettle === 'function') await (globalThis as any).__essaySettle('failed', err?.message).catch(() => {});
+    if (billingClient && reservationId) {
+      await billingClient.rpc('finalize_credit_reservation', {
+        p_reservation_id: reservationId,
+        p_outcome: 'failed',
+        p_error_reason: err?.message || 'essay_assist_failed',
+      }).catch(() => {});
+    }
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

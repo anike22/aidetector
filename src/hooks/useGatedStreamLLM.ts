@@ -24,7 +24,7 @@ export function useGatedStreamLLM(
     limit?: number | null;
   }) => void
 ) {
-  const { entitlement, loading, recordUsage } = useEntitlement(featureSlug);
+  const { entitlement, loading, refresh } = useEntitlement(featureSlug);
 
   const gatedStreamLLM = useCallback(
     async (opts: StreamLLMOptions): Promise<void> => {
@@ -43,10 +43,12 @@ export function useGatedStreamLLM(
         return;
       }
 
-      await recordUsage();
-      await streamLLM({ ...opts, featureSlug });
+      // The streaming endpoint owns the reservation and settlement.
+      // A client reservation here would charge the same operation twice.
+      try { await streamLLM({ ...opts, featureSlug }); }
+      finally { await refresh(); }
     },
-    [entitlement, loading, featureName, featureSlug, openUpgradeModal, recordUsage]
+    [entitlement, loading, featureName, featureSlug, openUpgradeModal, refresh]
   );
 
   return gatedStreamLLM;

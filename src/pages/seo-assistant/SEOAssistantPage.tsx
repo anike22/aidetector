@@ -204,7 +204,7 @@ export default function SEOAssistantPage() {
       });
       return false;
     }
-    await recordUsage();
+    // Bill once in the LLM endpoint after its authoritative authorization.
     return true;
   };
 

@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase';
-import { getVisitorId, preserveDraftText, getPreservedDraftText } from './visitorId';
+import { ensureGuestSession, getVisitorId, preserveDraftText, getPreservedDraftText } from './visitorId';
 import { calculateOperationCreditCost, isTrialEligibleOperation, RATE_TABLE } from './entitlements';
 
 export interface EntitlementCheckResult {
@@ -59,6 +59,8 @@ function getTimezone(): string {
     return 'UTC';
   }
 }
+
+const reservationGuestIds = new Map<string, string>();
 
 /**
  * Fetch authoritative live entitlement summary for current user or guest directly from DB RPC.
@@ -149,7 +151,8 @@ export async function checkEntitlement(
   const trialEligible = isTrialEligibleOperation(featureSlug);
 
   const rateItem = RATE_TABLE[featureSlug];
-  const minPlan = rateItem?.minPlan || 'guest';
+  const minPlan = rateItem?.minPlan || 'free';
+  const ranks: Record<string, number> = { guest: 0, free: 1, pro: 2, pro_plus: 3, 'pro+': 3, business: 4, enterprise: 5 };
 
   const isGuest = !summary.isAuthenticated;
   const isPaid = summary.isPaidActive;
@@ -162,7 +165,10 @@ export async function checkEntitlement(
   let errorCode: string | null = null;
 
   if (isPaid) {
-    if (hasCredits) {
+    if ((ranks[summary.plan] ?? -1) < (ranks[minPlan] ?? 99)) {
+      errorCode = 'UPGRADE_REQUIRED';
+      reason = 'Your plan does not include this feature.';
+    } else if (hasCredits) {
       allowed = true;
       isTrialCheck = false;
     } else {
@@ -170,6 +176,9 @@ export async function checkEntitlement(
       errorCode = 'CREDITS_EXHAUSTED';
       reason = 'Monthly credit balance depleted. Please top up or renew.';
     }
+  } else if (!isGuest && (ranks[summary.plan] ?? 0) >= 2) {
+    errorCode = 'SUBSCRIPTION_EXPIRED';
+    reason = 'Your paid subscription is inactive or expired. Renew to continue.';
   } else if (isGuest) {
     if (['pro', 'pro_plus', 'business', 'enterprise'].includes(minPlan)) {
       allowed = false;
@@ -196,9 +205,6 @@ export async function checkEntitlement(
     } else if (trialEligible && hasTrialRemaining) {
       allowed = true;
       isTrialCheck = true;
-    } else if (hasCredits) {
-      allowed = true;
-      isTrialCheck = false;
     } else {
       allowed = false;
       errorCode = 'TRIAL_EXHAUSTED';
@@ -253,7 +259,7 @@ export async function reserveEntitlement(
 ): Promise<ReservationResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id || null;
-  const guestId = userId ? null : getVisitorId();
+  const guestId = userId ? null : await ensureGuestSession();
   const tz = getTimezone();
 
   const finalCost = cost ?? calculateOperationCreditCost(featureSlug, units);
@@ -266,7 +272,10 @@ export async function reserveEntitlement(
       p_credits_cost: finalCost,
       p_timezone: tz,
       p_idempotency_key: idempotencyKey || null,
-      p_metadata: {},
+      p_metadata: { engines: units?.engines ?? 1 },
+      p_unit_quantity: units?.words ?? units?.images ?? units?.videoSeconds ??
+        (units?.audioMinutes !== undefined ? Math.ceil(units.audioMinutes * 60) : undefined) ?? units?.references ??
+        (RATE_TABLE[featureSlug]?.billingUnit === 'words_1000' ? null : 1),
     });
 
     if (error) {
@@ -275,7 +284,10 @@ export async function reserveEntitlement(
     }
 
     const row = (data || [])[0] || {};
-    const allowed = Boolean(row.allowed);
+    const allowed = row.allowed === true && !!row.reservation_id;
+    if (allowed && guestId && row.reservation_id) {
+      reservationGuestIds.set(row.reservation_id, guestId);
+    }
     return {
       success: allowed,
       allowed,
@@ -307,17 +319,22 @@ export async function finalizeReservation(
   const metaObj = typeof details === 'object' ? details : { tag: details || 'general' };
 
   try {
-    await supabase.rpc('settle_client_reservation', {
+    const { data, error } = await supabase.rpc('settle_client_reservation', {
       p_reservation_id: reservationId,
       p_outcome: effectiveOutcome,
       p_metadata: {
         ...(metaObj || {}),
         reason: !isSuccess ? (metaObj?.errorReason || metaObj?.error || 'Execution error') : undefined,
       },
+      p_guest_id: reservationGuestIds.get(reservationId) || null,
     });
+    if (error || data?.[0]?.settled !== true) {
+      console.error('[finalizeReservation] Settlement pending:', error || data);
+    }
   } catch (err) {
     console.warn('[finalizeReservation] error:', err);
   } finally {
+    reservationGuestIds.delete(reservationId);
     broadcastUsageUpdate();
   }
 }
@@ -348,21 +365,11 @@ export async function finalizeImageScan(
 /**
  * Video scan reservation aliases.
  */
-export async function reserveVideoScan(
-  modeOrSlug = 'balanced',
-  durationSecondsOrCost = 30
-): Promise<ReservationResponse> {
-  const slug = modeOrSlug === 'ai_video_detector' || modeOrSlug.includes('video')
-    ? modeOrSlug
-    : modeOrSlug === 'forensic'
-    ? 'video_detect_forensic'
-    : modeOrSlug === 'high_sensitivity'
-    ? 'video_detect_high_sensitivity'
-    : 'video_detect_balanced';
-  const cost = typeof durationSecondsOrCost === 'number' && durationSecondsOrCost <= 10
-    ? durationSecondsOrCost
-    : 2;
-  return reserveEntitlement(slug, cost, { videoSeconds: 30 });
+export async function reserveVideoScan(modeOrSlug = 'balanced', durationSeconds = 30): Promise<ReservationResponse> {
+  const slug = modeOrSlug.startsWith('video_detect_') ? modeOrSlug
+    : modeOrSlug === 'forensic' ? 'video_detect_forensic'
+    : modeOrSlug === 'high_sensitivity' ? 'video_detect_high_sensitivity' : 'video_detect_balanced';
+  return reserveEntitlement(slug, undefined, { videoSeconds: durationSeconds });
 }
 
 export async function finalizeVideoScan(
@@ -405,15 +412,17 @@ export async function recordUsage(
   featureSlug: string,
   idempotencyKey?: string
 ): Promise<UsageRecordResult> {
-  const res = await reserveEntitlement(featureSlug, 1, {}, idempotencyKey);
+  const res = await reserveEntitlement(featureSlug, undefined, {}, idempotencyKey);
+  if (!res.allowed || !res.reservationId) throw new Error(res.reason || 'Billing authorization failed');
   if (res.reservationId) {
     await finalizeReservation(res.reservationId, 'success', { featureSlug });
   }
   broadcastUsageUpdate();
+  const summary = await getLiveEntitlementSummary();
   return {
-    remaining: 0,
-    limit: 5,
-    used: 1,
+    remaining: summary.isPaidActive ? summary.creditsBalance : summary.trialChecksRemaining,
+    limit: summary.isPaidActive ? summary.monthlyCreditAllocation : summary.trialChecksTotal,
+    used: summary.isPaidActive ? summary.creditsUsedTotal : summary.trialChecksUsed,
     reset_at: null,
     feature_slug: featureSlug,
   };
@@ -438,6 +447,7 @@ export interface TeamCreditSummary {
   is_owner: boolean;
   plan?: string;
   total_pool?: number;
+  remaining_pool?: number;
   total_allocated?: number;
   total_consumed?: number;
   unallocated_pool?: number;
@@ -521,17 +531,15 @@ export async function removeTeamMember(allocationId: string): Promise<{ success:
   }
 
   try {
-    const { error } = await supabase
-      .from('team_credit_allocations')
-      .update({ status: 'removed', allocated_credits: 0, updated_at: new Date().toISOString() })
-      .eq('id', allocationId)
-      .eq('owner_id', userId);
+    const { data, error } = await supabase.rpc('remove_team_member', {
+      p_allocation_id: allocationId,
+    });
 
     if (error) {
       return { success: false, error: error.message };
     }
     broadcastUsageUpdate();
-    return { success: true };
+    return data || { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || String(err) };
   }

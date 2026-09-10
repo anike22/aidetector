@@ -24,6 +24,7 @@ import { PremiumGate } from './detector/DetectorShared';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageLeadCapture } from '@/components/lead-capture/PageLeadCapture';
 import { useLeadCapture } from '@/contexts/LeadCaptureContext';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 // ─── Lazy-loaded marketing sections ──────────────────────────────────────────
 const DetectorPageSections = lazy(() => import('./detector/DetectorPageSections'));
@@ -149,11 +150,11 @@ export default function DetectorPage({ defaultTab }: { defaultTab?: TabId }) {
     setSearchParams({ tab: tabId }, { replace: true });
   };
   const { profile } = useAuth();
+  const { summary: billingSummary } = useEntitlement('text_detect_aggressive');
   const { triggerToolCompletion } = useLeadCapture();
 
-  const currentPlan = profile?.subscription_plan || 'free';
   const isAdmin = profile?.role === 'admin';
-  const isPaid = currentPlan === 'pro' || currentPlan === 'business' || currentPlan === 'enterprise';
+  const isPaid = billingSummary?.isPaidActive === true;
   const hasPremiumAccess = isPaid || isAdmin;
 
   const scrollToDetector = useCallback(() => {

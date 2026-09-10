@@ -33,7 +33,7 @@ const FEATURE_SLUG = 'ai_humanizer';
 export default function HumanizerPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { entitlement, loading: entitlementLoading } = useEntitlement(FEATURE_SLUG);
+  const { entitlement, summary, loading: entitlementLoading } = useEntitlement(FEATURE_SLUG);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
 
   // State
@@ -87,7 +87,7 @@ export default function HumanizerPage() {
     setLoadingUsage(false);
   };
 
-  const isPro = profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise' || profile?.role === 'admin';
+  const isPro = summary?.isPaidActive === true || profile?.role === 'admin';
   const { trackToolUsage } = useCustomerDataPlatform();
 
   const requireHumanizerAccess = () => {

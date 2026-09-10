@@ -1,3 +1,4 @@
+import { settleBillingStream } from '../_shared/billing.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getTimezone, reserveEntitlement, finalizeReservation, resolveAuthUserOrGuest } from "../_shared/entitlements.ts";
@@ -49,22 +50,29 @@ serve(async (req: Request): Promise<Response> => {
   // exactly one charge. Settlement happens when the stream completes (or is
   // released if the upstream errors before/while streaming).
   const featureSlug = req.headers.get("x-feature-slug");
-  if (!featureSlug) {
+  if (!featureSlug || !['seo_assistant','seo_content_studio','essay_studio','humanizer_rewrite','ai_humanizer','hallucination_check','hallucination_detector','citation_verify','citation_verifier'].includes(featureSlug)) {
     return jsonResponse({ error: "Missing x-feature-slug header" }, 400);
   }
   const llmSupabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const llmTimezone = getTimezone(req);
+  let llmReservation;
+  try {
   const llmIdentity = await resolveAuthUserOrGuest(llmSupabase, req);
-  const llmReservation = await reserveEntitlement(llmSupabase, {
+  llmReservation = await reserveEntitlement(llmSupabase, {
     userId: llmIdentity.user?.id ?? null,
     guestId: llmIdentity.user ? null : llmIdentity.guestId,
     featureSlug,
     creditsCost: 2,
+    unitQuantity: Math.max(1, (contents as any[]).flatMap(c => (c.parts || []).map((p: any) => p.text || '')).join(' ').trim().split(/\s+/).filter(Boolean).length),
     timezone: llmTimezone,
     idempotencyKey: req.headers.get("x-idempotency-key") || null,
     metadata: { transport: "sse" },
   }).catch((err: any) => { throw new Error("Entitlement reservation failed: " + (err?.message || "unknown")); });
 
+  } catch (error) {
+    console.error('[billing]', error);
+    return jsonResponse({error:'Billing authorization unavailable. Please retry.'},503);
+  }
   if (!llmReservation.allowed) {
     return jsonResponse({
       error: llmReservation.reason || "Feature not available on your plan",
@@ -80,7 +88,8 @@ serve(async (req: Request): Promise<Response> => {
   if (tools) upstreamBody.tools = tools;
   if (systemInstruction) upstreamBody.systemInstruction = systemInstruction;
 
-  const upstream = await fetch(
+  let upstream: Response;
+  try { upstream = await fetch(
     "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
     {
       method: "POST",
@@ -91,6 +100,11 @@ serve(async (req: Request): Promise<Response> => {
       body: JSON.stringify(upstreamBody),
     }
   );
+
+  } catch (error) {
+    await finalizeReservation(llmSupabase,{reservationId:llmReservation.reservationId,outcome:'failed',errorReason:'upstream_connection_failed'});
+    return jsonResponse({error:'AI provider unavailable'},502);
+  }
 
   if (upstream.status === 429 || upstream.status === 402) {
     const errText = await upstream.text();
@@ -119,33 +133,8 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // Settle exactly once when the stream finishes; release on stream error.
-  const reservationId = llmReservation.reservationId;
-  const transform = new TransformStream({
-    flush() {
-      finalizeReservation(llmSupabase, {
-        reservationId,
-        outcome: "success",
-        metadata: { transport: "sse" },
-        timezone: llmTimezone,
-      }).catch(() => {});
-    },
-    cancel() {
-      finalizeReservation(llmSupabase, {
-        reservationId,
-        outcome: "failed",
-        errorReason: "stream_cancelled",
-        timezone: llmTimezone,
-      }).catch(() => {});
-    },
+  return settleBillingStream(upstream.body, llmSupabase, llmReservation.reservationId, {
+    ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
   });
 
-  return new Response(upstream.body.pipeThrough(transform), {
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
 });

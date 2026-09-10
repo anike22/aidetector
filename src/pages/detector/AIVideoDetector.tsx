@@ -79,7 +79,11 @@ const SAMPLE_PRESETS = [
 export default function AIVideoDetector() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { entitlement, summary } = useEntitlement(FEATURE_SLUG);
+  const [mode, setMode] = useState<VideoAnalysisMode>('balanced');
+  const billingFeatureSlug = mode === 'forensic'
+    ? 'video_detect_forensic'
+    : mode === 'high_sensitivity' ? 'video_detect_high_sensitivity' : FEATURE_SLUG;
+  const { entitlement, summary } = useEntitlement(billingFeatureSlug);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -103,7 +107,6 @@ export default function AIVideoDetector() {
       return updated;
     }, { replace: true });
   };
-  const [mode, setMode] = useState<VideoAnalysisMode>('balanced');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -170,11 +173,24 @@ export default function AIVideoDetector() {
   const handleAnalyze = async () => {
     if (!file) return;
 
-    const modeConfig = VIDEO_MODE_CONFIGS[mode];
-    const cost = modeConfig.creditCost;
-
-    // 1. Reserve credit atomically
-    const reservation = await reserveVideoScan(FEATURE_SLUG, cost);
+    let durationSeconds: number;
+    try {
+      durationSeconds = await new Promise<number>((resolve, reject) => {
+        const video = document.createElement('video');
+        const url = URL.createObjectURL(file);
+        const timer = setTimeout(() => finish(new Error('Video duration could not be read.')), 15000);
+        const finish = (error?: Error) => {
+          clearTimeout(timer); URL.revokeObjectURL(url);
+          if (error) reject(error); else resolve(video.duration);
+        };
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => Number.isFinite(video.duration) && video.duration > 0
+          ? finish() : finish(new Error('Video duration is invalid.'));
+        video.onerror = () => finish(new Error('Video could not be opened.'));
+        video.src = url;
+      });
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Invalid video'); return; }
+    const reservation = await reserveVideoScan(mode, Math.ceil(durationSeconds));
     if (!reservation.allowed) {
       if (!user) {
         toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
@@ -292,7 +308,7 @@ export default function AIVideoDetector() {
         <TabsContent value="scanner" className="space-y-6 mt-6">
           {/* Live Usage & Quota Panel */}
           <LiveUsagePanel
-            featureSlug={FEATURE_SLUG}
+            featureSlug={billingFeatureSlug}
             operationCost={VIDEO_MODE_CONFIGS[mode].creditCost}
             operationCostLabel={`${VIDEO_MODE_CONFIGS[mode].name} Video Scan`}
           />

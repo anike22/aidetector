@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const db = createClient(supabaseUrl, supabaseServiceKey);
+  let v1ReservationId: string | null = null;
 
   try {
     // ── 1. Authenticate — accept Bearer JWT or x-api-key / Bearer aid_xxx ────
@@ -150,13 +151,12 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
     let keyId: string | null = null;
-    let v1ReservationId: string | null = null;
 
     if (rawKey) {
       // API key authentication
       const { data: keyRow, error: keyErr } = await db
         .from('api_keys')
-        .select('id, user_id, revoked, monthly_limit, requests_this_month')
+        .select('id, user_id, owner_user_id, is_active, revoked_at, quota')
         .eq('api_key', rawKey)
         .maybeSingle();
 
@@ -166,46 +166,18 @@ Deno.serve(async (req) => {
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (keyRow.revoked) {
+      if (!keyRow.is_active || keyRow.revoked_at) {
         return new Response(
           JSON.stringify({ error: 'API key has been revoked', code: 'KEY_REVOKED' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      // Rate limit check
-      const limit = keyRow.monthly_limit ?? 1000;
-      const used = keyRow.requests_this_month ?? 0;
-      if (used >= limit) {
-        return new Response(
-          JSON.stringify({ error: 'Monthly request limit exceeded', code: 'RATE_LIMIT_EXCEEDED', limit, used }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      userId = keyRow.user_id;
+      userId = keyRow.owner_user_id || keyRow.user_id;
       keyId = keyRow.id;
-      // API keys inherit their owner's entitlement: a lapsed subscription
-      // invalidates the key (fail closed).
-      const { data: keyOwner } = await db
-        .from('profiles')
-        .select('subscription_plan, subscription_status, plan_end_date, credits_balance')
-        .eq('id', keyRow.user_id)
-        .maybeSingle();
-      if (!keyOwner) {
+      if (!userId) {
         return new Response(
           JSON.stringify({ error: 'API key owner not found', code: 'OWNER_NOT_FOUND' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const ownerPlan = (keyOwner.subscription_plan || 'free').toLowerCase();
-      const ownerStatus = (keyOwner.subscription_status || '').toLowerCase();
-      const planActive = ['pro', 'pro_plus', 'pro+', 'business', 'enterprise'].includes(ownerPlan)
-        && (['active', 'trialing'].includes(ownerStatus)
-          || (keyOwner.plan_end_date && new Date(keyOwner.plan_end_date) > new Date()));
-      const paygBalance = Number(keyOwner.credits_balance ?? 0);
-      if (!planActive && paygBalance < 1) {
-        return new Response(
-          JSON.stringify({ error: 'API access requires an active subscription', code: 'SUBSCRIPTION_REQUIRED' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } else if (bearerToken.startsWith('eyJ')) {
@@ -218,30 +190,7 @@ Deno.serve(async (req) => {
         );
       }
       userId = user.id;
-      // Dashboard JWT calls consume the owner's entitlement (api_access).
-      try {
-        const { data: entRows } = await db.rpc('reserve_entitlement_and_credits', {
-          p_user_id: user.id,
-          p_guest_id: null,
-          p_feature_slug: 'api_access',
-          p_credits_cost: 1,
-          p_timezone: 'UTC',
-          p_metadata: { endpoint: '/v1/detect' },
-        });
-        const entRow = (entRows || [])[0];
-        if (!entRow?.allowed) {
-          return new Response(
-            JSON.stringify({ error: entRow?.reason || 'API access requires an active subscription', code: 'ENTITLEMENT_REQUIRED' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        v1ReservationId = entRow.reservation_id;
-      } catch (entErr: any) {
-        return new Response(
-          JSON.stringify({ error: 'Billing authorization temporarily unavailable', code: 'BILLING_UNAVAILABLE', retryable: true }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+
     } else {
       return new Response(
         JSON.stringify({ error: 'Missing authentication. Provide x-api-key header or Authorization: Bearer <token>', code: 'AUTH_REQUIRED' }),
@@ -283,6 +232,17 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { data: billingRows, error: billingError } = await db.rpc('reserve_entitlement_and_credits', {
+      p_user_id: userId, p_feature_slug: 'api_access', p_unit_quantity: 1,
+      p_idempotency_key: req.headers.get('x-idempotency-key'),
+      p_metadata: { endpoint: '/v1/detect', is_api_key: Boolean(rawKey) },
+    });
+    if (billingError || billingRows?.[0]?.allowed !== true || !billingRows?.[0]?.reservation_id) {
+      return new Response(JSON.stringify({ error: billingRows?.[0]?.reason || 'Billing authorization unavailable', code: 'BILLING_REQUIRED' }),
+        { status: billingError ? 503 : 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    v1ReservationId = billingRows[0].reservation_id;
 
     // ── 3. Try Gemini-enhanced detection first, fallback to statistical ───────
     let result;
@@ -384,13 +344,12 @@ ${trimmedText.substring(0, 3000)}
 
     // Settle the reservation for this successful call (exactly once).
     if (v1ReservationId) {
-      try {
-        await db.rpc('finalize_credit_reservation', {
-          p_reservation_id: v1ReservationId,
-          p_outcome: 'success',
-          p_metadata: { endpoint: '/v1/detect' },
-        });
-      } catch (_e) { /* non-fatal */ }
+      const { data: settled, error: settleError } = await db.rpc('finalize_credit_reservation', {
+        p_reservation_id: v1ReservationId,
+        p_outcome: 'success',
+        p_metadata: { endpoint: '/v1/detect' },
+      });
+      if (settleError || settled !== true) throw settleError || new Error('Billing settlement failed');
     }
 
     // ── 5. Build response ────────────────────────────────────────────────────
@@ -420,6 +379,13 @@ ${trimmedText.substring(0, 3000)}
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
+    if (v1ReservationId) {
+      await db.rpc('finalize_credit_reservation', {
+        p_reservation_id: v1ReservationId,
+        p_outcome: 'failed',
+        p_error_reason: err?.message || 'v1_detect_failed',
+      }).catch(() => {});
+    }
     return new Response(
       JSON.stringify({ error: 'Internal server error', message: err.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

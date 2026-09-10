@@ -16,9 +16,9 @@ function seededRandom(seedStr: string) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
     return new Response('ok', { headers: corsHeaders });
   }
+  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
 
   try {
     const { domain_url, project_id } = ctx.body;

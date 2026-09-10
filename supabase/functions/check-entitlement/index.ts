@@ -71,30 +71,12 @@ serve(async (req) => {
       });
     }
 
-    // Specific feature check / pre-flight
-    const reservation = await reserveEntitlement(supabase, {
-      userId: user?.id || null,
-      guestId,
-      featureSlug,
-      creditsCost: body.credits_cost || 1,
-      timezone,
+    const { data, error } = await supabase.rpc('check_entitlement', {
+      p_user_id: user?.id || null, p_feature_slug: featureSlug, p_timezone: timezone,
     });
+    if (error) throw error;
+    return ok(data?.[0] || { allowed: false, reason: 'Authorization unavailable' });
 
-    return ok({
-      allowed: reservation.allowed,
-      reservationId: reservation.reservationId,
-      reason: reservation.reason,
-      errorCode: reservation.errorCode,
-      plan: reservation.plan,
-      remainingCredits: reservation.remainingCredits,
-      trialChecksRemaining: reservation.trialChecksRemaining,
-      trialChecksTotal: reservation.trialChecksTotal,
-      isTrialCheck: reservation.isTrialCheck,
-      resetAt: reservation.resetAt,
-      guestId: user ? null : guestId,
-      isAuthenticated: !!user,
-      feature_slug: featureSlug,
-    });
   } catch (err) {
     console.error('check-entitlement error:', err);
     return fail(err instanceof Error ? err.message : 'Entitlement check failed', 500);

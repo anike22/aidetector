@@ -54,14 +54,15 @@ export default function PaymentSuccessPage() {
         }
 
         if (res.error) throw res.error;
-        if (res.data?.data?.verified || res.data?.verified) {
+        const verified = res.data?.data || res.data;
+        if (verified?.verified && (verified?.granted === true || !verified?.metadata?.plan)) {
           setSuccess(true);
           const metadata = res.data?.data?.metadata || res.data?.metadata;
           setMeta(metadata);
 
           // Refresh session + profile so entitlements unlock immediately
           await supabase.auth.refreshSession();
-          if (metadata?.type === 'upgrade') {
+          if (verified.granted === true) {
             await refreshProfile();
             window.dispatchEvent(new CustomEvent('subscription-updated'));
             trackLifecycleEvent('upgrade_to_pro', { source: 'payment_success' });
@@ -121,7 +122,7 @@ export default function PaymentSuccessPage() {
                 <h1 className="text-2xl font-bold text-navy mb-2">Payment Successful!</h1>
                 <p className="text-muted-foreground mb-8">
                   Thank you for your purchase. Your transaction has been completed securely.
-                  {meta?.type === 'upgrade' ? ' Your account has been upgraded to Pro.' : ''}
+                  {meta?.plan ? ` Your ${meta.plan.replace('_', ' ')} plan is active.` : ''}
                 </p>
                 <div className="flex flex-col gap-3 w-full">
                   <Link to="/dashboard" className="w-full">

@@ -188,7 +188,7 @@ const faqItems = [
   },
   {
     q: 'Can I test the API without a Pro subscription?',
-    a: 'Yes. The Free tier includes 100 requests/month. Sign up, generate an API key from /api/dashboard, and start making calls immediately. No credit card required.',
+    a: 'API access is included with active Business and Enterprise plans. Each request consumes the configured rate from the shared monthly credit pool.',
   },
 ];
 
@@ -336,8 +336,8 @@ export default function ApiDocsPage() {
               You can create multiple named keys per integration, copy them once at creation, and revoke any key at any time.
             </p>
             <p className="text-muted-foreground text-sm mt-2 leading-relaxed text-pretty">
-              API access requires a <strong className="text-navy">Pro plan</strong> or higher. Free accounts can create keys
-              limited to 100 requests/month.
+              API access requires an active <strong className="text-navy">Business or Enterprise plan</strong>.
+              Requests draw from the account&apos;s shared monthly credit pool.
             </p>
             <Button className="mt-3 bg-primary text-primary-foreground font-semibold gap-2" asChild>
               <Link to="/api/dashboard"><KeyRound className="w-4 h-4" /> Open API Dashboard <ArrowRight className="w-4 h-4" /></Link>

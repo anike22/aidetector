@@ -238,6 +238,7 @@ export function TeamCreditManagement() {
 
   // 3. Business / Enterprise Owner Management View
   const totalPool = summary.total_pool || 0;
+  const remainingPool = summary.remaining_pool || 0;
   const totalAllocated = summary.total_allocated || 0;
   const totalConsumed = summary.total_consumed || 0;
   const unallocated = summary.unallocated_pool || 0;
@@ -284,13 +285,20 @@ export function TeamCreditManagement() {
 
       <CardContent className="space-y-6">
         {/* Pool Summary Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3.5 rounded-lg bg-muted/40 border border-border">
             <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <Coins className="w-3.5 h-3.5 text-primary" />
-              Total Shared Pool
+              Monthly Entitlement
             </span>
             <p className="text-xl font-bold text-foreground mt-1">{totalPool.toLocaleString()}</p>
+          </div>
+          <div className="p-3.5 rounded-lg bg-muted/40 border border-border">
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-emerald-500" />
+              Remaining Pool
+            </span>
+            <p className="text-xl font-bold text-foreground mt-1">{remainingPool.toLocaleString()}</p>
           </div>
           <div className="p-3.5 rounded-lg bg-muted/40 border border-border">
             <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">

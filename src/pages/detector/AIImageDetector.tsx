@@ -80,7 +80,7 @@ export default function AIImageDetector() {
     let reservationId: string | null = null;
 
     try {
-      const reservation = await reserveImageScan(FEATURE_SLUG, 1);
+      const reservation = await reserveImageScan(FEATURE_SLUG, 2);
       if (!reservation.allowed) {
         setScanning(false);
         if (!user) {
@@ -104,14 +104,13 @@ export default function AIImageDetector() {
 
       // Step 4: Calibrated synthesis and finalizing
       setScanStep('Synthesizing multi-modal forensic evidence and generating certificates...');
-      setResult(forensicResult);
-
       // Finalize credit reservation
       await finalizeImageScan(reservationId, 'committed', {
         sha256: forensicResult.sha256,
         verdict: forensicResult.aiGeneration.verdict,
         fileName: file.name,
       });
+      setResult(forensicResult);
 
       toast.success('Forensic image analysis complete.');
     } catch (err: any) {
@@ -144,7 +143,7 @@ export default function AIImageDetector() {
       />
 
       {/* Live Usage Banner */}
-      <LiveUsagePanel featureSlug={FEATURE_SLUG} operationCost={1} />
+      <LiveUsagePanel featureSlug={FEATURE_SLUG} operationCost={2} />
 
       {/* Mode Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">

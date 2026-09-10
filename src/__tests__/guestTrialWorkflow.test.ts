@@ -49,6 +49,7 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'ai_detector',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
       p_idempotency_key: `idem_${Date.now()}`,
       p_metadata: { words: 120 },
     });
@@ -74,6 +75,7 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'ai_detector',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
       p_idempotency_key: `idem_${Date.now()}`,
       p_metadata: {},
     });
@@ -84,6 +86,7 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
     const { error: finalizeError } = await supabase.rpc('settle_client_reservation', {
       p_reservation_id: reservationId,
       p_outcome: 'success',
+      p_guest_id: testGuestId,
     });
 
     expect(finalizeError).toBeNull();
@@ -112,11 +115,13 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'text_detect_balanced',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
     });
 
     await supabase.rpc('settle_client_reservation', {
       p_reservation_id: res1![0].reservation_id,
       p_outcome: 'success',
+      p_guest_id: testGuestId,
     });
 
     // Second check attempt
@@ -126,6 +131,7 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'text_detect_balanced',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
     });
 
     expect(err2).toBeNull();
@@ -146,6 +152,7 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'ai_detector',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
     });
 
     const reservationId = resData![0].reservation_id;
@@ -153,7 +160,9 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
     // Simulate analysis processing failure (e.g. network/provider error)
     await supabase.rpc('settle_client_reservation', {
       p_reservation_id: reservationId,
-      p_outcome: 'failed',      p_metadata: { reason: 'Simulated backend timeout' },
+      p_outcome: 'failed',
+      p_metadata: { reason: 'Simulated backend timeout' },
+      p_guest_id: testGuestId,
     });
 
     // Check balance remains 1/1
@@ -179,12 +188,14 @@ describe('Guest Trial Allowance and Workflow Verification', () => {
       p_feature_slug: 'ai_detector',
       p_credits_cost: 1,
       p_timezone: 'UTC',
+      p_unit_quantity: 100,
     });
     expect(res1![0].allowed).toBe(true);
 
     await supabase.rpc('settle_client_reservation', {
       p_reservation_id: res1![0].reservation_id,
       p_outcome: 'success',
+      p_guest_id: testGuestId,
     });
 
     // Anon caller linking to another account's user id must be REJECTED

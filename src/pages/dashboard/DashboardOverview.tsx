@@ -20,11 +20,13 @@ import {
   MessageSquare, Share2, Zap, MonitorPlay, Code
 } from 'lucide-react';
 import { LiveUsagePanel } from '@/components/common/LiveUsagePanel';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 export default function DashboardOverview({ handleNavigate }: { handleNavigate: (section: any) => void }) {
   const { user, profile } = useAuth();
   const { profile: lifecycleProfile } = useLifecycle();
   const navigate = useNavigate();
+  const { summary: billingSummary } = useEntitlement('ai_detector');
   
   const [stats, setStats] = useState({
     humanizations: 0,
@@ -58,8 +60,8 @@ export default function DashboardOverview({ handleNavigate }: { handleNavigate: 
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const firstName = displayName.split(' ')[0];
-  const currentPlanId = profile?.subscription_plan || 'free';
-  const isPaid = currentPlanId === 'pro' || currentPlanId === 'business' || currentPlanId === 'enterprise';
+  const currentPlanId = billingSummary?.isPaidActive ? billingSummary.plan : 'free';
+  const isPaid = billingSummary?.isPaidActive === true;
   const isAdmin = profile?.role === 'admin';
 
   // Calculate checklist progress

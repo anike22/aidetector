@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkEntitlement, getTimezone } from "../_shared/entitlements.ts";
+import { withBillingGuard } from "../_shared/billing.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -102,7 +102,7 @@ async function callOpenAI(prompt: string, apiKey: string) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-serve(async (req) => {
+async function handleRequest(req: Request) {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -155,33 +155,6 @@ serve(async (req) => {
     
     if (textLength > 50000) {
        return new Response(JSON.stringify({ message: 'Input text too long. Maximum 50,000 characters allowed.' }), { status: 400, headers: corsHeaders });
-    }
-
-    let reservationId: string | null = null;
-    if (action === 'humanize') {
-      const reservation = await reserveEntitlement(supabaseClient, {
-        userId: userId !== 'direct_key_user' ? userId : null,
-        featureSlug: HUMANIZER_FEATURE_SLUG,
-        creditsCost: 5,
-        timezone: getTimezone(req),
-        metadata: { text_length: textLength, level, tone },
-      });
-
-      if (!reservation.allowed) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: reservation.reason || 'Humanizer requires a Pro subscription or credits',
-          reason: reservation.reason,
-          errorCode: reservation.errorCode,
-          upgrade_required: true,
-          remaining: reservation.dailyRemaining ?? reservation.remainingCredits,
-          limit: reservation.dailyLimit,
-          plan: reservation.plan,
-          reset_at: reservation.resetAt,
-        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-
-      reservationId = reservation.reservationId;
     }
 
     // Fetch configuration and keys from database
@@ -501,4 +474,11 @@ ${chunkText}
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+}
+
+serve(async req => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const body = await req.clone().json().catch(() => ({}));
+  return withBillingGuard(req, { featureSlug: body.action === 'detect' ? 'ai_detector' : 'ai_humanizer', corsHeaders },
+    async ctx => handleRequest(new Request(req, { body: JSON.stringify(ctx.body) })));
 });
