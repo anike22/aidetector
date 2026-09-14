@@ -14,6 +14,7 @@ import { SuccessCelebrationManager } from '@/components/lifecycle/SuccessCelebra
 import { NotificationBell } from '@/components/lifecycle/NotificationBell';
 import { ProductTourManager } from '@/components/lifecycle/ProductTour';
 import { SmartAssistant } from '@/components/personalization/SmartAssistant';
+import AICheckerForBloggersPage from '@/pages/solutions/AICheckerForBloggersPage';
 
 import { routes } from './routes';
 import RouteErrorBoundary from '@/components/RouteErrorBoundary';
@@ -45,6 +46,7 @@ const App = () => {
                   <div className="flex flex-col min-h-screen">
                     <main className="flex-grow">
                       <Routes>
+                        <Route path="/ai-checker-for-bloggers" element={<AICheckerForBloggersPage />} />
                         {routes.map((route, index) => (
                           <Route
                             key={index}
