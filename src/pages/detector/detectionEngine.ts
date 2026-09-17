@@ -1,5 +1,6 @@
 // Detection engine — real evidence-based analysis for Image, Video, and Deepfake analysis.
 import { executeRealImageForensics } from '@/lib/imageDetection/imageForensicEngine';
+import { normalizePlagiarismResult } from '@/lib/plagiarism/normalizePlagiarismResult';
 
 export type ConfidenceLevel = 'Low' | 'Medium' | 'High' | 'Very High';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -649,7 +650,7 @@ export async function analyzePlagiarism(text: string): Promise<PlagiarismAnalysi
     throw new Error('PLAGIARISM_CHECK_UNAVAILABLE');
   }
 
-  return data as PlagiarismAnalysisResult;
+  return normalizePlagiarismResult(data);
 }
 
 /** Build a stable daily guest fingerprint from browser signals. No PII. */

@@ -176,7 +176,7 @@ export default function PlagiarismCheckerPage() {
       `Risk Level: ${result.riskLevel}`,
       `Exact Match: ${result.exactMatchScore}%`,
       `Near Match: ${result.nearMatchScore}%`,
-      `Verified Paraphrase: ${result.paraphraseMatchScore}%`,
+      `Verified Paraphrase: ${result.paraphraseMatchScore ?? 0}%`,
       `Candidate Similarity: ${result.semanticMatchScore}%`,
       '',
       `Coverage: ${result.coverageNote}`,
@@ -445,7 +445,7 @@ export default function PlagiarismCheckerPage() {
                             ['Originality', `${result.originalityScore}%`],
                             ['Exact Match', `${result.exactMatchScore}%`],
                             ['Near Match', `${result.nearMatchScore}%`],
-                            ['Verified Paraphrase', `${result.paraphraseMatchScore}%`],
+                            ['Verified Paraphrase', `${result.paraphraseMatchScore ?? 0}%`],
                             ['Candidate Similarity', `${result.semanticMatchScore}%`],
                           ].map(([label, val]) => (
                             <div key={label} className="flex justify-between items-center">
