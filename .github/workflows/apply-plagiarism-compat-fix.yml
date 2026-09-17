@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
       - name: Wire compatibility normalizer and UI guards
         run: |
@@ -52,7 +51,7 @@ jobs:
           PY
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run compatibility regression test
         run: npx vitest run src/__tests__/plagiarismResponseCompatibility.test.ts
