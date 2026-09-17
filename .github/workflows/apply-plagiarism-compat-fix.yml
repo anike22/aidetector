@@ -3,7 +3,7 @@ name: Apply plagiarism compatibility fix
 on:
   push:
     branches:
-      - fix/plagiarism-response-compatibility
+      - master
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/plagiarism-response-compatibility
+          ref: master
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -70,4 +70,4 @@ jobs:
             exit 0
           fi
           git commit -m "fix: normalize plagiarism responses at API boundary"
-          git push origin HEAD:fix/plagiarism-response-compatibility
+          git push origin HEAD:master
