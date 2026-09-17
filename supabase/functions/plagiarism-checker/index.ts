@@ -51,7 +51,7 @@ const COVERAGE_NOTE =
   "No verified matches were found in the sources successfully searched. This does not confirm complete originality.";
 
 // Discovery query generation limits
-const MAX_DISCOVERY_QUERIES = 6;
+const MAX_DISCOVERY_QUERIES = 10;
 const MAX_QUERY_TERMS = 6;
 const MIN_QUERY_TERM_LEN = 2;
 
@@ -460,26 +460,39 @@ export function entityAndFactTokens(text: string): string[] {
 }
 
 function extractDistinctivePhrases(text: string): string[] {
-  const sentences = splitSentences(text);
-  const scored: Array<{ phrase: string; contentRatio: number; rareCount: number }> = [];
+  const sentences = splitSentences(text).slice(0, 24);
   const allToks = tokenise(text);
   const freq = new Map<string, number>();
   for (const t of allToks) freq.set(t, (freq.get(t) ?? 0) + 1);
-  for (const s of sentences.slice(0, 24)) {
-    const toks = tokenise(s.text);
+
+  const perSentence: Array<{ phrase: string; score: number; sentenceIndex: number }> = [];
+  for (let sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
+    const toks = tokenise(sentences[sentenceIndex].text);
     if (toks.length < 8) continue;
-    for (let start = 0; start <= Math.min(toks.length - 6, 8); start++) {
-      const len = Math.min(6, toks.length - start);
-      const phrase = toks.slice(start, start + len).join(" ");
-      const ratio = contentWordRatio(toks.slice(start, start + len));
-      const rareCount = toks.slice(start, start + len).filter((t) => isRareToken(t, freq)).length;
-      if (ratio < 0.45) continue;
-      if (rareCount < 2) continue;
-      scored.push({ phrase, contentRatio: ratio, rareCount });
+    let best: { phrase: string; score: number; sentenceIndex: number } | null = null;
+    const maxStart = Math.min(Math.max(0, toks.length - 6), 10);
+    for (let phraseStart = 0; phraseStart <= maxStart; phraseStart++) {
+      const window = toks.slice(phraseStart, phraseStart + Math.min(8, toks.length - phraseStart));
+      if (window.length < 6) continue;
+      const ratio = contentWordRatio(window);
+      const rareCount = window.filter((t) => isRareToken(t, freq)).length;
+      if (ratio < 0.35) continue;
+      const score = rareCount * 2 + ratio;
+      const candidate = { phrase: window.join(' '), score, sentenceIndex };
+      if (!best || candidate.score > best.score) best = candidate;
     }
+    if (best) perSentence.push(best);
   }
-  scored.sort((a, b) => b.rareCount - a.rareCount || b.contentRatio - a.contentRatio);
-  return scored.slice(0, 3).map((s) => s.phrase);
+
+  // Preserve mixed-document coverage: allocate one distinctive query to each
+  // passage before allowing high-scoring phrases from one passage to dominate.
+  const diverse = [...perSentence]
+    .sort((a, b) => a.sentenceIndex - b.sentenceIndex)
+    .map((x) => x.phrase);
+  const ranked = [...perSentence]
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.phrase);
+  return [...new Set([...diverse, ...ranked])].slice(0, 6);
 }
 
 function extractEntityFactQueries(text: string): string[] {

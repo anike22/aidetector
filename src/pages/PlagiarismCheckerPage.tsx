@@ -517,12 +517,12 @@ export default function PlagiarismCheckerPage() {
                   </Card>
 
                   {/* ── Coverage note ── */}
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2.5">
+                  <div className="flex items-start gap-2 text-xs text-white/90 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5">
                     <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <div>
                       <span className="text-pretty">{result.coverageNote}</span>
                       {result.providerStatus && (
-                        <p className="mt-1 opacity-70">{coverageSummary(result)}</p>
+                        <p className="mt-1 text-white/75">{coverageSummary(result)}</p>
                       )}
                     </div>
                   </div>
