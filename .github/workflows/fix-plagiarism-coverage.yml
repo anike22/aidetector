@@ -1,0 +1,115 @@
+name: Repair plagiarism contrast and discovery
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply focused repairs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          page = Path('src/pages/PlagiarismCheckerPage.tsx')
+          s = page.read_text()
+          old = 'className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2.5"'
+          new = 'className="flex items-start gap-2 text-xs text-white/90 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5"'
+          if old not in s:
+              raise SystemExit('coverage-note class anchor not found')
+          s = s.replace(old, new, 1)
+          s = s.replace('<p className="mt-1 opacity-70">{coverageSummary(result)}</p>', '<p className="mt-1 text-white/75">{coverageSummary(result)}</p>', 1)
+          page.write_text(s)
+
+          backend = Path('supabase/functions/plagiarism-checker/index.ts')
+          s = backend.read_text()
+          s = s.replace('const MAX_DISCOVERY_QUERIES = 6;', 'const MAX_DISCOVERY_QUERIES = 10;', 1)
+          old_fn = '''function extractDistinctivePhrases(text: string): string[] {
+  const sentences = splitSentences(text);
+  const scored: Array<{ phrase: string; contentRatio: number; rareCount: number }> = [];
+  const allToks = tokenise(text);
+  const freq = new Map<string, number>();
+  for (const t of allToks) freq.set(t, (freq.get(t) ?? 0) + 1);
+  for (const s of sentences.slice(0, 24)) {
+    const toks = tokenise(s.text);
+    if (toks.length < 8) continue;
+    for (let start = 0; start <= Math.min(toks.length - 6, 8); start++) {
+      const len = Math.min(6, toks.length - start);
+      const phrase = toks.slice(start, start + len).join(" ");
+      const ratio = contentWordRatio(toks.slice(start, start + len));
+      const rareCount = toks.slice(start, start + len).filter((t) => isRareToken(t, freq)).length;
+      if (ratio < 0.45) continue;
+      if (rareCount < 2) continue;
+      scored.push({ phrase, contentRatio: ratio, rareCount });
+    }
+  }
+  scored.sort((a, b) => b.rareCount - a.rareCount || b.contentRatio - a.contentRatio);
+  return scored.slice(0, 3).map((s) => s.phrase);
+}'''
+          new_fn = '''function extractDistinctivePhrases(text: string): string[] {
+  const sentences = splitSentences(text).slice(0, 24);
+  const allToks = tokenise(text);
+  const freq = new Map<string, number>();
+  for (const t of allToks) freq.set(t, (freq.get(t) ?? 0) + 1);
+
+  // Keep the strongest phrase from each sentence first. This prevents a mixed
+  // document from spending the entire query budget on one unusually rare passage.
+  const perSentence: Array<{ phrase: string; score: number; sentenceIndex: number }> = [];
+  for (let sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
+    const toks = tokenise(sentences[sentenceIndex].text);
+    if (toks.length < 8) continue;
+    let best: { phrase: string; score: number; sentenceIndex: number } | null = null;
+    const maxStart = Math.min(Math.max(0, toks.length - 6), 10);
+    for (let start = 0; start <= maxStart; start++) {
+      const window = toks.slice(start, start + Math.min(8, toks.length - start));
+      if (window.length < 6) continue;
+      const ratio = contentWordRatio(window);
+      const rareCount = window.filter((t) => isRareToken(t, freq)).length;
+      if (ratio < 0.35) continue;
+      const score = rareCount * 2 + ratio;
+      const candidate = { phrase: window.join(" "), score, sentenceIndex };
+      if (!best || candidate.score > best.score) best = candidate;
+    }
+    if (best) perSentence.push(best);
+  }
+
+  // Preserve document coverage before ranking extras: one query per distinct
+  // sentence/passage, then the strongest remaining phrases if budget allows.
+  const diverse = perSentence
+    .sort((a, b) => a.sentenceIndex - b.sentenceIndex)
+    .map((x) => x.phrase);
+  const ranked = [...perSentence]
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.phrase);
+  return [...new Set([...diverse, ...ranked])].slice(0, 6);
+}'''
+          if old_fn not in s:
+              raise SystemExit('distinctive phrase function anchor not found')
+          s = s.replace(old_fn, new_fn, 1)
+          backend.write_text(s)
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/PlagiarismCheckerPage.tsx supabase/functions/plagiarism-checker/index.ts
+          git diff --cached --check
+          git commit -m "fix(plagiarism): improve contrast and diversify source discovery"
+          git push origin HEAD:master
