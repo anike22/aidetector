@@ -38,6 +38,8 @@ export interface BillingGuardOptions {
   settleMode?: "response" | "manual";
   /** Extra metadata attached to the reservation. */
   metadata?: Record<string, unknown>;
+  /** Optional request validation before any credit/trial reservation is created. */
+  preflight?: (body: Record<string, any>) => Response | null | Promise<Response | null>;
 }
 
 function json(body: unknown, status: number, corsHeaders: Record<string, string>): Response {
@@ -82,6 +84,16 @@ export async function withBillingGuard(
       503,
       opts.corsHeaders
     );
+  }
+
+  // Validate request shape before creating any billable reservation.
+  if (opts.preflight) {
+    try {
+      const early = await opts.preflight(body);
+      if (early) return early;
+    } catch (err: any) {
+      return json({ success: false, error: err?.message || "Invalid request." }, 400, opts.corsHeaders);
+    }
   }
 
   // 2+3. Atomic reservation (registry-driven cost, default-deny)
