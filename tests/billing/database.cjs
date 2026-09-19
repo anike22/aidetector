@@ -62,7 +62,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  );
  CREATE TABLE public.plan_prices (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), plan text, billing_interval text, currency text,
-  amount_cents integer, credits integer, active boolean DEFAULT true
+  amount_cents integer, credits integer, active boolean DEFAULT true, is_active boolean DEFAULT true
  );
  CREATE TABLE public.api_keys (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, owner_user_id uuid, key_hash text,
