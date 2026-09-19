@@ -63,8 +63,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
   environment public.api_key_environment DEFAULT 'production', usage_count integer DEFAULT 0, is_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
  );`);
- await db.exec(`ALTER TABLE profiles ADD PRIMARY KEY(id);
- CREATE UNIQUE INDEX orders_paystack_reference_unique ON orders(paystack_reference) WHERE paystack_reference IS NOT NULL AND status='completed';
+ await db.exec(`CREATE UNIQUE INDEX orders_paystack_reference_unique ON orders(paystack_reference) WHERE paystack_reference IS NOT NULL AND status='completed';
  CREATE UNIQUE INDEX rates_slug ON credit_rate_table(feature_slug);
  CREATE UNIQUE INDEX reservations_key ON credit_reservations(idempotency_key) WHERE idempotency_key IS NOT NULL;
  CREATE UNIQUE INDEX teams_member ON team_credit_allocations(owner_id,member_email);`);
