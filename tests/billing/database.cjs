@@ -46,7 +46,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  );
  CREATE TABLE public.team_credit_allocations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL, member_user_id uuid, member_email text NOT NULL,
-  allocated_credits integer DEFAULT 0, consumed_credits integer DEFAULT 0, status text DEFAULT 'active',
+  seat_name text, role text, allocated_credits integer DEFAULT 0, consumed_credits integer DEFAULT 0, status text DEFAULT 'active',
   created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
  );
  CREATE TABLE public.usage_ledger (
