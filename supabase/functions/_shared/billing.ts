@@ -94,6 +94,7 @@ export async function withBillingGuard(
       guestId,
       featureSlug,
       creditsCost: opts.defaultCost ?? 1,
+      unitQuantity: Math.max(1, String(body.text ?? body.content ?? body.input ?? body.prompt ?? body.keyword ?? body.domain ?? '').trim().split(/\s+/).filter(Boolean).length),
       timezone,
       idempotencyKey,
       metadata: { ...(opts.metadata || {}), is_api_key: isApiKey },
