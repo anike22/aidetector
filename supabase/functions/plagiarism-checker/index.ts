@@ -1381,7 +1381,7 @@ if (import.meta.main) {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
     try {
-      return await withBillingGuard(req, { featureSlug: "plagiarism_checker", corsHeaders: cors as Record<string, string> }, async (ctx) => {
+      return await withBillingGuard(req, { featureSlug: "plagiarism_check", corsHeaders: cors as Record<string, string> }, async (ctx) => {
       const supabase = ctx.supabase;
       const body: { text?: unknown } = ctx.body as { text?: unknown };
 
