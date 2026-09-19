@@ -1289,18 +1289,32 @@ if (import.meta.main) {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
     try {
-      return await withBillingGuard(req, { featureSlug: "plagiarism_check", corsHeaders: cors as Record<string, string> }, async (ctx) => {
+      return await withBillingGuard(req, {
+        featureSlug: "plagiarism_check",
+        corsHeaders: cors as Record<string, string>,
+        preflight: (body) => {
+          const text = typeof body.text === "string" ? body.text.trim() : "";
+          if (!text) return json({ status: "insufficient_text", errorMessage: "Text is required." }, 400);
+          if (text.length > MAX_TEXT_CHARS) return json({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
+          if (tokenise(text).length < MIN_TEXT_WORDS) return json({ status: "insufficient_text", errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` }, 400);
+          return null;
+        },
+      }, async (ctx) => {
       const supabase = ctx.supabase;
       const body: { text?: unknown } = ctx.body as { text?: unknown };
 
       const text = typeof body.text === "string" ? body.text.trim() : "";
-      if (!text) return json({ status: "insufficient_text", errorMessage: "Text is required." }, 400);
-      if (text.length > MAX_TEXT_CHARS) return json({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
 
       const apiKey = Deno.env.get("INTEGRATIONS_API_KEY") ?? "";
       if (!apiKey) return json({ status: "provider_unavailable", errorMessage: "Server configuration error." }, 503);
 
       const result = await runAnalysis(text, apiKey);
+
+      // A total provider/configuration failure is not a successful billable check.
+      // Returning 503 makes the shared billing guard release the reservation.
+      if (result.status === "provider_unavailable" || result.status === "analysis_failed") {
+        return json(result, 503);
+      }
 
       return json(result);
       });
