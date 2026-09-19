@@ -40,7 +40,8 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE TABLE public.server_guest_sessions (
   guest_id text PRIMARY KEY, linked_user_id uuid,
   trial_checks_remaining integer DEFAULT 1, trial_checks_used integer DEFAULT 0,
-  trial_checks_total integer DEFAULT 1, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+  trial_checks_total integer DEFAULT 1, total_used integer DEFAULT 0,
+  last_active_at timestamptz, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
  );
  CREATE TABLE public.team_credit_allocations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL, member_user_id uuid, member_email text NOT NULL,
