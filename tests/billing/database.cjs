@@ -24,7 +24,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
   billing_cycle text, plan_start_date timestamptz, plan_end_date timestamptz, billing_credit_period_start timestamptz,
   credits_refill_date timestamptz, credits_balance integer DEFAULT 0, monthly_credit_allocation integer DEFAULT 0,
   trial_checks_remaining integer DEFAULT 0, trial_checks_total integer DEFAULT 5, trial_checks_used integer DEFAULT 0,
-  credits_used_total integer DEFAULT 0, updated_at timestamptz DEFAULT now()
+  credits_used_total integer DEFAULT 0, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
  );
  CREATE TABLE public.credit_rate_table (
   feature_slug text PRIMARY KEY, feature_name text NOT NULL, trial_eligible boolean DEFAULT false,
