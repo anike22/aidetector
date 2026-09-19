@@ -36,7 +36,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
   feature_slug text, credits_reserved integer DEFAULT 0, trial_check_reserved boolean DEFAULT false,
   trial_checks_reserved integer DEFAULT 0, reservation_type text,
   idempotency_key text, status text DEFAULT 'reserved', metadata jsonb DEFAULT '{}'::jsonb,
-  created_at timestamptz DEFAULT now(), expires_at timestamptz, settled_at timestamptz
+  created_at timestamptz DEFAULT now(), expires_at timestamptz, settled_at timestamptz, finalized_at timestamptz
  );
  CREATE TABLE public.server_guest_sessions (
   guest_id text PRIMARY KEY, linked_user_id uuid,
