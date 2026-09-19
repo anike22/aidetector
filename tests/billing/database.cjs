@@ -5,8 +5,6 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'../..');
-const schema=fs.readFileSync(path.join(root,'supabase/schema.sql'),'utf8');
-function statement(prefix,end) {const a=schema.indexOf(prefix);assert(a>=0,prefix);return schema.slice(a,schema.indexOf(end,a)+end.length);}
 const user='10000000-0000-4000-8000-000000000001', member='10000000-0000-4000-8000-000000000002';
 const freeUser='10000000-0000-4000-8000-000000000003', guest='guest-regression-0001';
 let db; let count=0;
@@ -20,9 +18,51 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE FUNCTION extensions.uuid_generate_v4() RETURNS uuid LANGUAGE sql AS $$ SELECT gen_random_uuid() $$;
  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('test.user_id',true),'')::uuid $$;
  CREATE FUNCTION public.is_admin() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;`);
- for(const name of ['profiles','credit_rate_table','credit_reservations','server_guest_sessions','team_credit_allocations','usage_ledger','orders','plan_prices','api_keys']) {
-  await db.exec(statement('CREATE TABLE IF NOT EXISTS "public"."'+name+'"','\n);'));
- }
+ await db.exec(`
+ CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY, email text, subscription_plan text DEFAULT 'free', subscription_status text DEFAULT 'active',
+  billing_cycle text, plan_start_date timestamptz, plan_end_date timestamptz, billing_credit_period_start timestamptz,
+  credits_refill_date timestamptz, credits_balance integer DEFAULT 0, monthly_credit_allocation integer DEFAULT 0,
+  trial_checks_remaining integer DEFAULT 0, trial_checks_total integer DEFAULT 5, trial_checks_used integer DEFAULT 0,
+  credits_used_total integer DEFAULT 0, updated_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.credit_rate_table (
+  feature_slug text PRIMARY KEY, feature_name text NOT NULL, trial_eligible boolean DEFAULT false,
+  base_credit_cost integer NOT NULL DEFAULT 1, billing_unit text NOT NULL DEFAULT 'operation',
+  min_plan text NOT NULL DEFAULT 'free', details jsonb DEFAULT '{}'::jsonb, updated_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.credit_reservations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, guest_id text, team_owner_id uuid, team_member_id uuid,
+  feature_slug text, credits_reserved integer DEFAULT 0, trial_check_reserved boolean DEFAULT false,
+  idempotency_key text, status text DEFAULT 'reserved', metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(), settled_at timestamptz
+ );
+ CREATE TABLE public.server_guest_sessions (
+  guest_id text PRIMARY KEY, trial_checks_remaining integer DEFAULT 1, trial_checks_used integer DEFAULT 0,
+  trial_checks_total integer DEFAULT 1, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.team_credit_allocations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL, member_user_id uuid, member_email text NOT NULL,
+  allocated_credits integer DEFAULT 0, consumed_credits integer DEFAULT 0, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.usage_ledger (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, feature_slug text, operation text,
+  credits_amount integer DEFAULT 0, outcome text, ledger_type text, metadata jsonb DEFAULT '{}'::jsonb, created_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, items jsonb DEFAULT '[]'::jsonb,
+  total_amount numeric DEFAULT 0, currency text DEFAULT 'USD', status public.order_status DEFAULT 'pending',
+  paystack_reference text, completed_at timestamptz, metadata jsonb DEFAULT '{}'::jsonb, created_at timestamptz DEFAULT now()
+ );
+ CREATE TABLE public.plan_prices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), plan text, billing_interval text, currency text,
+  amount_cents integer, credits integer, active boolean DEFAULT true
+ );
+ CREATE TABLE public.api_keys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, owner_user_id uuid, key_hash text,
+  environment public.api_key_environment DEFAULT 'production', usage_count integer DEFAULT 0, is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+ );`);
  await db.exec(`ALTER TABLE profiles ADD PRIMARY KEY(id);
  CREATE UNIQUE INDEX orders_paystack_reference_unique ON orders(paystack_reference) WHERE paystack_reference IS NOT NULL AND status='completed';
  CREATE UNIQUE INDEX rates_slug ON credit_rate_table(feature_slug);
