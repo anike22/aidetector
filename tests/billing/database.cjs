@@ -52,7 +52,8 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE TABLE public.usage_ledger (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, guest_id text, feature_slug text, operation text,
   credits_amount integer DEFAULT 0, trial_checks_amount integer DEFAULT 0, outcome text,
-  reservation_id uuid, ledger_type text, metadata jsonb DEFAULT '{}'::jsonb, created_at timestamptz DEFAULT now()
+  reservation_id uuid, team_owner_id uuid, error_reason text, ledger_type text,
+  metadata jsonb DEFAULT '{}'::jsonb, created_at timestamptz DEFAULT now()
  );
  CREATE TABLE public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, items jsonb DEFAULT '[]'::jsonb,
