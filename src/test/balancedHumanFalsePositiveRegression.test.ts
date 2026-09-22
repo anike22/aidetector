@@ -27,6 +27,7 @@ In the grand scheme of things, I sincerely do believe that the use of AI technol
 describe('Balanced detector human false-positive regression', () => {
   it('does not promote the supplied human-written long-form sample to an AI-side verdict', async () => {
     const result = await analyzeAdvancedText(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, { contentType: 'auto' });
+    console.log('Balanced human regression overall:', JSON.stringify(result.overall));
 
     expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
     expect(result.overall.aiProbability).toBeLessThan(55);
