@@ -63,6 +63,16 @@ const CONTENT_TYPE_CONFIG: Record<Exclude<ContentType, 'auto'>, ContentTypeWeigh
   student:   { aiSensitivity: 1.00, humanTolerance: 1.05, formalPenalty: 0 },
 };
 
+const AUTO_CONTENT_WEIGHTS: ContentTypeWeights = {
+  aiSensitivity: 1,
+  humanTolerance: 1,
+  formalPenalty: 0,
+};
+
+function resolvedContentWeights(contentType: ContentType): ContentTypeWeights {
+  return contentType === 'auto' ? AUTO_CONTENT_WEIGHTS : CONTENT_TYPE_CONFIG[contentType];
+}
+
 function sigmoid(x: number): number {
   return 1 / (1 + Math.exp(-x));
 }
@@ -169,7 +179,7 @@ export function runEnsemble(
     }
 
     const logOddsAi = Math.log(aiScore + 0.01) - Math.log(humanScore + 0.01);
-    calibratedAi = calibrateSpanishProbability(logOddsAi, contentType === 'auto' ? 'blog' : contentType);
+    calibratedAi = calibrateSpanishProbability(logOddsAi, contentType);
     reliability = spanishLanguageReliability(languageConfidence, isSupportedLanguage);
   } else if (isArabic) {
     const ac = ARABIC_CALIBRATION;
@@ -241,10 +251,10 @@ export function runEnsemble(
     }
 
     const logOddsAi = Math.log(aiScore + 0.01) - Math.log(humanScore + 0.01);
-    calibratedAi = calibrateArabicProbability(logOddsAi, contentType === 'auto' ? 'blog' : contentType);
+    calibratedAi = calibrateArabicProbability(logOddsAi, contentType);
     reliability = arabicLanguageReliability(languageConfidence, isSupportedLanguage);
   } else {
-    const rawWeights = contentType === 'auto' ? CONTENT_TYPE_CONFIG.blog : CONTENT_TYPE_CONFIG[contentType];
+    const rawWeights = resolvedContentWeights(contentType);
     const calibration = getLanguageCalibration(languageCode);
 
     const weights: ContentTypeWeights = {
@@ -399,7 +409,7 @@ export function runEnsemble(
     }
 
     const logOddsAi = Math.log(aiScore + 0.01) - Math.log(humanScore + 0.01);
-    calibratedAi = calibrateProbability(logOddsAi, languageCode, contentType === 'auto' ? 'blog' : contentType);
+    calibratedAi = calibrateProbability(logOddsAi, languageCode, contentType);
     reliability = languageReliabilityFactor(languageCode, languageConfidence, isSupportedLanguage);
   }
 
