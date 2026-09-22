@@ -18,19 +18,40 @@ export interface ReadabilityResult {
   avgSyllablesPerWord: number;
 }
 
+export interface SentenceLocationItem {
+  type: 'long_sentence' | 'very_long_sentence' | 'passive_voice';
+  text: string;
+  start: number;
+  end: number;
+  sentenceIndex: number;
+  wordCount: number;
+}
+
 export interface SentenceAnalysisResult {
   longSentenceCount: number;
   passiveVoiceCount: number;
   totalSentences: number;
   longSentences: string[];
   veryLongSentences: string[];
+  sentenceItems?: SentenceLocationItem[];
+  passiveItems?: SentenceLocationItem[];
   recommendations: string[];
+}
+
+export interface ParagraphLocationItem {
+  type: 'long_paragraph' | 'very_long_paragraph';
+  text: string;
+  start: number;
+  end: number;
+  paragraphIndex: number;
+  wordCount: number;
 }
 
 export interface ParagraphAnalysisResult {
   longParagraphCount: number;
   veryLongParagraphCount: number;
   totalParagraphs: number;
+  paragraphItems?: ParagraphLocationItem[];
   recommendations: string[];
 }
 
@@ -43,11 +64,18 @@ export interface TransitionWordsResult {
   recommendations: string[];
 }
 
+export interface HeadingItem {
+  level: number;
+  text: string;
+  start: number;
+  end: number;
+}
+
 export interface HeadingStructureResult {
   h1Count: number;
   h2Count: number;
   h3Count: number;
-  headings: { level: number; text: string }[];
+  headings: HeadingItem[];
   issues: string[];
   score: number;
 }
@@ -85,11 +113,25 @@ export interface AIRiskResult {
   recommendations: string[];
 }
 
+export interface WordOccurrenceItem {
+  word: string;
+  count: number;
+  occurrences: { start: number; end: number; text: string; index: number }[];
+}
+
+export interface PhraseOccurrenceItem {
+  phrase: string;
+  count: number;
+  occurrences: { start: number; end: number; text: string; index: number }[];
+}
+
 export interface UniquenessResult {
   score: number;
   duplicatePhrases: string[];
   overusedWords: string[];
   recommendations: string[];
+  wordOccurrences?: WordOccurrenceItem[];
+  phraseOccurrences?: PhraseOccurrenceItem[];
 }
 
 export interface CompetitorResult {
@@ -114,9 +156,20 @@ export interface MetaResult {
   descOk: boolean;
 }
 
+export interface GrammarIssueItem {
+  text: string;
+  suggestion: string;
+  type: string;
+  start: number;
+  end: number;
+  sentenceIndex?: number;
+  paragraphIndex?: number;
+  contextSnippet?: string;
+}
+
 export interface GrammarResult {
   score: number;
-  issues: { text: string; suggestion: string; type: string }[];
+  issues: GrammarIssueItem[];
 }
 
 export interface SemanticKeywordsResult {
@@ -160,6 +213,87 @@ function countSyllables(word: string): number {
   return m ? m.length : 1;
 }
 
+export interface ParsedSentenceInfo {
+  text: string;
+  start: number;
+  end: number;
+  index: number;
+  words: string[];
+  isPassive: boolean;
+}
+
+export function getSentencesWithPositions(text: string): ParsedSentenceInfo[] {
+  const sentences: ParsedSentenceInfo[] = [];
+  const regex = /[^.!?]+(?:[.!?]+|$)/g;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+  while ((match = regex.exec(text)) !== null) {
+    const raw = match[0];
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const leadingOffset = raw.indexOf(trimmed);
+    const start = match.index + (leadingOffset !== -1 ? leadingOffset : 0);
+    const end = start + trimmed.length;
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    
+    let isPassive = false;
+    for (const p of PASSIVE_PATTERNS) {
+      if (p.test(trimmed)) { isPassive = true; break; }
+    }
+
+    sentences.push({
+      text: trimmed,
+      start,
+      end,
+      index: idx++,
+      words,
+      isPassive,
+    });
+  }
+  return sentences;
+}
+
+export interface ParsedParagraphInfo {
+  text: string;
+  start: number;
+  end: number;
+  index: number;
+  words: string[];
+}
+
+export function getParagraphsWithPositions(text: string): ParsedParagraphInfo[] {
+  const paragraphs: ParsedParagraphInfo[] = [];
+  const parts = text.split(/\n{2,}/);
+  let currentPos = 0;
+  let idx = 0;
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed) {
+      const matchIndex = text.indexOf(part, currentPos);
+      const start = matchIndex !== -1 ? matchIndex + part.indexOf(trimmed) : currentPos;
+      const end = start + trimmed.length;
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      paragraphs.push({ text: trimmed, start, end, index: idx++, words });
+      currentPos = end;
+    }
+  }
+  return paragraphs;
+}
+
+export function getHeadingsWithPositions(text: string): { level: number; text: string; start: number; end: number }[] {
+  const headings: { level: number; text: string; start: number; end: number }[] = [];
+  const regex = /^(#{1,6})\s+(.+)$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const level = match[1].length;
+    const textContent = match[2].trim();
+    const start = match.index;
+    const end = match.index + match[0].length;
+    headings.push({ level, text: textContent, start, end });
+  }
+  return headings;
+}
+
 function getSentences(text: string): string[] {
   return text.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 0);
 }
@@ -172,14 +306,8 @@ function getParagraphs(text: string): string[] {
   return text.split(/\n{2,}/).map((p) => p.trim()).filter((p) => p.length > 0);
 }
 
-function getHeadings(text: string): { level: number; text: string }[] {
-  const headings: { level: number; text: string }[] = [];
-  const lines = text.split('\n');
-  for (const line of lines) {
-    const m = line.match(/^(#{1,6})\s+(.+)/);
-    if (m) headings.push({ level: m[1].length, text: m[2].trim() });
-  }
-  return headings;
+function getHeadings(text: string): { level: number; text: string; start: number; end: number }[] {
+  return getHeadingsWithPositions(text);
 }
 
 function getIntroText(text: string): string {
@@ -319,42 +447,111 @@ export function analyzeReadability(text: string): ReadabilityResult {
 const PASSIVE_PATTERNS = [/\b(is|are|was|were|be|been|being)\s+\w+ed\b/gi];
 
 export function analyzeSentences(text: string): SentenceAnalysisResult {
-  const sentences = getSentences(text);
-  const longSentences = sentences.filter((s) => {
-    const len = getWords(s).length;
-    return len >= 21 && len <= 25;
-  });
-  const veryLongSentences = sentences.filter((s) => getWords(s).length >= 26);
+  const parsedSentences = getSentencesWithPositions(text);
+  const sentenceItems: SentenceLocationItem[] = [];
+  const passiveItems: SentenceLocationItem[] = [];
 
-  let passiveVoiceCount = 0;
-  for (const s of sentences) {
-    for (const p of PASSIVE_PATTERNS) {
-      if (p.test(s)) { passiveVoiceCount++; break; }
+  const longSentences: string[] = [];
+  const veryLongSentences: string[] = [];
+
+  for (const s of parsedSentences) {
+    const wordCount = s.words.length;
+    if (wordCount >= 26) {
+      veryLongSentences.push(s.text);
+      sentenceItems.push({
+        type: 'very_long_sentence',
+        text: s.text,
+        start: s.start,
+        end: s.end,
+        sentenceIndex: s.index,
+        wordCount,
+      });
+    } else if (wordCount >= 21) {
+      longSentences.push(s.text);
+      sentenceItems.push({
+        type: 'long_sentence',
+        text: s.text,
+        start: s.start,
+        end: s.end,
+        sentenceIndex: s.index,
+        wordCount,
+      });
+    }
+
+    if (s.isPassive) {
+      passiveItems.push({
+        type: 'passive_voice',
+        text: s.text,
+        start: s.start,
+        end: s.end,
+        sentenceIndex: s.index,
+        wordCount,
+      });
     }
   }
+
   const recommendations: string[] = [];
   if (veryLongSentences.length > 0) recommendations.push(`${veryLongSentences.length} sentences exceed 25 words (red). Split them for better readability.`);
   if (longSentences.length > 0) recommendations.push(`${longSentences.length} sentences are 21-25 words (yellow). Consider shortening.`);
-  if (passiveVoiceCount > 3) recommendations.push(`${passiveVoiceCount} passive voice sentences detected — use active voice for clarity.`);
+  if (passiveItems.length > 3) recommendations.push(`${passiveItems.length} passive voice sentences detected — use active voice for clarity.`);
   if (recommendations.length === 0) recommendations.push('Sentence structure looks good.');
-  return { longSentenceCount: longSentences.length, passiveVoiceCount, totalSentences: sentences.length, longSentences: longSentences.slice(0, 3), veryLongSentences: veryLongSentences.slice(0, 3), recommendations };
+
+  return {
+    longSentenceCount: longSentences.length,
+    passiveVoiceCount: passiveItems.length,
+    totalSentences: parsedSentences.length,
+    longSentences: longSentences.slice(0, 5),
+    veryLongSentences: veryLongSentences.slice(0, 5),
+    sentenceItems,
+    passiveItems,
+    recommendations,
+  };
 }
 
 // ─── Paragraph Analysis ───────────────────────────────────────────────────
 
 export function analyzeParagraphs(text: string): ParagraphAnalysisResult {
-  const paras = getParagraphs(text);
-  const longParagraphs = paras.filter((p) => {
-    const len = getWords(p).length;
-    return len >= 121 && len <= 200;
-  });
-  const veryLongParagraphs = paras.filter((p) => getWords(p).length >= 201);
+  const parsedParas = getParagraphsWithPositions(text);
+  const paragraphItems: ParagraphLocationItem[] = [];
+  let longCount = 0;
+  let veryLongCount = 0;
+
+  for (const p of parsedParas) {
+    const wordCount = p.words.length;
+    if (wordCount >= 201) {
+      veryLongCount++;
+      paragraphItems.push({
+        type: 'very_long_paragraph',
+        text: p.text,
+        start: p.start,
+        end: p.end,
+        paragraphIndex: p.index,
+        wordCount,
+      });
+    } else if (wordCount >= 121) {
+      longCount++;
+      paragraphItems.push({
+        type: 'long_paragraph',
+        text: p.text,
+        start: p.start,
+        end: p.end,
+        paragraphIndex: p.index,
+        wordCount,
+      });
+    }
+  }
 
   const recommendations: string[] = [];
-  if (veryLongParagraphs.length > 0) recommendations.push(`${veryLongParagraphs.length} paragraph(s) exceed 200 words (red) — split into smaller sections for readability.`);
-  if (longParagraphs.length > 0) recommendations.push(`${longParagraphs.length} paragraph(s) are 121-200 words (yellow) — consider shortening.`);
+  if (veryLongCount > 0) recommendations.push(`${veryLongCount} paragraph(s) exceed 200 words (red) — split into smaller sections for readability.`);
+  if (longCount > 0) recommendations.push(`${longCount} paragraph(s) are 121-200 words (yellow) — consider shortening.`);
   if (recommendations.length === 0) recommendations.push('Paragraph lengths are well-balanced.');
-  return { longParagraphCount: longParagraphs.length, veryLongParagraphCount: veryLongParagraphs.length, totalParagraphs: paras.length, recommendations };
+  return {
+    longParagraphCount: longCount,
+    veryLongParagraphCount: veryLongCount,
+    totalParagraphs: parsedParas.length,
+    paragraphItems,
+    recommendations,
+  };
 }
 
 // ─── Transition Words ─────────────────────────────────────────────────────
@@ -396,11 +593,30 @@ const GRAMMAR_RULES: { pattern: RegExp; suggestion: string; type: string }[] = [
 export function analyzeGrammar(text: string): GrammarResult {
   const issues: GrammarResult['issues'] = [];
   for (const rule of GRAMMAR_RULES) {
-    const matches = Array.from(text.matchAll(rule.pattern));
-    if (matches.length > 0) {
-      issues.push({ text: matches[0][0], suggestion: rule.suggestion, type: rule.type });
+    const rx = new RegExp(rule.pattern.source, rule.pattern.flags);
+    let match: RegExpExecArray | null;
+    while ((match = rx.exec(text)) !== null) {
+      if (match.index !== undefined) {
+        const start = match.index;
+        const end = match.index + match[0].length;
+        // Extract 15 characters of surrounding context for robust exact locating
+        const contextStart = Math.max(0, start - 15);
+        const contextEnd = Math.min(text.length, end + 15);
+        const contextSnippet = text.slice(contextStart, contextEnd);
+
+        issues.push({
+          text: match[0],
+          suggestion: rule.suggestion,
+          type: rule.type,
+          start,
+          end,
+          contextSnippet,
+        });
+      }
     }
   }
+  // Sort issues deterministically by position in reading order
+  issues.sort((a, b) => a.start - b.start);
   const score = Math.max(0, 100 - issues.length * 8);
   return { score, issues };
 }
@@ -408,16 +624,15 @@ export function analyzeGrammar(text: string): GrammarResult {
 // ─── Heading Structure ────────────────────────────────────────────────────
 
 export function analyzeHeadingStructure(text: string): HeadingStructureResult {
-  const headings = getHeadings(text);
+  const headings = getHeadingsWithPositions(text);
   const h1Count = headings.filter((h) => h.level === 1).length;
   const h2Count = headings.filter((h) => h.level === 2).length;
   const h3Count = headings.filter((h) => h.level === 3).length;
-  const issues: string[] = [];
 
-  if (h1Count === 0) issues.push('No H1 heading found — add exactly one H1.');
-  if (h1Count > 1) issues.push(`${h1Count} H1 headings found — use only one H1.`);
-  if (h2Count === 0) issues.push('No H2 headings found — add H2 sections to structure content.');
-  if (h3Count === 0 && h2Count > 2) issues.push('Consider adding H3 subheadings for better content hierarchy.');
+  const issues: string[] = [];
+  if (h1Count === 0) issues.push('Missing H1 title — add a main # Heading at the top.');
+  else if (h1Count > 1) issues.push(`Multiple H1s found (${h1Count}) — use only one primary # H1.`);
+  if (h2Count < 2) issues.push(`Only ${h2Count} H2 section(s) — add at least 2 ## H2 subheadings to structure content.`);
 
   // Check H3 before H2 (incorrect hierarchy)
   let lastLevel = 0;
@@ -426,8 +641,18 @@ export function analyzeHeadingStructure(text: string): HeadingStructureResult {
     lastLevel = h.level;
   }
 
-  const score = Math.max(0, 100 - issues.length * 20);
-  return { h1Count, h2Count, h3Count, headings, issues, score };
+  let score = 100;
+  if (h1Count !== 1) score -= 30;
+  if (h2Count < 2) score -= 20;
+
+  return {
+    h1Count,
+    h2Count,
+    h3Count,
+    headings,
+    issues,
+    score: Math.max(0, score),
+  };
 }
 
 // ─── EEAT Analysis ────────────────────────────────────────────────────────
@@ -465,7 +690,7 @@ export function analyzeEEAT(text: string): EEATResult {
 export function analyzeEngagement(text: string): EngagementResult {
   const sentences = getSentences(text);
   const lower = text.toLowerCase();
-  const questionCount = sentences.filter((s) => s.includes('?')).length;
+  const questionCount = (text.match(/\?/g) || []).length;
   const exampleCount = (lower.match(/\b(for example|for instance|such as|like)\b/g) || []).length;
   const dataCount = (lower.match(/\d+%|\d+ (study|report|survey|research)/g) || []).length;
 
@@ -567,13 +792,68 @@ export function analyzeUniqueness(text: string): UniquenessResult {
     .map(([phrase]) => phrase)
     .slice(0, 4);
 
+  // Calculate detailed occurrences with start/end offsets
+  const wordOccurrences: WordOccurrenceItem[] = [];
+  for (const word of overusedWords) {
+    const occurrences: { start: number; end: number; text: string; index: number }[] = [];
+    try {
+      const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      let match: RegExpExecArray | null;
+      let idx = 0;
+      while ((match = regex.exec(text)) !== null) {
+        occurrences.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          index: idx++
+        });
+      }
+    } catch {}
+    wordOccurrences.push({
+      word,
+      count: occurrences.length || freq[word] || 0,
+      occurrences
+    });
+  }
+
+  const phraseOccurrences: PhraseOccurrenceItem[] = [];
+  for (const phrase of duplicatePhrases) {
+    const occurrences: { start: number; end: number; text: string; index: number }[] = [];
+    try {
+      const wordsInPhrase = phrase.split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+      const regex = new RegExp(`\\b${wordsInPhrase}\\b`, 'gi');
+      let match: RegExpExecArray | null;
+      let idx = 0;
+      while ((match = regex.exec(text)) !== null) {
+        occurrences.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          index: idx++
+        });
+      }
+    } catch {}
+    phraseOccurrences.push({
+      phrase,
+      count: occurrences.length || bigramFreq[phrase] || 0,
+      occurrences
+    });
+  }
+
   const score = Math.max(0, 100 - overusedWords.length * 8 - duplicatePhrases.length * 10);
   const recommendations: string[] = [];
   if (overusedWords.length > 0) recommendations.push(`Overused words: "${overusedWords.slice(0, 3).join('", "')}" — replace with synonyms.`);
   if (duplicatePhrases.length > 0) recommendations.push('Repeated phrases detected — vary your language for originality.');
   if (recommendations.length === 0) recommendations.push('Content appears unique with varied vocabulary.');
 
-  return { score, duplicatePhrases, overusedWords, recommendations };
+  return { 
+    score, 
+    duplicatePhrases, 
+    overusedWords, 
+    recommendations,
+    wordOccurrences,
+    phraseOccurrences
+  };
 }
 
 // ─── Meta Generation ─────────────────────────────────────────────────────

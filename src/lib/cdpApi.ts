@@ -86,6 +86,20 @@ export async function syncDeviceInfo(): Promise<void> {
     p_screen_resolution: device.screenResolution,
     p_language: device.language,
   });
+
+  try {
+    const tz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+    await supabase
+      .from('customer_profiles')
+      .update({
+        timezone: tz,
+        language: device.language,
+      })
+      .eq('id', profileId)
+      .is('timezone', null);
+  } catch {
+    // non-fatal
+  }
 }
 
 export async function getCurrentCustomerProfile(): Promise<CustomerProfile | null> {
@@ -359,4 +373,90 @@ export async function getTagMembers(tagId: string): Promise<CustomerProfile[]> {
   return data
     .map((row: Record<string, unknown>) => row.customer_profiles as CustomerProfile)
     .filter(Boolean);
+}
+
+
+export interface LiveIntelligenceRawData {
+  profiles: CustomerProfile[];
+  events: LeadEvent[];
+  detectorResultsCount: number;
+  detectorResults: Array<{ id: string; created_at: string; word_count?: number; ai_probability?: number; content_type?: string }>;
+  segments: CustomerSegment[];
+  devices: CustomerDevice[];
+}
+
+export async function fetchLiveIntelligenceData(dateRange: string = '30d'): Promise<LiveIntelligenceRawData> {
+  try {
+    let dateThreshold: Date | null = null;
+    const now = new Date();
+    if (dateRange === 'today') {
+      dateThreshold = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (dateRange === 'yesterday') {
+      dateThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    } else if (dateRange === '7d') {
+      dateThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === '30d') {
+      dateThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === '90d') {
+      dateThreshold = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    }
+
+    let profilesQuery = supabase
+      .from('customer_profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(2000);
+
+    let eventsQuery = supabase
+      .from('lead_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    let detectorQuery = supabase
+      .from('detector_results')
+      .select('id, created_at, word_count, ai_probability, content_type')
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    if (dateThreshold) {
+      const iso = dateThreshold.toISOString();
+      profilesQuery = profilesQuery.gte('created_at', iso);
+      eventsQuery = eventsQuery.gte('created_at', iso);
+      detectorQuery = detectorQuery.gte('created_at', iso);
+    }
+
+    const [profilesRes, eventsRes, detectorRes, segmentsRes, devicesRes] = await Promise.all([
+      profilesQuery,
+      eventsQuery,
+      detectorQuery,
+      supabase.from('customer_segments').select('*').limit(100),
+      supabase.from('customer_devices').select('*').limit(500),
+    ]);
+
+    const profiles = (profilesRes.data || []) as CustomerProfile[];
+    const events = (eventsRes.data || []) as LeadEvent[];
+    const detectorResults = detectorRes.data || [];
+    const segments = (segmentsRes.data || []) as CustomerSegment[];
+    const devices = (devicesRes.data || []) as CustomerDevice[];
+
+    return {
+      profiles,
+      events,
+      detectorResultsCount: detectorResults.length,
+      detectorResults,
+      segments,
+      devices,
+    };
+  } catch (err) {
+    console.error('Error in fetchLiveIntelligenceData:', err);
+    return {
+      profiles: [],
+      events: [],
+      detectorResultsCount: 0,
+      detectorResults: [],
+      segments: [],
+      devices: [],
+    };
+  }
 }

@@ -30,7 +30,7 @@ const RECOMMENDATION_MODELS = ['product', 'upgrade', 'content', 'action'];
 const PREDICTION_MODELS = ['upgrade', 'churn', 'renewal', 'clv', 'feature_adoption', 'support_risk', 'api_growth', 'high_value'];
 
 export default function AIPersonalizationCenterPage() {
-  const { profile, user } = useAuth();
+  const { profile, user, loading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [config, setConfig] = useState<PersonalizationConfig | null>(null);
   const [analytics, setAnalytics] = useState<RecommendationAnalyticsRow[]>([]);
@@ -42,13 +42,18 @@ export default function AIPersonalizationCenterPage() {
   const [recomputing, setRecomputing] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    if (profile?.role !== 'admin') {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    const isUserAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
+    if (!isUserAdmin) {
       navigate('/');
       return;
     }
     loadData();
-  }, [user, profile]);
+  }, [user, profile, authLoading, navigate]);
 
   const loadData = async () => {
     setLoading(true);

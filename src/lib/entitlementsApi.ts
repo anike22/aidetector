@@ -37,6 +37,8 @@ export interface EntitlementSummary {
   warningLevel: 'normal' | 'warning_80' | 'warning_95' | 'exhausted';
   guestId: string | null;
   isAuthenticated: boolean;
+  topUpCreditsBalance?: number;
+  planCreditsBalance?: number;
   // Legacy compatibility fields
   dailyLimit?: number | null;
   dailyRemaining?: number | null;
@@ -107,6 +109,8 @@ export async function getLiveEntitlementSummary(): Promise<EntitlementSummary> {
   const trialTotal = row.trial_checks_total ?? (userId ? 5 : 1);
   const trialRemaining = typeof row.trial_checks_remaining === 'number' ? row.trial_checks_remaining : (userId ? 5 : 1);
   const trialUsed = row.trial_checks_used ?? 0;
+  const topUpCredits = row.topup_credits_balance ?? 0;
+  const planCredits = row.plan_credits_balance ?? (row.credits_balance ?? 0);
 
   return {
     plan: row.plan || (userId ? 'free' : 'guest'),
@@ -123,6 +127,8 @@ export async function getLiveEntitlementSummary(): Promise<EntitlementSummary> {
     warningLevel: row.warning_level || (trialRemaining <= 0 ? 'exhausted' : 'normal'),
     guestId,
     isAuthenticated: !!userId,
+    topUpCreditsBalance: topUpCredits,
+    planCreditsBalance: planCredits,
     dailyLimit: trialTotal,
     dailyRemaining: trialRemaining,
     dailyUsed: trialUsed,
@@ -184,7 +190,7 @@ export async function checkEntitlement(
       allowed = false;
       errorCode = 'UPGRADE_REQUIRED';
       reason = 'This feature requires a paid subscription. Please sign in and upgrade.';
-    } else if (minPlan === 'free' && !['text_detect_balanced', 'ai_detector', 'image_detect_standard', 'ai_image_detector', 'video_detect_balanced', 'ai_video_detector', 'voice_analysis', 'ai_summarizer'].includes(featureSlug)) {
+    } else if (minPlan === 'free' && !['text_detect_balanced', 'ai_detector', 'image_detect_standard', 'ai_image_detector', 'video_detect_balanced', 'ai_video_detector', 'voice_analysis', 'ai_summarizer', 'plagiarism_checker', 'plagiarism_check'].includes(featureSlug)) {
       allowed = false;
       errorCode = 'REGISTER_REQUIRED';
       reason = 'This feature requires a free registered account. Please sign up to get 4 additional free checks.';

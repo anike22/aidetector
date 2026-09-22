@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['./src/test/setup.ts'],
     testTimeout: 15000,
     include: ['src/**/*.test.{ts,tsx}', 'tests/detector-benchmark.test.ts'],
     exclude: ['supabase/functions/**', 'node_modules/**'],

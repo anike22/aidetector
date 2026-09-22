@@ -23,7 +23,7 @@ import {
   LayoutDashboard, Users, ShoppingBag, MessageSquare, FileText,
   Menu, X, Loader2, Search, Trash2, Shield, ShieldOff,
   Eye, EyeOff, TrendingUp, DollarSign, Package, Bot,
-  RefreshCw, ChevronDown, LogOut, Star, Code, CheckCircle, Activity, MapPin, Briefcase, Mail, Share2
+  RefreshCw, ChevronDown, LogOut, Star, Code, CheckCircle, Activity, MapPin, Briefcase, Mail, Share2, Sparkles, User
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,17 +37,19 @@ import FeatureLimitsSection from './FeatureLimitsSection';
 import WebsiteCRMSection from './WebsiteCRMSection';
 import AdminContentSection from './AdminContentSection';
 import AdminSocialLinksSection from './AdminSocialLinksSection';
+import AdminFounderSection from './AdminFounderSection';
 import { ApiManagementSection } from '@/components/admin/ApiManagementSection';
 import { AdminPluginSection } from '@/components/admin/AdminPluginSection';
 import { toast } from 'sonner';
 import ApiHealthDashboardPage from '@/pages/admin/ApiHealthDashboardPage';
 import { AdminEmailSection } from './AdminEmailSection';
+import { AdminAIDirectorySection } from './AdminAIDirectorySection';
 import JobApplicationsSection from './JobApplicationsSection';
 import type { Profile, SellerProduct } from '@/types/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type AdminSection = 'overview' | 'users' | 'marketplace' | 'community' | 'content' | 'monetization' | 'settings' | 'services' | 'orders' | 'seo' | 'feature-controls' | 'api-health' | 'job-applications' | 'email' | 'social-links';
+type AdminSection = 'overview' | 'customer-intelligence' | 'lifecycle' | 'users' | 'marketplace' | 'community' | 'content' | 'monetization' | 'settings' | 'services' | 'orders' | 'seo' | 'feature-controls' | 'api-health' | 'job-applications' | 'email' | 'social-links' | 'ai-directory' | 'about-founder' | 'detector-benchmark' | 'detector-feedback' | 'lead-capture' | 'humanizer-quality' | 'automation' | 'security';
 
 interface ForumPost {
   id: string;
@@ -84,6 +86,14 @@ interface OverviewStats {
 
 const NAV_ITEMS = [
   { id: 'overview' as AdminSection, label: 'Overview', icon: LayoutDashboard },
+  { id: 'customer-intelligence' as AdminSection, label: 'Customer Intelligence', icon: Users },
+  { id: 'lifecycle' as AdminSection, label: 'Customer Lifecycle', icon: Activity },
+  { id: 'lead-capture' as AdminSection, label: 'Lead Capture & CRM', icon: Users },
+  { id: 'detector-benchmark' as AdminSection, label: 'Detector Benchmarks', icon: Code },
+  { id: 'detector-feedback' as AdminSection, label: 'Detector Feedback', icon: CheckCircle },
+  { id: 'humanizer-quality' as AdminSection, label: 'Humanizer Quality', icon: FileText },
+  { id: 'automation' as AdminSection, label: 'Automation Center', icon: Bot },
+  { id: 'security' as AdminSection, label: 'Security Center', icon: Shield },
   { id: 'email' as AdminSection, label: 'Email Management', icon: Mail },
   { id: 'feature-controls' as AdminSection, label: 'Feature Controls', icon: Shield },
   { id: 'settings' as AdminSection, label: 'Platform Settings', icon: Bot },
@@ -95,6 +105,8 @@ const NAV_ITEMS = [
   { id: 'marketplace' as AdminSection, label: 'Marketplace', icon: ShoppingBag },
   { id: 'community' as AdminSection, label: 'Community', icon: MessageSquare },
   { id: 'content' as AdminSection, label: 'Blog & Guides', icon: FileText },
+  { id: 'about-founder' as AdminSection, label: 'About & Founder', icon: User },
+  { id: 'ai-directory' as AdminSection, label: 'AI Tools Directory', icon: Sparkles },
   { id: 'social-links' as AdminSection, label: 'Social Links', icon: Share2 },
   { id: 'monetization' as AdminSection, label: 'Monetization & Verification', icon: DollarSign },
   { id: 'api-health' as AdminSection, label: 'API Health & Connections', icon: Activity },
@@ -135,6 +147,14 @@ export default function AdminPage() {
     
     // Update URL to match
     switch(id) {
+      case 'customer-intelligence': navigate('/admin/customer-intelligence'); break;
+      case 'lifecycle': navigate('/admin/lifecycle'); break;
+      case 'lead-capture': navigate('/admin/lead-capture'); break;
+      case 'detector-benchmark': navigate('/admin/detector-benchmark'); break;
+      case 'detector-feedback': navigate('/admin/detector-feedback'); break;
+      case 'humanizer-quality': navigate('/admin/humanizer-quality'); break;
+      case 'automation': navigate('/admin/automation'); break;
+      case 'security': navigate('/admin/security'); break;
       case 'users': navigate('/admin/users'); break;
       case 'marketplace': navigate('/admin/products'); break;
       case 'community': navigate('/admin/moderation'); break;
@@ -152,7 +172,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate('/login'); return; }
-    if (profile && profile.role !== 'admin') {
+    const isUserAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
+    if (!isUserAdmin) {
       toast.error('Access denied. Admin only.');
       navigate('/');
     }
@@ -270,6 +291,8 @@ export default function AdminPage() {
           {activeSection === 'marketplace' && <MarketplaceSection />}
           {activeSection === 'community' && <CommunitySection />}
           {activeSection === 'content' && <AdminContentSection />}
+          {activeSection === 'about-founder' && <AdminFounderSection />}
+          {activeSection === 'ai-directory' && <AdminAIDirectorySection />}
           {activeSection === 'social-links' && <AdminSocialLinksSection />}
           {activeSection === 'monetization' && <MonetizationSection />}
           {activeSection === 'settings' && <SettingsSection />}

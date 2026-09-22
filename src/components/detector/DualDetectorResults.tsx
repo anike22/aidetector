@@ -217,64 +217,71 @@ function BalancedResultCard({ result }: { result: BalancedDetectorResult }) {
       : 'border-warning/30 bg-warning/5';
 
   return (
-    <Card className={`border shadow-premium rounded-2xl overflow-hidden ${cardBorder}`}>
-      <CardHeader className="pb-4 pt-5 px-6 border-b border-border/50">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Shield className="w-4 h-4 text-primary shrink-0" />
-              <CardTitle className="text-base font-bold text-foreground">Balanced Detector</CardTitle>
-              <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wide shrink-0">
-                Recommended
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground mt-1">
-              Calibrated for balanced accuracy and reduced false positives.
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-6 space-y-6">
-        {/* Primary score gauge + breakdown */}
-        <div className="flex items-center gap-6">
-          <div className="relative shrink-0">
-            <ScoreGauge value={result.ai} color={gaugeColor(result.ai)} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-foreground leading-none">{result.ai}%</span>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mt-0.5">AI</span>
+    <Card className={`border shadow-premium rounded-2xl overflow-hidden flex flex-col justify-between h-full ${cardBorder}`}>
+      <div>
+        <CardHeader className="pb-3 pt-4 px-5 border-b border-border/50 bg-background/50">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Shield className="w-4 h-4 text-primary shrink-0" />
+                <CardTitle className="text-sm sm:text-base font-bold text-foreground">Balanced Detector</CardTitle>
+                <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wide shrink-0">
+                  Recommended
+                </Badge>
+              </div>
+              <CardDescription className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                Calibrated for balanced accuracy and reduced false positives.
+              </CardDescription>
             </div>
           </div>
-          <div className="flex-1 min-w-0 space-y-3">
-            <ScoreBar label="AI" value={result.ai} color={gaugeColor(result.ai)} />
-            <ScoreBar label="Human" value={result.human} color="hsl(var(--success))" />
-            <ScoreBar label="Mixed" value={result.mixed} color="hsl(var(--warning))" />
+        </CardHeader>
+
+        <CardContent className="p-5 space-y-4">
+          {/* Primary score gauge + breakdown */}
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <ScoreGauge value={result.ai} color={gaugeColor(result.ai)} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl sm:text-2xl font-black text-foreground leading-none">{result.ai}%</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mt-0.5">AI</span>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 space-y-2.5">
+              <ScoreBar label="AI" value={result.ai} color={gaugeColor(result.ai)} />
+              <ScoreBar label="Human" value={result.human} color="hsl(var(--success))" />
+              <ScoreBar label="Mixed" value={result.mixed} color="hsl(var(--warning))" />
+            </div>
           </div>
-        </div>
 
-        {/* Verdict + Risk */}
-        <div className="flex flex-wrap gap-2">
-          <VerdictBadge verdict={result.verdict} />
-          <RiskBadge risk={result.risk} />
-        </div>
+          {/* Verdict + Risk */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <VerdictBadge verdict={result.verdict} />
+            <RiskBadge risk={result.risk} />
+          </div>
 
-        {/* Confidence + metadata row */}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Activity className="w-3 h-3" />
-            Confidence: <span className="font-semibold text-foreground ml-1">{result.confidence}% ({result.confidenceLevel})</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <Info className="w-3 h-3" />
-            Language: <span className="font-semibold text-foreground ml-1">{result.language}</span>
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground/70">
+          {/* Confidence + metadata row */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1 border-t border-border/40">
+            <span className="flex items-center gap-1">
+              <Activity className="w-3 h-3 text-primary shrink-0" />
+              <span>Confidence:</span>
+              <span className="font-semibold text-foreground">{result.confidence}% ({result.confidenceLevel})</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <Info className="w-3 h-3 text-primary shrink-0" />
+              <span>Language:</span>
+              <span className="font-semibold text-foreground">{result.language}</span>
+            </span>
+          </div>
+        </CardContent>
+      </div>
+
+      <div className="px-5 pb-4 pt-0">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] text-muted-foreground/70 border-t border-border/30 pt-2.5">
           <span>Engine: {result.engineVersion}</span>
           <span>Model: {result.modelVersion}</span>
           {result.processingTimeMs != null && <span>{result.processingTimeMs}ms</span>}
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }
@@ -285,68 +292,77 @@ function AggressiveResultCard({ result }: { result: AggressiveDetectorResult }) 
   const aiColor = gaugeColor(result.ai);
 
   return (
-    <Card className="border-border/50 shadow-premium rounded-2xl bg-card overflow-hidden">
-      <CardHeader className="pb-4 pt-5 px-6 border-b border-border/50">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Zap className="w-4 h-4 text-warning shrink-0" />
-              <CardTitle className="text-base font-bold text-foreground">High-Sensitivity Analysis — Strict</CardTitle>
-              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide text-warning border-warning/40 shrink-0">
-                Higher False-Positive Risk
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground mt-1">
-              A stricter, higher-sensitivity screen that flags weaker AI-like patterns. It is not inherently more accurate and may produce more false positives than the Balanced result.
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-6 space-y-5">
-        {/* Scores — two-category only, no Mixed */}
-        <div className="flex items-center gap-6">
-          <div className="relative shrink-0">
-            <ScoreGauge value={result.ai} color={aiColor} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-foreground leading-none">{result.ai}%</span>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mt-0.5">AI</span>
+    <Card className="border-border/50 shadow-premium rounded-2xl bg-card overflow-hidden flex flex-col justify-between h-full">
+      <div>
+        <CardHeader className="pb-3 pt-4 px-5 border-b border-border/50 bg-background/50">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Zap className="w-4 h-4 text-warning shrink-0" />
+                <CardTitle className="text-sm sm:text-base font-bold text-foreground">High-Sensitivity Analysis — Strict</CardTitle>
+                <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide text-warning border-warning/40 shrink-0">
+                  Higher False-Positive Risk
+                </Badge>
+              </div>
+              <CardDescription className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                Stricter screen flagging weaker AI-like patterns. Not inherently more accurate.
+              </CardDescription>
             </div>
           </div>
-          <div className="flex-1 min-w-0 space-y-3">
-            <ScoreBar label="AI" value={result.ai} color={aiColor} />
-            <ScoreBar label="Human" value={result.human} color="hsl(var(--success))" />
+        </CardHeader>
+
+        <CardContent className="p-5 space-y-4">
+          {/* Scores — two-category only, no Mixed */}
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <ScoreGauge value={result.ai} color={aiColor} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl sm:text-2xl font-black text-foreground leading-none">{result.ai}%</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mt-0.5">AI</span>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 space-y-2.5">
+              <ScoreBar label="AI" value={result.ai} color={aiColor} />
+              <ScoreBar label="Human" value={result.human} color="hsl(var(--success))" />
+            </div>
           </div>
-        </div>
 
-        {/* Risk level */}
-        <div className="flex items-center gap-2">
-          <RiskBadge risk={result.risk} />
-        </div>
-
-        {/* Caution notice */}
-        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 flex gap-3">
-          <ShieldAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            This detector is intentionally more sensitive and may flag polished, formal or heavily edited human writing.
-          </p>
-        </div>
-
-        {/* Recommendations from engine (shown as-is) */}
-        {result.recommendations.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Engine Signals</p>
-            <ul className="space-y-1">
-              {result.recommendations.map((rec, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-warning/70 shrink-0" />
-                  {rec}
-                </li>
-              ))}
-            </ul>
+          {/* Risk level */}
+          <div className="flex items-center gap-2 pt-1">
+            <RiskBadge risk={result.risk} />
           </div>
-        )}
-      </CardContent>
+
+          {/* Caution notice */}
+          <div className="rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 flex gap-2.5">
+            <ShieldAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This detector is intentionally more sensitive and may flag polished, formal or heavily edited human writing.
+            </p>
+          </div>
+
+          {/* Recommendations from engine (shown as-is) */}
+          {result.recommendations.length > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Engine Signals</p>
+              <ul className="space-y-1">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-warning/70 shrink-0" />
+                    <span className="line-clamp-2">{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </div>
+
+      <div className="px-5 pb-4 pt-0">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 border-t border-border/30 pt-2.5">
+          <span>Engine: High-Sensitivity Heuristic</span>
+          <span>Mode: Strict</span>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -406,55 +422,62 @@ export default function DualDetectorResults({
   if (neitherReady) return null;
 
   return (
-    <div className="space-y-5 animate-slide-in">
+    <div className="space-y-4 animate-slide-in">
       {/* Section heading */}
       <div>
-        <h2 className="text-lg font-extrabold text-foreground tracking-tight">AI Detection Results</h2>
-        <p className="text-xs text-muted-foreground mt-1 text-pretty">
+        <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">AI Detection Results</h2>
+        <p className="text-xs text-muted-foreground mt-0.5 text-pretty">
           Your text was analyzed by two independent detection engines. The Balanced Detector provides the calibrated primary verdict. The High-Sensitivity Analysis is a stricter secondary screen with a higher false-positive risk, not a more accurate detector.
         </p>
       </div>
 
-      {/* Balanced Detector — primary, shown first */}
-      {balancedLoading && (
-        <EngineLoadingCard
-          label="Running Balanced Detector…"
-          description="Calibrated multi-layer analysis in progress."
-        />
-      )}
-      {balancedError && !balancedLoading && (
-        <EngineErrorCard
-          engineLabel="Balanced Detector"
-          message={balancedError.message}
-          canRetry={balancedError.canRetry}
-          onRetry={onBalancedRetry}
-        />
-      )}
-      {balancedResult && !balancedLoading && (
-        <BalancedResultCard result={balancedResult} />
-      )}
+      {/* Side-by-side cards on desktop/tablet, stacked cleanly on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        {/* Balanced Detector — primary */}
+        <div className="flex flex-col h-full">
+          {balancedLoading && (
+            <EngineLoadingCard
+              label="Running Balanced Detector…"
+              description="Calibrated multi-layer analysis in progress."
+            />
+          )}
+          {balancedError && !balancedLoading && (
+            <EngineErrorCard
+              engineLabel="Balanced Detector"
+              message={balancedError.message}
+              canRetry={balancedError.canRetry}
+              onRetry={onBalancedRetry}
+            />
+          )}
+          {balancedResult && !balancedLoading && (
+            <BalancedResultCard result={balancedResult} />
+          )}
+        </div>
+
+        {/* Aggressive Detector — secondary */}
+        <div className="flex flex-col h-full">
+          {aggressiveLoading && (
+            <EngineLoadingCard
+              label="Running High-Sensitivity Analysis…"
+              description="Strict AI-signal threshold analysis in progress."
+            />
+          )}
+          {aggressiveError && !aggressiveLoading && (
+            <EngineErrorCard
+              engineLabel="High-Sensitivity Analysis"
+              message={aggressiveError.message}
+              canRetry={aggressiveError.canRetry}
+              onRetry={onAggressiveRetry}
+            />
+          )}
+          {aggressiveResult && !aggressiveLoading && (
+            <AggressiveResultCard result={aggressiveResult} />
+          )}
+        </div>
+      </div>
 
       {/* Disagreement notice */}
       {showDisagreement && <DisagreementNotice />}
-
-      {/* Aggressive Detector — secondary */}
-      {aggressiveLoading && (
-        <EngineLoadingCard
-          label="Running High-Sensitivity Analysis…"
-          description="Strict AI-signal threshold analysis in progress."
-        />
-      )}
-      {aggressiveError && !aggressiveLoading && (
-        <EngineErrorCard
-          engineLabel="High-Sensitivity Analysis"
-          message={aggressiveError.message}
-          canRetry={aggressiveError.canRetry}
-          onRetry={onAggressiveRetry}
-        />
-      )}
-      {aggressiveResult && !aggressiveLoading && (
-        <AggressiveResultCard result={aggressiveResult} />
-      )}
     </div>
   );
 }

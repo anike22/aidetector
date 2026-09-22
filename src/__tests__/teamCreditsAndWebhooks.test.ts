@@ -76,7 +76,7 @@ describe('Team Member Credit Allocation and Subscription Refill Specifications',
 
   describe('Team Member Operation Cost & Quota Consumption', () => {
     it('verifies operation cost deducted from member sub-quota', () => {
-      const textDetectCost = calculateOperationCreditCost('text_detect_balanced', { wordCount: 1500 });
+      const textDetectCost = calculateOperationCreditCost('text_detect_balanced', { wordCount: 500 });
       expect(textDetectCost).toBe(1);
 
       const memberQuota = 500;

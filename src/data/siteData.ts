@@ -1,14 +1,15 @@
 // Shared data and types for AIDetector.cx
 
 import { articleContentHtml, faqData } from './articles/can-universities-detect-chatgpt';
+import { AI_DIRECTORY_PRODUCTS } from './aiDirectoryData';
 
 export interface AiTool {
   id: string;
   name: string;
   category: string;
   description: string;
-  rating: number;
-  reviewCount: number;
+  rating?: number;
+  reviewCount?: number;
   pricing: string;
   pricingType: 'free' | 'freemium' | 'paid';
   logo: string;
@@ -78,227 +79,28 @@ export interface MarketplaceProduct {
   badge?: string;
 }
 
-export const AI_TOOLS: AiTool[] = [
-  {
-    id: 'aidetector-core',
-    name: 'AIDetector.cx Multi-Engine AI Detector',
-    category: 'Writing',
-    description: 'Enterprise multi-engine AI text detection with probability scoring and sentence breakdown.',
-    rating: 4.9,
-    reviewCount: 38400,
-    pricing: 'Free / $19/mo',
-    pricingType: 'freemium',
-    logo: '🔍',
-    tags: ['AI Detection', 'Originality', 'Education'],
-    url: '/detector',
-    featured: true,
-  },
-  {
-    id: 'aihumanizer-core',
-    name: 'AIDetector.cx AI Humanizer',
-    category: 'Writing',
-    description: 'Paraphrase and restructure AI drafts to achieve 100% natural, undetectable human writing flow.',
-    rating: 4.9,
-    reviewCount: 29500,
-    pricing: 'Free / $19/mo',
-    pricingType: 'freemium',
-    logo: '✍️',
-    tags: ['Humanizer', 'Paraphrasing', 'SEO'],
-    url: '/humanizer',
-    featured: true,
-  },
-  {
-    id: 'ai-image-detector-core',
-    name: 'AIDetector.cx AI Image Detector',
-    category: 'Design',
-    description: 'Detect Midjourney, DALL-E, Stable Diffusion, and Flux synthetic imagery with pixel frequency analysis.',
-    rating: 4.8,
-    reviewCount: 14200,
-    pricing: 'Free / $19/mo',
-    pricingType: 'freemium',
-    logo: '🖼️',
-    tags: ['Image Forensics', 'Diffusion Detection', 'Media'],
-    url: '/ai-image-detector',
-    featured: true,
-  },
-  {
-    id: 'ai-video-detector-core',
-    name: 'AIDetector.cx AI Video Detector',
-    category: 'Video',
-    description: 'Multi-modal optical flow, temporal coherence, and C2PA provenance analysis for Sora, Runway & deepfakes.',
-    rating: 4.9,
-    reviewCount: 16800,
-    pricing: 'Free / $29/mo',
-    pricingType: 'freemium',
-    logo: '🎥',
-    tags: ['Video Forensics', 'Deepfake Detection', 'Optical Flow'],
-    url: '/ai-video-detector',
-    featured: true,
-  },
-  {
-    id: 'verified-authorship-core',
-    name: 'AIDetector.cx Verified Authorship',
-    category: 'Writing',
-    description: 'Cryptographic proof of human authorship, immutable timestamps, and verifiable public certificates.',
-    rating: 4.9,
-    reviewCount: 9600,
-    pricing: 'Free / $15/mo',
-    pricingType: 'freemium',
-    logo: '🛡️',
-    tags: ['Authorship', 'Certificates', 'Blockchain'],
-    url: '/authorship',
-    featured: true,
-  },
-  {
-    id: 'plagiarism-checker-core',
-    name: 'AIDetector.cx Plagiarism Checker',
-    category: 'Writing',
-    description: 'Scan billions of academic papers, publications, and web sources for verbatim and paraphrased matches.',
-    rating: 4.8,
-    reviewCount: 18100,
-    pricing: 'Free / $19/mo',
-    pricingType: 'freemium',
-    logo: '📄',
-    tags: ['Plagiarism', 'Academic Integrity', 'Research'],
-    url: '/plagiarism-checker',
-    featured: true,
-  },
-  {
-    id: 'essay-studio-core',
-    name: 'AIDetector.cx Essay Studio',
-    category: 'Writing',
-    description: 'Guided academic essay builder with step-by-step drafting history and humanized verification.',
-    rating: 4.8,
-    reviewCount: 11200,
-    pricing: 'Free / $15/mo',
-    pricingType: 'freemium',
-    logo: '🎓',
-    tags: ['Academic', 'Essay Writing', 'Student'],
-    url: '/essay-studio',
-    featured: true,
-  },
-  {
-    id: '1',
-    name: 'ChatGPT',
-    category: 'Writing',
-    description: 'Advanced AI language model for writing, coding, analysis, and creative tasks.',
-    rating: 4.8,
-    reviewCount: 12400,
-    pricing: 'Free / $20/mo',
-    pricingType: 'freemium',
-    logo: '🤖',
-    tags: ['Writing', 'Coding', 'Analysis'],
-    url: '#',
-    featured: true,
-  },
-  {
-    id: '2',
-    name: 'Midjourney',
-    category: 'Design',
-    description: 'Create stunning AI-generated artwork, illustrations and designs from text prompts.',
-    rating: 4.7,
-    reviewCount: 8300,
-    pricing: '$10/mo',
-    pricingType: 'paid',
-    logo: '🎨',
-    tags: ['Design', 'Art', 'Images'],
-    url: '#',
-    featured: true,
-  },
-  {
-    id: '3',
-    name: 'Copy.ai',
-    category: 'Marketing',
-    description: 'AI-powered marketing copy, ad headlines, email campaigns, and sales scripts.',
-    rating: 4.5,
-    reviewCount: 3200,
-    pricing: 'Free / $36/mo',
-    pricingType: 'freemium',
-    logo: '✍️',
-    tags: ['Marketing', 'Copywriting'],
-    url: '#',
-  },
-  {
-    id: '4',
-    name: 'GitHub Copilot',
-    category: 'Coding',
-    description: 'AI pair programmer that suggests code completions and helps debug faster.',
-    rating: 4.6,
-    reviewCount: 6700,
-    pricing: '$10/mo',
-    pricingType: 'paid',
-    logo: '💻',
-    tags: ['Coding', 'Development'],
-    url: '#',
-    featured: true,
-  },
-  {
-    id: '5',
-    name: 'Synthesia',
-    category: 'Video',
-    description: 'Create professional AI videos with realistic avatars without cameras or studios.',
-    rating: 4.4,
-    reviewCount: 2100,
-    pricing: '$22/mo',
-    pricingType: 'paid',
-    logo: '🎬',
-    tags: ['Video', 'Marketing'],
-    url: '#',
-  },
-  {
-    id: '6',
-    name: 'Zapier',
-    category: 'Automation',
-    description: 'Connect 6000+ apps and automate workflows without writing code.',
-    rating: 4.7,
-    reviewCount: 15200,
-    pricing: 'Free / $19.99/mo',
-    pricingType: 'freemium',
-    logo: '⚡',
-    tags: ['Automation', 'Productivity'],
-    url: '#',
-    featured: true,
-  },
-  {
-    id: '7',
-    name: 'Jasper',
-    category: 'Writing',
-    description: 'AI content platform for teams. Generate blogs, ads, emails at scale.',
-    rating: 4.3,
-    reviewCount: 4800,
-    pricing: '$49/mo',
-    pricingType: 'paid',
-    logo: '📝',
-    tags: ['Writing', 'Marketing'],
-    url: '#',
-  },
-  {
-    id: '8',
-    name: 'Beautiful.ai',
-    category: 'Design',
-    description: 'Smart presentation software that designs beautiful slides automatically.',
-    rating: 4.4,
-    reviewCount: 1900,
-    pricing: 'Free / $12/mo',
-    pricingType: 'freemium',
-    logo: '📊',
-    tags: ['Design', 'Presentations'],
-    url: '#',
-  },
-  {
-    id: '9',
-    name: 'Surfer SEO',
-    category: 'Marketing',
-    description: 'AI-driven SEO optimization tool to rank higher on Google.',
-    rating: 4.5,
-    reviewCount: 3600,
-    pricing: '$49/mo',
-    pricingType: 'paid',
-    logo: '🌊',
-    tags: ['SEO', 'Marketing'],
-    url: '#',
-  },
-];
+export const AI_TOOLS: AiTool[] = AI_DIRECTORY_PRODUCTS.map(product => {
+  const pricingTypeLower = (
+    product.pricingModel.toLowerCase().includes('free') && !product.pricingModel.toLowerCase().includes('trial')
+      ? (product.pricingModel === 'Free' ? 'free' : 'freemium')
+      : (product.hasFreePlan ? 'freemium' : 'paid')
+  ) as 'free' | 'freemium' | 'paid';
+
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.primaryCategory,
+    description: product.summary || product.description,
+    rating: product.editorialAssessment?.rating,
+    reviewCount: product.verifiedReviews?.length,
+    pricing: product.pricingSummary,
+    pricingType: pricingTypeLower,
+    logo: product.logo,
+    tags: product.tags,
+    url: `/tools/${product.id}`,
+    featured: product.featured,
+  };
+});
 
 export const BLOG_POSTS: BlogPost[] = [
   {

@@ -9,14 +9,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useAuth } from '@/contexts/AuthContext';
 import { useLifecycle } from '@/contexts/LifecycleContext';
 import { useTeam } from '@/contexts/TeamContext';
-import { navStructure, directLinks, mobileAuthGroups, NavGroup, findParentGroupIdByPath, matchRoute, getFilteredNavStructure } from '@/components/layouts/navData';
+import { navStructure, directLinks, mobileAuthGroups, adminNavStructure, NavGroup, findParentGroupIdByPath, matchRoute, getFilteredNavStructure } from '@/components/layouts/navData';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { isPaidSubscriptionActive } from '@/lib/subscription';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import type { Organization } from '@/types/team';
 import {
   Menu, X, LogOut, Search, FileSearch, FileEdit, DollarSign,
-  Key, Zap, Check, ChevronDown, Code, ArrowRight,
+  Key, Zap, Check, ChevronDown, Code, ArrowRight, Sparkles,
 } from 'lucide-react';
 
 interface MobileNavDrawerProps {
@@ -27,6 +27,7 @@ interface MobileNavDrawerProps {
 
 const quickActions = [
   { label: 'Detect AI', href: '/detector', icon: Search },
+  { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers', icon: Sparkles },
   { label: 'SEO Assistant', href: '/seo-assistant', icon: FileSearch },
   { label: 'SEO Content Studio', href: '/content-studio', icon: FileEdit },
   { label: 'Pricing', href: '/pricing', icon: DollarSign },
@@ -290,6 +291,17 @@ export function MobileNavDrawer({ mobileOpen, setMobileOpen, handleSignOut }: Mo
             {/* Authenticated group navigation */}
             {user && (
               <div className="space-y-2 p-2 pb-4">
+                {profile?.role === 'admin' && (
+                  <CollapsibleNavGroup
+                    key={adminNavStructure.id}
+                    group={adminNavStructure}
+                    items={adminNavStructure.items}
+                    expanded={expandedSections}
+                    toggle={toggleSection}
+                    active={isRouteActive}
+                    onNavigate={() => setMobileOpen(false)}
+                  />
+                )}
                 {mobileAuthGroups.map((group) => (
                   <CollapsibleNavGroup
                     key={group.id}

@@ -19,6 +19,7 @@ import {
   Upload, Bot, Shield, CheckCircle2, AlertTriangle, Fingerprint, TextSearch,
   Sparkles, Network, RefreshCw, UserCheck, Download, Copy, Share2, Activity,
   BarChart2, Type, FileText, Globe, Info, Languages, AlertOctagon,
+  ChevronDown, ChevronUp, ArrowRight,
 } from 'lucide-react';
 import { AnalysisError, type ContentType, type Verdict } from './detectionEngine';
 import { runBalancedDetector, type BalancedDetectorResult, type BalancedDetectorError } from '@/lib/detection/balancedDetectorService';
@@ -240,6 +241,7 @@ export default function AITextDetector() {
   const [analysisError, setAnalysisError] = useState<{ message: string; code?: string; canRetry: boolean } | null>(null);
   const [guestUsage, setGuestUsage] = useState<{ remaining: number; limit: number } | null>(null);
   const [isStudentModeOpen, setIsStudentModeOpen] = useState(false);
+  const [isSentenceAnalysisExpanded, setIsSentenceAnalysisExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -570,6 +572,28 @@ export default function AITextDetector() {
       });
   };
 
+  const handleOptimizeInSEOAssistant = () => {
+    const textToTransfer = activeText || content;
+    if (!textToTransfer.trim()) {
+      navigate('/ai-checker-for-bloggers');
+      return;
+    }
+    try {
+      const draft = {
+        content: textToTransfer,
+        keyword: '',
+        updatedAt: Date.now(),
+        sourcePage: '/detector',
+      };
+      localStorage.setItem('aidetector_blogger_draft', JSON.stringify(draft));
+      localStorage.setItem('seo_assistant_draft', JSON.stringify(draft));
+      toast.success('Document transferred to SEO Assistant.');
+    } catch (e) {
+      console.error('Failed to transfer draft to SEO Assistant:', e);
+    }
+    navigate('/ai-checker-for-bloggers');
+  };
+
   return (
     <div className="pt-6 pb-20">
       <PageMeta
@@ -642,9 +666,9 @@ export default function AITextDetector() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Input and Sentence Analysis */}
-          <div className="lg:col-span-7 flex flex-col gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Left Column: Input and Options (sticky on desktop for long document comparison) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-4 flex flex-col gap-5">
             {/* Student Mode Guidance Entry Trigger */}
             <div className="rounded-xl border border-border/70 bg-card p-2 shadow-xs">
               <StudentModeToggle
@@ -662,8 +686,9 @@ export default function AITextDetector() {
               )}
             </div>
 
-            <Card className="border-border/50 shadow-premium overflow-hidden flex flex-col h-[560px] rounded-2xl bg-card">
-              <CardHeader className="bg-muted/20 border-b border-border/50 py-4 px-6">
+            {/* Document Content Card with Desktop Internal Scroll & Natural Mobile Page Flow */}
+            <Card className="border-border/50 shadow-premium overflow-hidden flex flex-col min-h-[300px] md:h-[480px] rounded-2xl bg-card">
+              <CardHeader className="bg-muted/20 border-b border-border/50 py-3.5 px-4 sm:px-5">
                 <CardTitle className="text-sm font-bold text-foreground flex items-center justify-between">
                   <span className="flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Document Content</span>
                   <div className="flex gap-2">
@@ -675,23 +700,23 @@ export default function AITextDetector() {
                       ref={fileInputRef}
                       onChange={handleFileUpload}
                     />
-                    <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg text-xs font-semibold" onClick={() => fileInputRef.current?.click()} disabled={isExtracting}>
-                      <Upload className="w-3.5 h-3.5 mr-1.5" /> Upload
+                    <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg text-xs font-semibold px-2.5" onClick={() => fileInputRef.current?.click()} disabled={isExtracting}>
+                      <Upload className="w-3 h-3 mr-1" /> Upload
                     </Button>
-                    <Button type="button" variant="ghost" size="sm" className="h-8 rounded-lg text-xs font-semibold text-muted-foreground" onClick={() => { setContent(''); setUseSample(true); }}>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 rounded-lg text-xs font-semibold text-muted-foreground px-2" onClick={() => { setContent(''); setUseSample(true); }}>
                       Try Sample
                     </Button>
                   </div>
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-4">
-                  <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Supports 25+ languages</span>
-                  <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Sentence-level detection</span>
+                <CardDescription className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-3">
+                  <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> 25+ languages</span>
+                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> Sentence-level detection</span>
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-0 flex-1 relative">
+              <CardContent className="p-0 flex-1 relative min-h-0 flex flex-col">
                 <Textarea
                   placeholder="Paste your text here (minimum 20 words) to detect AI-generated content across languages..."
-                  className="w-full h-full resize-none border-0 focus-visible:ring-0 rounded-none p-6 text-base leading-relaxed bg-transparent"
+                  className="w-full h-full min-h-[180px] resize-none border-0 focus-visible:ring-0 rounded-none p-4 sm:p-5 text-sm sm:text-base leading-relaxed bg-transparent md:overflow-y-auto"
                   value={activeText}
                   onChange={(e) => { setContent(e.target.value); setUseSample(false); }}
                   disabled={isExtracting}
@@ -705,30 +730,30 @@ export default function AITextDetector() {
                   </div>
                 )}
               </CardContent>
-              <div className="p-5 bg-muted/20 border-t border-border/50 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <span className={`text-xs font-bold px-3 py-1.5 rounded-md border ${wordCount < 50 ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border/50 bg-background text-muted-foreground'}`}>
+              <div className="p-3.5 sm:p-4 bg-muted/20 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${wordCount < 50 ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border/50 bg-background text-muted-foreground'}`}>
                     {wordCount} words
                   </span>
                 </div>
-                <div className="flex gap-3 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     onClick={() => navigate(`/humanizer?text=${encodeURIComponent(activeText)}`)}
                     disabled={!activeText.trim()}
                     variant="outline"
-                    className="flex-1 sm:flex-none h-11 px-6 font-bold border-primary/20 text-primary hover:bg-primary/10 rounded-xl"
+                    className="flex-1 sm:flex-none h-9 px-4 font-bold text-xs border-primary/20 text-primary hover:bg-primary/10 rounded-xl"
                   >
-                    <UserCheck className="w-4 h-4 mr-2" /> Humanize
+                    <UserCheck className="w-3.5 h-3.5 mr-1.5" /> Humanize
                   </Button>
                   <Button
                     onClick={handleAnalyze}
                     disabled={isAnalyzing || (!content.trim() && !useSample) || isExtracting}
-                    className="flex-1 sm:flex-none h-11 px-8 bg-primary text-white font-bold rounded-xl shadow-hover transition-all"
+                    className="flex-1 sm:flex-none h-9 px-5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-hover transition-all"
                   >
                     {isAnalyzing ? (
-                      <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Analyzing...</>
+                      <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Analyzing...</>
                     ) : (
-                      <><Shield className="w-5 h-5 mr-2" /> Detect AI</>
+                      <><Shield className="w-3.5 h-3.5 mr-1.5" /> Detect AI</>
                     )}
                   </Button>
                 </div>
@@ -736,12 +761,12 @@ export default function AITextDetector() {
             </Card>
 
             {/* Options */}
-            <Card className="border-border/50 shadow-premium rounded-2xl bg-card p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <Card className="border-border/50 shadow-premium rounded-2xl bg-card p-4 sm:p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5"><Type className="w-3.5 h-3.5" /> Content Type</label>
                   <Select value={contentType} onValueChange={(v) => setContentType(v as ContentType)}>
-                    <SelectTrigger className="h-10 rounded-lg text-sm">
+                    <SelectTrigger className="h-9 rounded-lg text-xs sm:text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -751,10 +776,10 @@ export default function AITextDetector() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5"><Languages className="w-3.5 h-3.5" /> Language Hint</label>
                   <Select value={languageHint} onValueChange={setLanguageHint}>
-                    <SelectTrigger className="h-10 rounded-lg text-sm">
+                    <SelectTrigger className="h-9 rounded-lg text-xs sm:text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -766,71 +791,11 @@ export default function AITextDetector() {
                 </div>
               </div>
             </Card>
-
-            {/* Sentence-Level Analysis */}
-            {result && (
-              <Card className="border-border/50 shadow-premium flex-1 rounded-2xl bg-card overflow-hidden animate-slide-in">
-                <CardHeader className="bg-muted/20 pb-4 pt-5 px-6 border-b border-border/50">
-                  <CardTitle className="text-sm font-bold text-foreground flex items-center justify-between">
-                    <span className="flex items-center gap-2"><TextSearch className="w-4 h-4 text-primary" /> Sentence Breakdown</span>
-                    <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-muted-foreground">
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/80"></span> Human</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-warning/80"></span> Mixed</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-destructive/80"></span> AI</span>
-                      <select
-                        value={sentenceFilter}
-                        onChange={(e) => setSentenceFilter(e.target.value as 'all' | Verdict)}
-                        className="ml-2 h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="all">All sentences</option>
-                        <option value="likely-human">Likely human</option>
-                        <option value="mixed">Mixed</option>
-                        <option value="likely-ai">Likely AI</option>
-                      </select>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 text-base leading-loose text-foreground/80">
-                  <TooltipProvider delayDuration={150}>
-                    {result.sentences
-                      .filter((s) => sentenceFilter === 'all' || s.verdict === sentenceFilter)
-                      .map((s, i) => (
-                      <Tooltip key={i}>
-                        <TooltipTrigger asChild>
-                          <span className={`cursor-pointer transition-colors duration-200 rounded px-1 mx-[1px] ${passageClass(s.verdict)}`}>
-                            {s.text}{' '}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="p-3 w-64 bg-foreground border-none shadow-xl rounded-xl text-background">
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center pb-2 border-b border-background/20">
-                              <span className="font-bold text-sm">Verdict</span>
-                              <VerdictBadge verdict={s.verdict} ai={s.aiProbability} />
-                            </div>
-                            <div className="text-xs text-background/80 leading-relaxed font-medium">
-                              {s.explanation}
-                            </div>
-                            <div className="grid grid-cols-3 gap-1 text-xs text-center pt-1">
-                              <div><div className="font-bold">{s.aiProbability}%</div><div className="text-background/60">AI</div></div>
-                              <div><div className="font-bold">{s.humanProbability}%</div><div className="text-background/60">Human</div></div>
-                              <div><div className="font-bold">{s.mixedProbability}%</div><div className="text-background/60">Mixed</div></div>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </TooltipProvider>
-                  {result.sentences.filter((s) => sentenceFilter !== 'all' && s.verdict === sentenceFilter).length === 0 && (
-                    <p className="text-sm text-muted-foreground mt-4">No sentences match the selected filter.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
 
-          {/* Right Column: Results */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            {/* Dual detector results (both engines, independent states) */}
+          {/* Right Column: Complete Results Workspace in Required Hierarchy */}
+          <div className="lg:col-span-7 flex flex-col gap-6">
+            {/* Level 1 & Level 2: Dual Detector Results (Overall result, Balanced & Strict side-by-side) */}
             {(balancedLoading || aggressiveLoading || balancedResult || aggressiveResult || balancedError || aggressiveError) ? (
               <DualDetectorResults
                 balancedResult={balancedResult}
@@ -871,59 +836,65 @@ export default function AITextDetector() {
               )
             )}
 
-            {/* Extended analysis cards — shown only once balanced result is ready */}
+            {/* Extended analysis cards — Levels 3 through 7 */}
             {result && (
               <div className="space-y-6 animate-slide-in">
                 {/* Action toolbar */}
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopySummary} className="rounded-xl gap-1.5 text-xs font-semibold">
-                    <Copy className="w-3.5 h-3.5" /> Copy Summary
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownloadReport} className="rounded-xl gap-1.5 text-xs font-semibold">
-                    <Download className="w-3.5 h-3.5" /> Download Report
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleCopy} className="rounded-xl gap-1.5 text-xs font-semibold">
-                    <Share2 className="w-3.5 h-3.5" /> Copy Text
-                  </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={handleCopySummary} className="rounded-xl gap-1.5 text-xs font-semibold h-8">
+                      <Copy className="w-3.5 h-3.5" /> Copy Summary
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDownloadReport} className="rounded-xl gap-1.5 text-xs font-semibold h-8">
+                      <Download className="w-3.5 h-3.5" /> Download Report
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleCopy} className="rounded-xl gap-1.5 text-xs font-semibold h-8">
+                      <Share2 className="w-3.5 h-3.5" /> Copy Text
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Language / content metadata */}
+                {/* Level 3: Language / content metadata & text sufficiency */}
                 <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                  <CardContent className="p-5 flex flex-wrap items-center gap-3">
-                    <Badge variant="outline" className="px-3 py-1.5 text-sm gap-1.5">
-                      <Globe className="w-3.5 h-3.5" />
-                      {result.language.primary?.name || 'Unknown'}
-                      {result.language.primary?.confidence != null && (
-                        <span className="text-muted-foreground ml-1">({result.language.primary.confidence}%)</span>
+                  <CardContent className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <Badge variant="outline" className="px-3 py-1 text-xs gap-1.5 font-semibold">
+                        <Globe className="w-3.5 h-3.5 text-primary" />
+                        {result.language.primary?.name || 'Unknown'}
+                        {result.language.primary?.confidence != null && (
+                          <span className="text-muted-foreground ml-1 font-normal">({result.language.primary.confidence}%)</span>
+                        )}
+                      </Badge>
+                      {result.language.secondary.length > 0 && (
+                        <Badge variant="secondary" className="px-3 py-1 text-xs gap-1.5 font-semibold">
+                          <Languages className="w-3.5 h-3.5" /> Multilingual
+                        </Badge>
                       )}
-                    </Badge>
-                    {result.language.secondary.length > 0 && (
-                      <Badge variant="secondary" className="px-3 py-1.5 text-sm gap-1.5">
-                        <Languages className="w-3.5 h-3.5" /> Multilingual
+                      {result.language.codeSwitched && (
+                        <Badge variant="outline" className="px-3 py-1 text-xs gap-1.5 font-semibold text-warning border-warning/30">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Code-switched
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="px-3 py-1 text-xs gap-1.5 font-semibold">
+                        <Type className="w-3.5 h-3.5 text-primary" /> {CONTENT_TYPES.find((c) => c.value === result.contentType)?.label || result.contentType}
                       </Badge>
-                    )}
-                    {result.language.codeSwitched && (
-                      <Badge variant="outline" className="px-3 py-1.5 text-sm gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Code-switched
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="px-3 py-1.5 text-sm gap-1.5">
-                      <Type className="w-3.5 h-3.5" /> {CONTENT_TYPES.find((c) => c.value === result.contentType)?.label || result.contentType}
-                    </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>
+                        {result.textSufficiency.status === 'ok'
+                          ? `Text length sufficient (${result.textSufficiency.wordCount} words).`
+                          : `Text is ${result.textSufficiency.status}. Min recommended: ${result.textSufficiency.minRecommended} words.`}
+                      </span>
+                    </div>
                   </CardContent>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 px-5 pb-4">
-                    <Info className="w-3.5 h-3.5" />
-                    {result.textSufficiency.status === 'ok'
-                      ? `Text length is sufficient (${result.textSufficiency.wordCount} words).`
-                      : `Text is ${result.textSufficiency.status}. Minimum recommended is ${result.textSufficiency.minRecommended} words.`}
-                  </div>
                 </Card>
 
                 {/* Warnings */}
                 {result.warnings.length > 0 && (
                   <div className="space-y-2">
                     {result.warnings.map((w, i) => (
-                      <div key={i} className={`rounded-xl border p-3 text-sm flex gap-3 ${
+                      <div key={i} className={`rounded-xl border p-3 text-xs sm:text-sm flex gap-3 ${
                         w.severity === 'critical'
                           ? 'bg-destructive/10 border-destructive/20 text-destructive'
                           : w.severity === 'warning'
@@ -937,33 +908,33 @@ export default function AITextDetector() {
                   </div>
                 )}
 
-                {/* Explainability */}
+                {/* Level 4: Explanation & Factors */}
                 <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                  <CardHeader className="pb-3 pt-5 px-6 border-b border-border/50">
+                  <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
                     <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-primary" /> Explanation
+                      <Sparkles className="w-4 h-4 text-primary" /> Result Explanation & Factors
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-5 sm:p-6">
                     <Tabs value={explanationMode} onValueChange={(v) => setExplanationMode(v as 'simple' | 'technical')} className="w-full">
                       <TabsList className="mb-4 grid w-full grid-cols-2">
-                        <TabsTrigger value="simple">Simple</TabsTrigger>
-                        <TabsTrigger value="technical">Technical</TabsTrigger>
+                        <TabsTrigger value="simple" className="text-xs">Simple Overview</TabsTrigger>
+                        <TabsTrigger value="technical" className="text-xs">Technical Details</TabsTrigger>
                       </TabsList>
-                      <TabsContent value="simple" className="text-sm text-foreground/80 leading-relaxed">
+                      <TabsContent value="simple" className="text-xs sm:text-sm text-foreground/85 leading-relaxed">
                         {result.explanation.simple}
                       </TabsContent>
-                      <TabsContent value="technical" className="text-sm text-foreground/80 leading-relaxed">
+                      <TabsContent value="technical" className="text-xs sm:text-sm text-foreground/85 leading-relaxed">
                         {result.explanation.technical || 'Technical details are not available for this result.'}
                       </TabsContent>
                     </Tabs>
                     {result.explanation.factors.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 pt-3 border-t border-border/40 flex flex-wrap gap-2">
                         {result.explanation.factors.map((f, i) => (
                           <Badge key={i} variant="outline" className={`text-xs ${
-                            f.direction === 'ai' ? 'border-destructive/30 text-destructive' :
-                            f.direction === 'human' ? 'border-success/30 text-success' :
-                            'border-warning/30 text-warning'
+                            f.direction === 'ai' ? 'border-destructive/30 text-destructive bg-destructive/5' :
+                            f.direction === 'human' ? 'border-success/30 text-success bg-success/5' :
+                            'border-warning/30 text-warning bg-warning/5'
                           }`}>
                             {f.label} · {f.impact}
                           </Badge>
@@ -973,34 +944,16 @@ export default function AITextDetector() {
                   </CardContent>
                 </Card>
 
-                {/* Limitations */}
-                {result.limitations.length > 0 && (
-                  <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                    <CardHeader className="pb-3 pt-5 px-6 border-b border-border/50">
-                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-warning" /> Limitations
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <ul className="space-y-2 text-sm text-foreground/80">
-                        {result.limitations.map((l, i) => (
-                          <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-warning shrink-0" /> {l}</li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Advanced Linguistic Metrics */}
+                {/* Level 5: Deeper Analysis (Linguistic Metrics, Pattern Profile & Humanization, Paragraph Timeline, Flagged Passages, Limitations) */}
                 {stats && (
                   <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                    <CardHeader className="pb-4 pt-5 px-6 border-b border-border/50">
+                    <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
                       <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                         <BarChart2 className="w-4 h-4 text-primary" /> Linguistic Metrics
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="space-y-5">
+                    <CardContent className="p-5 sm:p-6">
+                      <div className="space-y-4">
                         {[
                           { label: 'Readability', value: stats.readability, color: 'bg-primary' },
                           { label: 'Burstiness (Human trait)', value: stats.burstiness, color: 'bg-success' },
@@ -1008,12 +961,12 @@ export default function AITextDetector() {
                           { label: 'Complexity variance', value: Math.min(100, stats.complexity), color: 'bg-primary/50' },
                         ].map((m) => (
                           <div key={m.label}>
-                            <div className="flex justify-between text-sm mb-1.5 font-semibold">
+                            <div className="flex justify-between text-xs sm:text-sm mb-1 font-semibold">
                               <span className="text-muted-foreground">{m.label}</span>
                               <span className="text-foreground">{m.value}/100</span>
                             </div>
                             <div className="w-full bg-muted rounded-full h-1.5">
-                              <div className={`${m.color} h-1.5 rounded-full`} style={{ width: `${Math.max(1, m.value)}%` }}></div>
+                              <div className={`${m.color} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${Math.max(1, m.value)}%` }}></div>
                             </div>
                           </div>
                         ))}
@@ -1026,20 +979,20 @@ export default function AITextDetector() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
                     <CardContent className="p-5 flex flex-col justify-between h-full">
-                      <div className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+                      <div className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2 mb-3">
                         <Fingerprint className="w-4 h-4 text-primary" /> Pattern Profile
                       </div>
                       <div>
                         {result.modelFamilies.length > 0 ? (
                           <>
-                            <div className="text-base font-black text-foreground">{result.modelFamilies[0].family}</div>
+                            <div className="text-sm sm:text-base font-black text-foreground">{result.modelFamilies[0].family}</div>
                             <Badge variant="secondary" className="mt-2 text-xs">{result.modelFamilies[0].probability}% Match</Badge>
                             {result.modelFamilies[0].signals.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-2">{result.modelFamilies[0].signals[0]}</div>
                             )}
                           </>
                         ) : (
-                          <div className="text-sm text-muted-foreground">No strong pattern signal detected.</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">No strong pattern signal detected.</div>
                         )}
                       </div>
                     </CardContent>
@@ -1047,11 +1000,11 @@ export default function AITextDetector() {
 
                   <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
                     <CardContent className="p-5 flex flex-col justify-between h-full">
-                      <div className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+                      <div className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2 mb-3">
                         <Bot className="w-4 h-4 text-warning" /> Humanization Signal
                       </div>
                       <div>
-                        <div className="text-base font-black text-warning">{result.humanization.detected ? `${result.humanization.confidence}%` : 'None'}</div>
+                        <div className="text-sm sm:text-base font-black text-warning">{result.humanization.detected ? `${result.humanization.confidence}%` : 'None'}</div>
                         <div className="text-xs text-muted-foreground mt-2 line-clamp-2">
                           {result.humanization.explanation}
                         </div>
@@ -1062,12 +1015,12 @@ export default function AITextDetector() {
 
                 {/* Paragraph Timeline */}
                 <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                  <CardHeader className="pb-4 pt-5 px-6 border-b border-border/50">
+                  <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
                     <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                       <Network className="w-4 h-4 text-primary" /> Paragraph Timeline
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-5 sm:p-6">
                     <div className="flex items-end gap-1 h-16 w-full">
                       {result.paragraphs.map((p, i) => (
                         <TooltipProvider key={i}>
@@ -1084,7 +1037,7 @@ export default function AITextDetector() {
                                 style={{ height: `${Math.max(10, p.aiProbability)}%` }}
                               />
                             </TooltipTrigger>
-                            <TooltipContent className="bg-foreground text-background font-semibold border-none">
+                            <TooltipContent className="bg-foreground text-background font-semibold border-none text-xs">
                               Paragraph {i + 1}: {p.verdict.replace(/-/g, ' ')} ({p.aiProbability}% AI)
                             </TooltipContent>
                           </Tooltip>
@@ -1097,14 +1050,14 @@ export default function AITextDetector() {
                 {/* Flagged Passages */}
                 {result.highlights.length > 0 && (
                   <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
-                    <CardHeader className="pb-4 pt-5 px-6 border-b border-border/50">
+                    <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
                       <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                         <TextSearch className="w-4 h-4 text-primary" /> Flagged Passages
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-3">
+                    <CardContent className="p-5 sm:p-6 space-y-3">
                       {result.highlights.slice(0, 6).map((h, i) => (
-                        <div key={i} className={`p-3 rounded-xl text-sm ${passageClass(h.verdict)}`}>
+                        <div key={i} className={`p-3 rounded-xl text-xs sm:text-sm ${passageClass(h.verdict)}`}>
                           <div className="flex items-center justify-between mb-1">
                             <Badge variant="outline" className="text-[10px] uppercase">{h.verdict.replace(/-/g, ' ')}</Badge>
                             <span className="text-xs opacity-70">{h.confidence}% confidence</span>
@@ -1115,6 +1068,145 @@ export default function AITextDetector() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Limitations */}
+                {result.limitations.length > 0 && (
+                  <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
+                    <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
+                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-warning" /> Limitations & Interpretation
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5 sm:p-6">
+                      <ul className="space-y-2 text-xs sm:text-sm text-foreground/80">
+                        {result.limitations.map((l, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                            <span>{l}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Level 6: Next Action — Optimize in SEO Assistant CTA */}
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-background shadow-premium rounded-2xl overflow-hidden">
+                  <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold uppercase tracking-wide">
+                          Content Optimization
+                        </Badge>
+                        <span className="text-xs font-semibold text-muted-foreground">For Bloggers, Writers & Content Teams</span>
+                      </div>
+                      <h3 className="text-sm sm:text-base font-bold text-foreground">
+                        Ready to improve this content?
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed text-pretty">
+                        Writing for a blog, client, agency or SEO campaign? Continue with SEO, readability, plagiarism, content uniqueness and publishing-readiness analysis.
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <Button
+                        onClick={handleOptimizeInSEOAssistant}
+                        className="w-full sm:w-auto h-9 sm:h-10 px-4 sm:px-5 font-bold text-xs sm:text-sm bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-xl gap-2"
+                      >
+                        <span>Optimize in SEO Assistant &rarr;</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Level 7: Detailed Evidence — Sentence-Level Analysis (Collapsed by default) */}
+                <Card className="border-border/50 shadow-premium rounded-2xl bg-card overflow-hidden">
+                  <CardHeader className="bg-muted/20 pb-3.5 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <TextSearch className="w-4 h-4 text-primary" />
+                        <span>Sentence-Level Analysis</span>
+                        <Badge variant="secondary" className="text-xs font-semibold">
+                          {result.sentences.length}
+                        </Badge>
+                      </CardTitle>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsSentenceAnalysisExpanded(!isSentenceAnalysisExpanded)}
+                        className="h-8 rounded-lg text-xs font-semibold gap-1.5 border-border hover:bg-muted"
+                      >
+                        <span>{isSentenceAnalysisExpanded ? 'Hide Sentence Analysis' : `Explore ${result.sentences.length} sentence-level results`}</span>
+                        {isSentenceAnalysisExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+
+                  {isSentenceAnalysisExpanded && (
+                    <CardContent className="p-5 sm:p-6 space-y-4 animate-slide-in">
+                      {/* Filter & Legend */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/40 text-xs font-semibold text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/80"></span> Human</span>
+                          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-warning/80"></span> Mixed</span>
+                          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-destructive/80"></span> AI</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Filter:</span>
+                          <select
+                            value={sentenceFilter}
+                            onChange={(e) => setSentenceFilter(e.target.value as 'all' | Verdict)}
+                            className="h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="all">All sentences ({result.sentences.length})</option>
+                            <option value="likely-human">Likely human ({result.sentences.filter(s => s.verdict === 'likely-human').length})</option>
+                            <option value="mixed">Mixed ({result.sentences.filter(s => s.verdict === 'mixed').length})</option>
+                            <option value="likely-ai">Likely AI ({result.sentences.filter(s => s.verdict === 'likely-ai').length})</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Scrollable Sentence Container */}
+                      <div className="max-h-[520px] overflow-y-auto pr-2 text-sm sm:text-base leading-loose text-foreground/85">
+                        <TooltipProvider delayDuration={150}>
+                          {result.sentences
+                            .filter((s) => sentenceFilter === 'all' || s.verdict === sentenceFilter)
+                            .map((s, i) => (
+                            <Tooltip key={i}>
+                              <TooltipTrigger asChild>
+                                <span className={`cursor-pointer transition-colors duration-200 rounded px-1 mx-[1px] ${passageClass(s.verdict)}`}>
+                                  {s.text}{' '}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="p-3 w-64 bg-foreground border-none shadow-xl rounded-xl text-background">
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center pb-2 border-b border-background/20">
+                                    <span className="font-bold text-sm">Verdict</span>
+                                    <VerdictBadge verdict={s.verdict} ai={s.aiProbability} />
+                                  </div>
+                                  <div className="text-xs text-background/80 leading-relaxed font-medium">
+                                    {s.explanation}
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-1 text-xs text-center pt-1">
+                                    <div><div className="font-bold">{s.aiProbability}%</div><div className="text-background/60">AI</div></div>
+                                    <div><div className="font-bold">{s.humanProbability}%</div><div className="text-background/60">Human</div></div>
+                                    <div><div className="font-bold">{s.mixedProbability}%</div><div className="text-background/60">Mixed</div></div>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </TooltipProvider>
+                        {result.sentences.filter((s) => sentenceFilter !== 'all' && s.verdict === sentenceFilter).length === 0 && (
+                          <p className="text-sm text-muted-foreground py-4 text-center">No sentences match the selected filter.</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
 
                 {/* Diagnostics (dev only) */}
                 <DetectorDiagnosticsPanel result={balancedResult!} />

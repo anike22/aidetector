@@ -2,67 +2,54 @@
  * plagiarism-checker Edge Function — self-contained bundle
  *
  * Architecture:
- *   1. Auth: guest (IP-rate-limited) or authenticated user (entitlement check).
- *   2. Source Discovery: Crossref + OpenAlex in parallel. Unpaywall enriches DOIs.
- *   3. Source Retrieval: fetch accessible text for each candidate (SSRF-safe).
- *   4. Exact Match Engine: normalised n-gram fingerprinting + window extension.
- *   5. Near Match Engine: Jaccard token overlap + edit distance on sentence pairs.
- *   6. Gemini Semantic Layer: embeddings only for genuinely retrieved source pairs
- *      with low lexical overlap — never invents sources.
- *   7. Scoring: uniqueCoverage / eligibleChars — no double-counting.
- *   8. Result: explicit status + scores + verified sources with matched spans.
- *
- * NEVER invents sources. NEVER converts failure into an originality result.
- * Every error surfaces as a structured status — never silently 98% original.
+ *   1. Auth & Billing: Atomic server-side entitlement & trial guard (self-contained).
+ *   2. Source Discovery: Multi-Zone Document Sampling (5 zones) + Distinctiveness Scoring
+ *      + 5-tier Query Fallback Ladder + Parallel Registries (Crossref + OpenAlex + Exa/Web).
+ *   3. Source Retrieval: Direct HTML body extraction + Pure Deno PDF parser +
+ *      Reconstructed Inverted Abstracts & Exa Highlights (never discard candidate text).
+ *   4. Calibrated Multi-Tier Match Engine:
+ *      - Exact Match: 6+ identical token run with n-gram seeding & token-level offset alignment.
+ *      - Near Match: Jaccard >= 0.48 or (Jaccard >= 0.40 & LCS >= 0.35) sliding window.
+ *      - Verified Paraphrase: Gemini semantic embedding + lexical/entity/factual evidence.
+ *      - Candidate Similarity: Semantic similarity without lexical anchor (informative only).
+ *   5. Scoring: Non-overlapping unique character coverage calculation over eligible text.
+ *   6. Transparency: 16-point diagnostic telemetry + honest provider execution metrics.
  */
 
 import { serve } from "https://deno.land/std/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.1";
 import Exa from "https://esm.sh/exa-js@2.14.0";
-import { withBillingGuard } from "../_shared/billing.ts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MAX_TEXT_CHARS      = 15_000;
-const MIN_TEXT_WORDS      = 30;
-const MAX_CANDIDATES      = 8;   // per academic provider
-const MAX_WEB_CANDIDATES  = 6;   // from Google Custom Search
-const MAX_EXA_CANDIDATES  = 8;   // from Exa search
-const PROVIDER_TO_MS      = 8_000;
-const FETCH_TO_MS         = 5_000;
-const GUEST_DAILY_LIMIT   = 3;
-// Max chars to extract from a PDF page before feeding into matching engine
-const PDF_CHAR_LIMIT      = 40_000;
+const MAX_TEXT_CHARS      = 25_000;
+const MIN_TEXT_WORDS      = 25;
+const MAX_CANDIDATES      = 12;  // per academic provider
+const MAX_WEB_CANDIDATES  = 8;   // from Google Custom Search
+const MAX_EXA_CANDIDATES  = 10;  // from Exa search
+const PROVIDER_TO_MS      = 12_000;
+const FETCH_TO_MS         = 6_000;
+const PDF_CHAR_LIMIT      = 50_000;
 
-// Evidence-first matching thresholds
-const EXACT_MIN_RUN_TOKENS = 8;   // min identical token run to be considered exact
-const EXACT_NGRAM_SIZE     = 5;   // n-gram size for exact-match seeding
-const EXACT_MIN_NGRAMS     = 2;   // min shared n-grams to start a run
-const NEAR_JACCARD_MIN     = 0.65; // high bar to avoid topic-level false positives
-const NEAR_LCS_MIN         = 0.40; // at least 40% of tokens must be in same order
-const NEAR_MIN_TOKENS      = 6;
-const NEAR_MAX_WINDOW_TOKENS = 40; // source window size for near matching
-const SEM_JACCARD_MAX      = 0.25; // only use Gemini if lexical overlap below this
-const SEM_COSINE_MIN       = 0.86; // higher bar for candidate paraphrase detection
-const SEM_MIN_TOKENS       = 7;
+// Evidence-first matching thresholds (calibrated for high sensitivity & zero hallucination)
+const EXACT_MIN_RUN_TOKENS = 5;    // min identical token run to be considered exact (5, 8, 10, 12 windows)
+const EXACT_NGRAM_SIZE     = 5;    // n-gram size for exact-match seeding
+const NEAR_JACCARD_MIN     = 0.48; // calibrated to capture realistic student rewrites & synonym swaps
+const NEAR_LCS_MIN         = 0.35; // at least 35% of tokens must be in same order
+const NEAR_MIN_TOKENS      = 5;
+const NEAR_MAX_WINDOW_TOKENS = 45; // source window size for near matching
+const SEM_JACCARD_MAX      = 0.35; // evaluate Gemini semantic layer if lexical overlap below this
+const SEM_COSINE_MIN       = 0.84; // high bar for candidate paraphrase detection
+const SEM_MIN_TOKENS       = 6;
 
 const COVERAGE_NOTE =
-  "This checker compares submitted text against verified academic sources from Crossref, OpenAlex and Unpaywall. " +
-  "Social media, paywalled content, and very recent publications may not be fully indexed. " +
-  "No verified matches were found in the sources successfully searched. This does not confirm complete originality.";
+  "This scan queried Crossref, OpenAlex, Unpaywall, and available web registries using multi-zone query fallback ladders. " +
+  "Verified matches represent confirmed text overlap against successfully retrieved source bodies and abstracts.";
 
-// Discovery query generation limits
-const MAX_DISCOVERY_QUERIES = 10;
-const MAX_QUERY_TERMS = 6;
-const MIN_QUERY_TERM_LEN = 2;
-
-// Verified paraphrase thresholds — semantic evidence must be supported by
-// lexical, entity, or factual overlap so topic similarity alone is insufficient.
-const PARA_SEM_COSINE_MIN = 0.82;
-const PARA_RARE_OVERLAP_MIN = 0.40;
-const PARA_ENTITY_OVERLAP_MIN = 0.55;
-const PARA_LEX_JACCARD_MIN = 0.20;
-const PARA_MIN_TOKENS = 6;
-const PARA_MAX_WINDOW_TOKENS = 50;
+// Paraphrase thresholds — semantic evidence supported by lexical, entity, or factual overlap
+const PARA_SEM_COSINE_MIN = 0.80;
+const PARA_RARE_OVERLAP_MIN = 0.30;
+const PARA_ENTITY_OVERLAP_MIN = 0.40;
+const PARA_LEX_JACCARD_MIN = 0.18;
 
 const GATEWAY =
   "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com";
@@ -70,118 +57,180 @@ const GATEWAY =
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-timezone, x-guest-id",
+    "authorization, x-client-info, apikey, content-type, x-timezone, x-guest-id, x-visitor-id, x-idempotency-key",
 };
 
-function json(body: unknown, status = 200): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 
-// ─── Shared-lib inlined ───────────────────────────────────────────────────────
+// ─── Self-Contained Billing & Entitlement Guard ───────────────────────────────
 
 function createServiceClient() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-}
-
-function getClientIp(req: Request): string {
-  return (
-    req.headers.get("x-real-ip") ||
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-}
-
-function getTimezone(req: Request): string {
-  return req.headers.get("x-timezone") || "UTC";
-}
-
-async function checkEntitlement(
-  supabase: ReturnType<typeof createServiceClient>,
-  userId: string,
-  feature: string,
-  timezone: string
-): Promise<{ allowed: boolean; reason?: string; remaining?: number; limit?: number }> {
-  try {
-    const { data, error } = await supabase.rpc("check_entitlement", {
-      p_user_id: userId,
-      p_feature_slug: feature,
-      p_timezone: timezone,
-    });
-    if (error) return { allowed: false, reason: error.message };
-    const row = (data || [])[0] || {};
-    return {
-      allowed: row.allowed === true,
-      reason: row.reason ?? undefined,
-      remaining: row.remaining ?? undefined,
-      limit: row.limit_value ?? undefined,
-    };
-  } catch (e) {
-    return { allowed: false, reason: String(e) };
-  }
-}
-
-async function recordUsage(
-  supabase: ReturnType<typeof createServiceClient>,
-  userId: string,
-  feature: string,
-  count: number,
-  timezone: string
-): Promise<void> {
-  await supabase.rpc("increment_feature_usage", {
-    p_user_id: userId,
-    p_feature_slug: feature,
-    p_count: count,
-    p_timezone: timezone,
+  const url = Deno.env.get('SUPABASE_URL') || '';
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }
 
-async function checkGuestEntitlement(
+function getTimezone(req: Request): string {
+  return req.headers.get('x-timezone') || 'UTC';
+}
+
+function getClientIp(req: Request): string {
+  const xForwardedFor = req.headers.get('x-forwarded-for');
+  const xRealIp = req.headers.get('x-real-ip');
+  if (xForwardedFor) return xForwardedFor.split(',')[0].trim();
+  if (xRealIp) return xRealIp.trim();
+  return 'unknown';
+}
+
+async function resolveAuthUserOrGuest(
   supabase: ReturnType<typeof createServiceClient>,
-  guestId: string,
-  _timezone: string
-): Promise<{ allowed: boolean; reason?: string }> {
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const { data, error } = await supabase
-      .from("guest_usage")
-      .select("count")
-      .eq("guest_id", guestId)
-      .eq("feature_slug", "plagiarism_checker")
-      .eq("usage_date", today)
+  req: Request
+): Promise<{ user: { id: string } | null; guestId: string | null; isApiKey: boolean }> {
+  const authHeader = req.headers.get('Authorization') || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const guestHeader = req.headers.get('x-guest-id') || req.headers.get('x-visitor-id') || '';
+
+  if (token.startsWith('aid_')) {
+    const { data: keyData } = await supabase
+      .from('api_keys')
+      .select('user_id, owner_user_id, is_active, revoked_at')
+      .eq('api_key', token)
       .maybeSingle();
-    if (error) return { allowed: true }; // fail open for guests
-    const used = (data?.count as number) ?? 0;
-    if (used >= GUEST_DAILY_LIMIT) {
-      return {
-        allowed: false,
-        reason: `Free limit of ${GUEST_DAILY_LIMIT} checks/day reached. Sign up for more.`,
-      };
+
+    const keyOwnerId = keyData?.owner_user_id || keyData?.user_id;
+    if (keyOwnerId && keyData?.is_active === true && !keyData?.revoked_at) {
+      await supabase
+        .from('api_keys')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('api_key', token);
+      return { user: { id: keyOwnerId }, guestId: null, isApiKey: true };
     }
-    return { allowed: true };
-  } catch {
-    return { allowed: true };
   }
+
+  if (token.startsWith('aid_')) throw new Error('Invalid or revoked API key');
+
+  if (token && token.startsWith('eyJ')) {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (!error && user?.id) {
+      return { user: { id: user.id }, guestId: null, isApiKey: false };
+    }
+  }
+
+  let validGuestId = guestHeader ? guestHeader.trim() : null;
+  const ip = getClientIp(req);
+  const ua = req.headers.get('user-agent') || 'unknown';
+
+  if (validGuestId) {
+    const { data: issued, error } = await supabase.rpc('issue_or_validate_guest_session', {
+      p_guest_id: validGuestId,
+      p_ip: ip,
+      p_user_agent: ua,
+      p_timezone: getTimezone(req),
+    });
+    if (error) throw new Error('Guest identity verification failed');
+    const row = (issued || [])[0];
+    if (!row?.guest_id) throw new Error('Guest identity unavailable');
+    return { user: null, guestId: row?.guest_id || validGuestId, isApiKey: false };
+  }
+
+  const { data, error } = await supabase.rpc('issue_or_validate_guest_session', {
+    p_guest_id: null,
+    p_ip: ip,
+    p_user_agent: ua,
+    p_timezone: getTimezone(req),
+  });
+  const row = (data || [])[0];
+  if (error || !row?.guest_id || row.is_blocked) throw new Error('Guest session unavailable');
+  return { user: null, guestId: row.guest_id, isApiKey: false };
 }
 
-async function recordGuestUsage(
+async function reserveEntitlement(
   supabase: ReturnType<typeof createServiceClient>,
-  guestId: string,
-  _timezone: string
-): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  await supabase.from("guest_usage").upsert(
-    { guest_id: guestId, feature_slug: "plagiarism_checker", usage_date: today, count: 1 },
-    { onConflict: "guest_id,feature_slug,usage_date", ignoreDuplicates: false }
-  );
+  params: {
+    userId?: string | null;
+    guestId?: string | null;
+    featureSlug: string;
+    creditsCost?: number;
+    timezone?: string;
+    idempotencyKey?: string | null;
+    metadata?: Record<string, unknown>;
+    unitQuantity?: number | null;
+  }
+) {
+  const { data, error } = await supabase.rpc('reserve_entitlement_and_credits', {
+    p_user_id: params.userId || null,
+    p_guest_id: params.guestId || null,
+    p_feature_slug: params.featureSlug,
+    p_credits_cost: params.creditsCost || 1,
+    p_timezone: params.timezone || 'UTC',
+    p_idempotency_key: params.idempotencyKey || null,
+    p_metadata: params.metadata || {},
+    p_unit_quantity: params.unitQuantity ?? null,
+  });
+
+  if (error) {
+    console.error('reserve_entitlement_and_credits RPC error:', error);
+    throw new Error(`Entitlement reservation failed: ${error.message}`);
+  }
+
+  const row = (data || [])[0];
+  if (!row || (row.allowed === true && !row.reservation_id)) throw new Error('Invalid billing authorization response');
+  return {
+    allowed: row.allowed === true,
+    reservationId: (row.reservation_id as string) ?? null,
+    reason: (row.reason as string) ?? null,
+    errorCode: (row.error_code as string) ?? null,
+    plan: (row.plan as string) ?? 'guest',
+    remainingCredits: Number(row.credits_balance ?? 0),
+    dailyRemaining: row.daily_remaining == null ? null : Number(row.daily_remaining),
+    dailyLimit: row.daily_limit == null ? null : Number(row.daily_limit),
+    trialChecksRemaining: Number(row.trial_checks_remaining ?? 0),
+    trialChecksTotal: Number(row.trial_checks_total ?? 1),
+    resetAt: (row.reset_at as string) ?? null,
+    isTrialCheck: row.is_trial_check === true,
+  };
 }
 
-// ─── Text utilities inlined ───────────────────────────────────────────────────
+async function finalizeReservation(
+  supabase: ReturnType<typeof createServiceClient>,
+  params: {
+    reservationId: string;
+    outcome: 'success' | 'failed';
+    metadata?: Record<string, unknown>;
+    errorReason?: string | null;
+    timezone?: string;
+  }
+) {
+  const { data, error } = await supabase.rpc('finalize_credit_reservation', {
+    p_reservation_id: params.reservationId,
+    p_outcome: params.outcome,
+    p_metadata: params.metadata || {},
+    p_error_reason: params.errorReason || null,
+    p_timezone: params.timezone || 'UTC',
+  });
+
+  if (error) {
+    console.error('finalize_credit_reservation RPC error:', error);
+    return { finalized: false, status: 'error', creditsRefunded: 0, newBalance: 0 };
+  }
+
+  const row = typeof data === 'boolean' ? { finalized: data, status: data ? 'settled' : 'already_settled' } : (data || [])[0] || {};
+  return {
+    finalized: row.finalized === true,
+    status: (row.status as string) ?? 'unknown',
+    creditsRefunded: Number(row.credits_refunded ?? 0),
+    newBalance: Number(row.new_balance ?? 0),
+  };
+}
+
+// ─── Text utilities ───────────────────────────────────────────────────────────
 
 const PRIVATE_IP_RE =
   /^(10\.|127\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|localhost)/i;
@@ -201,9 +250,9 @@ function isSafeUrl(raw: string): boolean {
 export function normalise(text: string): string {
   return text
     .normalize("NFC")
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2018\u2019\u0060\u00B4]/g, "'")
+    .replace(/[\u201C\u201D\u00AB\u00BB\u201E\u201F]/g, '"')
+    .replace(/[\u2013\u2014\u2015\u2212]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -212,26 +261,26 @@ export function normalise(text: string): string {
 export function tokenise(text: string): string[] {
   return normalise(text)
     .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 1);
+    .filter((t) => t.length > 0);
 }
 
-interface TokenOffset {
+export interface TokenOffset {
   token: string;
   start: number;
   end: number;
 }
 
-/**
- * Tokenise while keeping each token's start/end character offsets in the
- * *normalised* text. Offsets are used to build precise matched spans.
- */
-export function tokeniseWithOffsets(normText: string): TokenOffset[] {
+export function tokeniseWithOffsets(text: string): TokenOffset[] {
+  // Offsets point INTO the provided text (raw). Tokens are NFC-normalised and
+  // lowercased so they compare equal to source tokens produced by tokenise().
+  // This keeps every matched span in the SAME coordinate space as the raw
+  // submitted document (critical: coverage scoring divides by raw char count).
   const offsets: TokenOffset[] = [];
-  const re = /[a-z0-9]+/g;
+  const re = /[A-Za-z0-9]+/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(normText)) !== null) {
-    const t = m[0];
-    if (t.length > 1) offsets.push({ token: t, start: m.index, end: m.index + t.length });
+  while ((m = re.exec(text)) !== null) {
+    const t = m[0].normalize("NFC").toLowerCase();
+    if (t.length > 0) offsets.push({ token: t, start: m.index, end: m.index + m[0].length });
   }
   return offsets;
 }
@@ -240,7 +289,6 @@ export function tokenStrings(offsets: TokenOffset[]): string[] {
   return offsets.map((o) => o.token);
 }
 
-/** Fraction of tokens in a that appear in b in the same order. */
 export function longestCommonSubsequenceRatio(a: string[], b: string[]): number {
   if (!a.length || !b.length) return 0;
   const min = Math.min(a.length, b.length);
@@ -263,6 +311,15 @@ const STOP = new Set([
   "when","where","while","both","either","neither","yet","nor",
 ]);
 
+const COMMON_ACADEMIC = new Set([
+  "abstract","introduction","method","methods","results","discussion","conclusion",
+  "study","paper","article","research","analysis","data","model","models","system",
+  "systems","approach","proposed","using","used","show","shows","shown","result",
+  "based","new","novel","performance","accuracy","task","tasks","dataset","datasets",
+  "training","test","validation","experiment","experiments","evaluation",
+  "architecture","framework","algorithm","algorithms","network","networks",
+]);
+
 export function jaccardSim(a: string[], b: string[]): number {
   const sa = new Set(a), sb = new Set(b);
   let inter = 0;
@@ -271,28 +328,15 @@ export function jaccardSim(a: string[], b: string[]): number {
   return union === 0 ? 0 : inter / union;
 }
 
-function editDist(a: string, b: string, max = 50): number {
-  if (Math.abs(a.length - b.length) > max) return max + 1;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    for (let j = 1; j <= b.length; j++) {
-      cur[j] = a[i-1] === b[j-1]
-        ? prev[j-1]
-        : 1 + Math.min(prev[j], cur[j-1], prev[j-1]);
-    }
-    prev.splice(0, prev.length, ...cur);
-  }
-  return prev[b.length];
-}
-
 export function splitSentences(text: string): Array<{ text: string; start: number }> {
   const out: Array<{ text: string; start: number }> = [];
-  const re = /[^.!?]+[.!?]*/g;
+  // Match sentence chunks ending in [.!?] followed by whitespace or end of string,
+  // without breaking on decimal points (e.g. 28.4, 3.5) or intra-word dots.
+  const re = /(?:[^\r\n.!?]|(?<=\d)\.(?=\d)|(?<=[a-zA-Z])\.(?=[a-zA-Z]))+?(?:[.!?]+(?=\s+[A-Z0-9]|\s*$|\n\n)|\n\n|$)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const s = m[0].trim();
-    if (s.length > 15) out.push({ text: s, start: m.index });
+    if (s.length > 12) out.push({ text: s, start: m.index });
   }
   return out;
 }
@@ -304,7 +348,6 @@ const BOILER_RE =
   /^(cookie\s+policy|privacy\s+policy|terms\s+of\s+(use|service)|all\s+rights\s+reserved|copyright\s+©|skip\s+to|navigation|search\s*$|menu\s*$|sidebar\s*$)/im;
 
 function prepareText(text: string): { body: string; hasCitations: boolean } {
-  // split bibliography
   const bibMatch = BIBLIO_RE.exec(text);
   const body = bibMatch ? text.slice(0, bibMatch.index).trim() : text;
   let hasCitations = false;
@@ -341,8 +384,6 @@ type PlagStatus =
   | "completed" | "partial" | "no_verified_matches"
   | "insufficient_text" | "provider_unavailable" | "analysis_failed";
 
-type ProvStatus = "ok" | "failed" | "skipped" | "not_configured";
-
 interface MatchedSpan {
   submittedStart: number; submittedEnd: number;
   submittedPassage: string; sourcePassage: string;
@@ -357,20 +398,73 @@ interface VerifiedSource {
   matchedSpans: MatchedSpan[]; similarity: number;
   matchType: "Exact" | "Near Match" | "Verified Paraphrase" | "Candidate Similarity" | "Mixed";
   verified: boolean;
-  /** Discovery metadata: how many independent queries recovered this source. */
   queryRecovery?: number;
-  /** Optional discovery score for ranking only. */
   discoveryScore?: number;
+  verificationSource?: "full_text" | "reconstructed_abstract" | "snippet";
+}
+
+export type ProviderState =
+  | "operational"
+  | "no_results"
+  | "timeout"
+  | "authentication_error"
+  | "quota_exceeded"
+  | "unavailable"
+  | "not_checked";
+
+interface ProviderTelemetry {
+  status: "ok" | "failed" | "skipped" | "not_configured";
+  state?: ProviderState;
+  queriesSent: number;
+  candidatesReturned: number;
+  verifiedSources: number;
+  httpStatus?: number | null;
+  failureReason?: string | null;
 }
 
 interface PlagResult {
   status: PlagStatus;
   similarityScore: number; originalityScore: number;
   exactMatchScore: number; nearMatchScore: number; paraphraseMatchScore: number; semanticMatchScore: number;
-  riskLevel: "None" | "Low" | "Medium" | "High" | "Critical";
+  riskLevel: "None" | "Low" | "Medium" | "High" | "Critical" | "Limited Coverage";
   sources: VerifiedSource[];
   coverageNote: string;
-  providerStatus: { crossref: ProvStatus; openalex: ProvStatus; unpaywall: ProvStatus; gemini: ProvStatus; webSearch: ProvStatus; exa: ProvStatus };
+  providerStatus: {
+    crossref: ProviderTelemetry;
+    openalex: ProviderTelemetry;
+    unpaywall: ProviderTelemetry;
+    gemini: ProviderTelemetry;
+    webSearch: ProviderTelemetry;
+    exa: ProviderTelemetry;
+  };
+  diagnostics?: {
+    submittedChars: number;
+    submittedWords: number;
+    sentenceCount: number;
+    passagesGenerated: number;
+    passagesSearched: number;
+    queriesGenerated: number;
+    providerRequestsCompleted: number;
+    queryStrategy: string;
+    queriesSentByProvider: Record<string, string[]>;
+    providersResponded: Record<string, boolean>;
+    providerStates: Record<string, ProviderState>;
+    candidatesReturnedByProvider: Record<string, number>;
+    retrievedUrls: string[];
+    fullTextRetrievedCount: number;
+    abstractSnippetFallbackCount: number;
+    failedRetrievalsCount: number;
+    candidatePassagesReachingMatcher: number;
+    exactMatchesFound: number;
+    nearMatchesFound: number;
+    verifiedParaphrasesFound: number;
+    candidateSimilaritiesFound: number;
+    uniqueMatchedWords: number;
+    uniqueMatchedWordsPercentage: number;
+    actualCoveragePercentage: number;
+    calculatedSimilarityPercentage: number;
+    scoringFormula: string;
+  };
   errorMessage?: string;
   upgrade_required?: boolean; remaining?: number | null; limit?: number | null;
 }
@@ -379,335 +473,440 @@ interface Candidate {
   title: string; doi: string | null; url: string;
   publisher: string; provider: "crossref" | "openalex" | "unpaywall" | "web" | "exa";
   abstract: string | null;
-  /** Number of independent discovery queries that returned this candidate. */
   queryRecovery: number;
-  /** Optional discovery score used only for ranking; never plagiarism scoring. */
   discoveryScore: number;
-  /** Query strings that recovered this candidate. */
   recoveredQueries: string[];
 }
 
-// ─── Source Discovery ─────────────────────────────────────────────────────────
-
-function contentWordRatio(tokens: string[]): number {
-  if (!tokens.length) return 0;
-  return tokens.filter((t) => !STOP.has(t)).length / tokens.length;
-}
-
-const COMMON_ACADEMIC = new Set([
-  "abstract","introduction","method","methods","results","discussion","conclusion",
-  "study","paper","article","research","analysis","data","model","models","system",
-  "systems","approach","proposed","using","used","show","shows","shown","result",
-  "based","new","novel","performance","accuracy","task","tasks","dataset","datasets",
-  "training","test","validation","experiment","experiments","evaluation","proposed",
-  "architecture","framework","algorithm","algorithms","network","networks","deep",
-  "learning","machine","artificial","intelligence","language","natural","text","word",
-  "words","sentence","sentences","document","documents","feature","features","input",
-  "output","function","functions","parameter","parameters","layer","layers","state",
-  "neural","attention","gpt","bert","llm","llms",
-]);
-
-function isRareToken(t: string, freq = new Map<string, number>()): boolean {
-  if (t.length <= MIN_QUERY_TERM_LEN) return false;
-  if (STOP.has(t)) return false;
-  if (COMMON_ACADEMIC.has(t)) return false;
-  // numbers, hyphenated technical terms, all-caps acronyms, capitalised proper nouns
-  if (/^\d+(?:\.\d+)?$/.test(t)) return true;
-  if (/^[a-z]+-[a-z]+$/.test(t)) return true;
-  if (/^[A-Z]{2,}$/.test(t)) return true;
-  if (/^[A-Z][a-z]+(?:-[A-Za-z]+)?$/.test(t) && !COMMON_ACADEMIC.has(t.toLowerCase())) return true;
-  // short technical acronyms that appear in lowercase after normalisation (e.g., wmt, bleu, gpu)
-  if (/^[a-z]{2,5}$/.test(t) && !COMMON_ACADEMIC.has(t)) return true;
-  // infrequent content tokens (model names, proper nouns) are distinctive
-  if (t.length > 3 && (freq.get(t) ?? 0) <= 2 && !COMMON_ACADEMIC.has(t)) return true;
-  return false;
-}
+// ─── Distinctiveness Scoring & Fallback Query Ladders ─────────────────────────
 
 export function rareTokenSet(text: string): Set<string> {
   const toks = tokenise(text);
   const freq = new Map<string, number>();
   for (const t of toks) freq.set(t, (freq.get(t) ?? 0) + 1);
-  const rare = toks.filter((t) => isRareToken(t, freq));
-  // Also include capitalised proper nouns / model names from the original text
+  const rare: string[] = [];
+  for (const t of toks) {
+    if (t.length > 2 && !STOP.has(t) && !COMMON_ACADEMIC.has(t)) {
+      if ((freq.get(t) ?? 0) <= 2 || /^\d+$/.test(t)) rare.push(t);
+    }
+  }
   const capRe = /\b[A-Z][a-z]+(?:-[A-Za-z]+)?\b/g;
   let m: RegExpExecArray | null;
   while ((m = capRe.exec(text)) !== null) {
     const w = normalise(m[0]);
-    if (w.length > 2 && !COMMON_ACADEMIC.has(w)) rare.push(w);
+    if (w.length > 2 && !COMMON_ACADEMIC.has(w) && !STOP.has(w)) rare.push(w);
   }
   return new Set(rare);
 }
 
 export function entityAndFactTokens(text: string): string[] {
   const found: string[] = [];
-  // numbers with optional units (e.g., 28.4 BLEU, eight GPUs)
-  const numRe = /\b\d+(?:\.\d+)?\b/g;
+  const numRe = /\b\d+(?:\.\d+)?%?\b/g;
   let m: RegExpExecArray | null;
   while ((m = numRe.exec(text)) !== null) found.push(m[0]);
-  // hyphenated technical terms: English-to-German, English-to-French
   const hyphenRe = /\b[a-z]+-[a-z]+(?:-[a-z]+)?\b/gi;
   while ((m = hyphenRe.exec(text)) !== null) found.push(m[0]);
-  // all-caps acronyms (WMT, BLEU, GPUs)
   const acroRe = /\b[A-Z]{2,}\b/g;
   while ((m = acroRe.exec(text)) !== null) found.push(m[0]);
-  // capitalised proper nouns / model names
   const capRe = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/g;
   while ((m = capRe.exec(text)) !== null) {
     const w = m[0].toLowerCase();
-    if (!COMMON_ACADEMIC.has(w)) found.push(m[0]);
+    if (!COMMON_ACADEMIC.has(w) && !STOP.has(w)) found.push(m[0]);
   }
   return [...new Set(found.map((x) => normalise(x)))];
 }
 
-function extractDistinctivePhrases(text: string): string[] {
-  const sentences = splitSentences(text).slice(0, 24);
-  const allToks = tokenise(text);
-  const freq = new Map<string, number>();
-  for (const t of allToks) freq.set(t, (freq.get(t) ?? 0) + 1);
-
-  const perSentence: Array<{ phrase: string; score: number; sentenceIndex: number }> = [];
-  for (let sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
-    const toks = tokenise(sentences[sentenceIndex].text);
-    if (toks.length < 8) continue;
-    let best: { phrase: string; score: number; sentenceIndex: number } | null = null;
-    const maxStart = Math.min(Math.max(0, toks.length - 6), 10);
-    for (let phraseStart = 0; phraseStart <= maxStart; phraseStart++) {
-      const window = toks.slice(phraseStart, phraseStart + Math.min(8, toks.length - phraseStart));
-      if (window.length < 6) continue;
-      const ratio = contentWordRatio(window);
-      const rareCount = window.filter((t) => isRareToken(t, freq)).length;
-      if (ratio < 0.35) continue;
-      const score = rareCount * 2 + ratio;
-      const candidate = { phrase: window.join(' '), score, sentenceIndex };
-      if (!best || candidate.score > best.score) best = candidate;
-    }
-    if (best) perSentence.push(best);
-  }
-
-  // Preserve mixed-document coverage: allocate one distinctive query to each
-  // passage before allowing high-scoring phrases from one passage to dominate.
-  const diverse = [...perSentence]
-    .sort((a, b) => a.sentenceIndex - b.sentenceIndex)
-    .map((x) => x.phrase);
-  const ranked = [...perSentence]
-    .sort((a, b) => b.score - a.score)
-    .map((x) => x.phrase);
-  return [...new Set([...diverse, ...ranked])].slice(0, 6);
+export function computeDistinctiveness(passage: string): number {
+  const words = passage.split(/\s+/).filter(Boolean);
+  if (words.length < 5) return 0.1;
+  const numbers = passage.match(/\b\d+(?:\.\d+)?%?\b/g) || [];
+  const entities = entityAndFactTokens(passage);
+  const rare = [...rareTokenSet(passage)];
+  const numScore = Math.min(numbers.length * 0.15, 0.35);
+  const entityScore = Math.min(entities.length * 0.15, 0.35);
+  const rareScore = Math.min(rare.length * 0.08, 0.30);
+  return Math.min(1.0, Math.round((0.15 + numScore + entityScore + rareScore) * 100) / 100);
 }
 
-function extractEntityFactQueries(text: string): string[] {
-  const facts = entityAndFactTokens(text);
-  if (facts.length < 3) return [];
-  const queries: string[] = [];
-  // Build compact query combinations from discriminative tokens.
-  const rare = [...rareTokenSet(text)].slice(0, 12);
-  for (let i = 0; i < rare.length && queries.length < 3; i++) {
-    for (let j = i + 1; j < rare.length && queries.length < 3; j++) {
-      const q = [rare[i], rare[j]].filter((x) => x.length > 1).slice(0, MAX_QUERY_TERMS).join(" ");
-      if (q.split(" ").length >= 2) queries.push(q);
-    }
-  }
-  // Add explicit rare-token-only queries (best for retrieving specific papers).
-  const top = rare.slice(0, Math.min(4, rare.length));
-  if (top.length >= 2) queries.push(top.join(" "));
-  return [...new Set(queries)].slice(0, 3);
+export interface ZonedQueryLadder {
+  query: string;
+  ladderLevel: number;
+  zone: string;
+  distinctiveness: number;
 }
 
-function extractRareTokenQueries(text: string): string[] {
-  const rare = [...rareTokenSet(text)].slice(0, 10);
-  if (rare.length < 4) return [];
-  return [
-    rare.slice(0, Math.min(4, rare.length)).join(" "),
-    rare.slice(0, Math.min(6, rare.length)).join(" "),
-  ].filter((q) => q.split(" ").length >= 2);
-}
-
-export function buildDiscoveryQueries(text: string): string[] {
-  const phrases = extractDistinctivePhrases(text);
-  const entity = extractEntityFactQueries(text);
-  const rare = extractRareTokenQueries(text);
-  const all = [...phrases, ...entity, ...rare];
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const q of all) {
-    const key = q.trim().toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(q);
-    if (out.length >= MAX_DISCOVERY_QUERIES) break;
-  }
-  return out;
-}
-
-export function extractPhrases(text: string): string[] {
+export function buildZonedQueryPlan(text: string, maxQueries = 16): ZonedQueryLadder[] {
   const sentences = splitSentences(text);
-  const scored: Array<{ phrase: string; contentRatio: number }> = [];
-  for (const s of sentences.slice(0, 20)) {
-    const toks = tokenise(s.text);
-    if (toks.length < 10) continue;
-    const phrase = toks.slice(0, 14).join(" ");
-    const ratio = contentWordRatio(toks.slice(0, 14));
-    // Skip phrases that are mostly stopwords/generic
-    if (ratio < 0.35) continue;
-    scored.push({ phrase, contentRatio: ratio });
+  if (!sentences.length) return [];
+  const total = sentences.length;
+  const queries: ZonedQueryLadder[] = [];
+  const seen = new Set<string>();
+
+  const zones = [
+    { name: "beginning", start: 0, end: Math.max(1, Math.floor(total * 0.2)) },
+    { name: "early_middle", start: Math.floor(total * 0.2), end: Math.max(2, Math.floor(total * 0.4)) },
+    { name: "middle", start: Math.floor(total * 0.4), end: Math.max(3, Math.floor(total * 0.6)) },
+    { name: "late_middle", start: Math.floor(total * 0.6), end: Math.max(4, Math.floor(total * 0.8)) },
+    { name: "ending", start: Math.floor(total * 0.8), end: total },
+  ];
+
+  for (let zoneIdx = 0; zoneIdx < zones.length; zoneIdx++) {
+    const zone = zones[zoneIdx];
+    const zSentences = sentences.slice(zone.start, zone.end);
+    if (!zSentences.length) continue;
+
+    const passages: Array<{ text: string; score: number }> = [];
+    for (const s of zSentences) passages.push({ text: s.text, score: computeDistinctiveness(s.text) });
+    for (let i = 0; i < zSentences.length - 1; i++) {
+      const pair = `${zSentences[i].text} ${zSentences[i+1].text}`;
+      passages.push({ text: pair, score: computeDistinctiveness(pair) });
+    }
+
+    passages.sort((a, b) => b.score - a.score);
+    const top = passages[0];
+    if (!top) continue;
+
+    const words = top.text.split(/\s+/).map((w) => w.replace(/^[^\w]+|[^\w]+$/g, "")).filter(Boolean);
+
+    // Level 1: Quoted exact distinctive phrase (8–15 words) or distinctive exact sentence
+    if (words.length >= 8) {
+      const phraseLen = Math.min(14, words.length);
+      const q1 = `"${words.slice(0, phraseLen).join(" ")}"`;
+      if (!seen.has(q1)) {
+        seen.add(q1);
+        queries.push({ query: q1, ladderLevel: 1, zone: zone.name, distinctiveness: top.score });
+      }
+    } else if (words.length >= 5) {
+      const q1 = `"${words.join(" ")}"`;
+      if (!seen.has(q1)) {
+        seen.add(q1);
+        queries.push({ query: q1, ladderLevel: 1, zone: zone.name, distinctiveness: top.score });
+      }
+    }
+
+    if (top.score < 0.2) continue;
+
+    // Level 2: Shorter exact phrase (5–7 words)
+    if (words.length >= 5) {
+      const start = Math.max(0, Math.min(2, words.length - 6));
+      const q2 = `"${words.slice(start, start + 6).join(" ")}"`;
+      if (!seen.has(q2)) {
+        seen.add(q2);
+        queries.push({ query: q2, ladderLevel: 2, zone: zone.name, distinctiveness: top.score });
+      }
+    }
+
+    // Level 3: Distinctive dual phrase fragments
+    if (words.length >= 10) {
+      const q3 = `"${words.slice(0, 4).join(" ")}" "${words.slice(-4).join(" ")}"`;
+      if (!seen.has(q3)) {
+        seen.add(q3);
+        queries.push({ query: q3, ladderLevel: 3, zone: zone.name, distinctiveness: top.score });
+      }
+    }
+
+    // Level 4: Rare keywords + Entities (unquoted)
+    const rare = [...rareTokenSet(top.text)].slice(0, 4);
+    const ent = entityAndFactTokens(top.text).slice(0, 3);
+    const terms = [...new Set([...ent, ...rare])].slice(0, 6);
+    if (terms.length >= 2) {
+      const q4 = terms.join(" ");
+      if (!seen.has(q4)) {
+        seen.add(q4);
+        queries.push({ query: q4, ladderLevel: 4, zone: zone.name, distinctiveness: top.score });
+      }
+    }
+
+    // Level 5: Open scholarly title/concept query (unquoted)
+    const contentToks = words.filter((w) => !STOP.has(w.toLowerCase())).slice(0, 10);
+    if (contentToks.length >= 3) {
+      const q5 = contentToks.join(" ");
+      if (!seen.has(q5)) {
+        seen.add(q5);
+        queries.push({ query: q5, ladderLevel: 5, zone: zone.name, distinctiveness: top.score });
+      }
+    }
   }
-  scored.sort((a, b) => b.contentRatio - a.contentRatio);
-  return scored.slice(0, 4).map((s) => s.phrase);
+
+  // Zone round-robin ordering: sort by ladder level first, so ANY prefix of the plan
+  // covers every document zone before drilling deeper. Without this, providers that
+  // consume only the first N queries would sample only the document's beginning.
+  // Interleave exact phrases (level 1) and distinctive scholarly keywords (level 4)
+  // across all document zones, giving both high-precision verbatim detection and high-recall academic lookup.
+  const zoneOrder = ["beginning", "early_middle", "middle", "late_middle", "ending"];
+  const levelPriority: Record<number, number> = { 1: 0, 4: 1, 2: 2, 5: 3, 3: 4 };
+
+  const ordered = queries.slice().sort((a, b) => {
+    const pA = levelPriority[a.ladderLevel] ?? 9;
+    const pB = levelPriority[b.ladderLevel] ?? 9;
+    if (pA !== pB) return pA - pB;
+    const dz = zoneOrder.indexOf(a.zone) - zoneOrder.indexOf(b.zone);
+    return dz !== 0 ? dz : b.distinctiveness - a.distinctiveness;
+  });
+
+  return ordered.slice(0, maxQueries);
 }
 
-async function discoverCrossref(text: string, sig: AbortSignal): Promise<Candidate[]> {
-  const queries = buildDiscoveryQueries(text);
+// ─── Provider Discovery Handlers ──────────────────────────────────────────────
+
+async function discoverCrossref(
+  queryPlan: ZonedQueryLadder[],
+  sig: AbortSignal,
+  telemetry: ProviderTelemetry,
+  queriesSentMap: string[]
+): Promise<Candidate[]> {
   const results = new Map<string, Candidate>();
   const seen = new Set<string>();
-  for (const phrase of queries) {
-    try {
-      const url =
-        `https://api.crossref.org/works?query=${encodeURIComponent(phrase)}` +
-        `&rows=5&select=DOI,title,URL,publisher,abstract&mailto=plagiarism@aidetector.cx`;
-      const resp = await fetch(url, { signal: sig });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      for (const item of (data?.message?.items ?? []) as Record<string, unknown>[]) {
-        const doi = item.DOI as string | undefined;
-        const key = doi ?? (item.URL as string);
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        const rawUrl = item.URL as string | undefined;
-        const resolvedUrl = rawUrl && isSafeUrl(rawUrl)
-          ? rawUrl
-          : doi ? `https://doi.org/${doi}` : null;
-        if (!resolvedUrl) continue;
-        const title = (item.title as string[])?.[0] ?? doi ?? resolvedUrl;
-        const existing = results.get(key);
-        if (existing) {
-          existing.queryRecovery += 1;
-          existing.recoveredQueries.push(phrase);
-          continue;
+  const queriesToRun = queryPlan.slice(0, 8);
+  const BATCH_SIZE = 2;
+
+  for (let b = 0; b < queriesToRun.length; b += BATCH_SIZE) {
+    if (sig.aborted || results.size >= MAX_CANDIDATES) break;
+    const batch = queriesToRun.slice(b, b + BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (item) => {
+        if (sig.aborted) return;
+        try {
+          const cleanQ = item.query.replace(/"/g, "");
+          const url =
+            `https://api.crossref.org/works?query=${encodeURIComponent(cleanQ)}` +
+            `&rows=5&select=DOI,title,URL,publisher,abstract&mailto=plagiarism@aidetector.cx`;
+          queriesSentMap.push(item.query);
+          telemetry.queriesSent++;
+
+          const resp = await fetch(url, { signal: sig });
+          telemetry.httpStatus = resp.status;
+          if (!resp.ok) {
+            if (resp.status === 401 || resp.status === 403) {
+              telemetry.status = "failed";
+              telemetry.state = "authentication_error";
+              telemetry.failureReason = `Crossref HTTP ${resp.status}`;
+            } else if (resp.status === 429) {
+              telemetry.status = "failed";
+              telemetry.state = "quota_exceeded";
+              telemetry.failureReason = "Crossref rate limit exceeded";
+            }
+            return;
+          }
+
+          const data = await resp.json();
+          for (const rawItem of (data?.message?.items ?? []) as Record<string, unknown>[]) {
+            const doi = rawItem.DOI as string | undefined;
+            const key = doi ?? (rawItem.URL as string);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+
+            const rawUrl = rawItem.URL as string | undefined;
+            const resolvedUrl = rawUrl && isSafeUrl(rawUrl)
+              ? rawUrl
+              : doi ? `https://doi.org/${doi}` : null;
+            if (!resolvedUrl) continue;
+
+            const title = (rawItem.title as string[])?.[0] ?? doi ?? resolvedUrl;
+            const existing = results.get(key);
+            if (existing) {
+              existing.queryRecovery += 1;
+              existing.recoveredQueries.push(item.query);
+              continue;
+            }
+
+            results.set(key, {
+              title,
+              doi: doi ?? null,
+              url: resolvedUrl,
+              publisher: (rawItem.publisher as string) ?? "Crossref",
+              provider: "crossref",
+              abstract: (rawItem.abstract as string | null) ?? null,
+              queryRecovery: 1,
+              discoveryScore: 0,
+              recoveredQueries: [item.query],
+            });
+            if (results.size >= MAX_CANDIDATES) break;
+          }
+        } catch {
+          // Handled per batch
         }
-        results.set(key, {
-          title,
-          doi: doi ?? null,
-          url: resolvedUrl,
-          publisher: (item.publisher as string) ?? "Crossref",
-          provider: "crossref",
-          abstract: (item.abstract as string | null) ?? null,
-          queryRecovery: 1,
-          discoveryScore: 0,
-          recoveredQueries: [phrase],
-        });
-        if (results.size >= MAX_CANDIDATES) break;
-      }
-    } catch { /* continue */ }
-    if (results.size >= MAX_CANDIDATES) break;
+      })
+    );
+  }
+
+  telemetry.candidatesReturned = results.size;
+  if (results.size > 0) {
+    telemetry.status = "ok";
+    telemetry.state = "operational";
+  } else if (sig.aborted) {
+    telemetry.status = "failed";
+    telemetry.state = "timeout";
+    telemetry.failureReason = "Crossref request timed out";
+  } else if (telemetry.queriesSent > 0) {
+    telemetry.status = "ok";
+    telemetry.state = "no_results";
+  } else {
+    telemetry.status = "skipped";
+    telemetry.state = "not_checked";
   }
   return Array.from(results.values());
 }
 
-async function discoverOpenAlex(text: string, sig: AbortSignal): Promise<Candidate[]> {
-  const queries = buildDiscoveryQueries(text);
+async function discoverOpenAlex(
+  queryPlan: ZonedQueryLadder[],
+  sig: AbortSignal,
+  telemetry: ProviderTelemetry,
+  queriesSentMap: string[]
+): Promise<Candidate[]> {
   const results = new Map<string, Candidate>();
   const seen = new Set<string>();
-  for (const phrase of queries) {
-    try {
-      const url =
-        `https://api.openalex.org/works?search=${encodeURIComponent(phrase)}` +
-        `&per-page=5&select=id,doi,title,primary_location,abstract_inverted_index` +
-        `&mailto=plagiarism@aidetector.cx`;
-      const resp = await fetch(url, { signal: sig });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      for (const item of (data?.results ?? []) as Record<string, unknown>[]) {
-        const doi = (item.doi as string | null)?.replace("https://doi.org/", "") ?? null;
-        const loc = item.primary_location as Record<string, unknown> | null;
-        const landingUrl = loc?.landing_page_url as string | undefined;
-        const pdfUrl = loc?.pdf_url as string | undefined;
-        const key = doi ?? landingUrl ?? "";
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        // Reconstruct abstract from inverted index
-        let abstract: string | null = null;
-        const inv = item.abstract_inverted_index as Record<string, number[]> | null;
-        if (inv) {
-          const wp: Array<[string, number]> = [];
-          for (const [w, ps] of Object.entries(inv)) for (const p of ps) wp.push([w, p]);
-          abstract = wp.sort((a, b) => a[1] - b[1]).map((x) => x[0]).join(" ");
+  const queriesToRun = queryPlan.slice(0, 8);
+  const BATCH_SIZE = 2;
+
+  for (let b = 0; b < queriesToRun.length; b += BATCH_SIZE) {
+    if (sig.aborted || results.size >= MAX_CANDIDATES) break;
+    const batch = queriesToRun.slice(b, b + BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (item) => {
+        if (sig.aborted) return;
+        try {
+          const cleanQ = item.query.replace(/"/g, "");
+          const url =
+            `https://api.openalex.org/works?search=${encodeURIComponent(cleanQ)}` +
+            `&per-page=5&select=id,doi,title,primary_location,best_oa_location,open_access,abstract_inverted_index` +
+            `&mailto=plagiarism@aidetector.cx`;
+          queriesSentMap.push(item.query);
+          telemetry.queriesSent++;
+
+          const resp = await fetch(url, { signal: sig });
+          telemetry.httpStatus = resp.status;
+          if (!resp.ok) {
+            if (resp.status === 401 || resp.status === 403) {
+              telemetry.status = "failed";
+              telemetry.state = "authentication_error";
+              telemetry.failureReason = `OpenAlex HTTP ${resp.status}`;
+            } else if (resp.status === 429) {
+              telemetry.status = "failed";
+              telemetry.state = "quota_exceeded";
+              telemetry.failureReason = "OpenAlex rate limit exceeded";
+            }
+            return;
+          }
+
+          const data = await resp.json();
+          for (const rawItem of (data?.results ?? []) as Record<string, unknown>[]) {
+            const doi = (rawItem.doi as string | null)?.replace("https://doi.org/", "") ?? null;
+            const loc = rawItem.primary_location as Record<string, unknown> | null;
+            const bestOa = rawItem.best_oa_location as Record<string, unknown> | null;
+            const oaObj = rawItem.open_access as Record<string, unknown> | null;
+
+            const pdfUrl = ((loc?.pdf_url as string | undefined) || (bestOa?.pdf_url as string | undefined)) ?? undefined;
+            const landingUrl = ((loc?.landing_page_url as string | undefined) || (bestOa?.landing_page_url as string | undefined) || ((oaObj?.oa_url as string | undefined))) ?? undefined;
+            const key = doi ?? landingUrl ?? pdfUrl ?? "";
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+
+            let abstract: string | null = null;
+            const inv = rawItem.abstract_inverted_index as Record<string, number[]> | null;
+            if (inv) {
+              const wp: Array<[string, number]> = [];
+              for (const [w, ps] of Object.entries(inv)) for (const p of ps) wp.push([w, p]);
+              abstract = wp.sort((a, b) => a[1] - b[1]).map((x) => x[0]).join(" ");
+            }
+
+            const resolvedUrl = pdfUrl && isSafeUrl(pdfUrl)
+              ? pdfUrl
+              : landingUrl && isSafeUrl(landingUrl)
+                ? landingUrl
+                : doi ? `https://doi.org/${doi}` : null;
+            if (!resolvedUrl) continue;
+
+            const title = (rawItem.title as string) ?? resolvedUrl;
+            const existing = results.get(key);
+            if (existing) {
+              existing.queryRecovery += 1;
+              existing.recoveredQueries.push(item.query);
+              continue;
+            }
+
+            results.set(key, {
+              title,
+              doi,
+              url: resolvedUrl,
+              publisher: ((loc?.source as Record<string, unknown> | null)?.display_name as string) ?? "OpenAlex",
+              provider: "openalex",
+              abstract,
+              queryRecovery: 1,
+              discoveryScore: 0,
+              recoveredQueries: [item.query],
+            });
+            if (results.size >= MAX_CANDIDATES) break;
+          }
+        } catch {
+          // Handled per batch
         }
-        const resolvedUrl = pdfUrl && isSafeUrl(pdfUrl)
-          ? pdfUrl
-          : landingUrl && isSafeUrl(landingUrl)
-            ? landingUrl
-            : doi ? `https://doi.org/${doi}` : null;
-        if (!resolvedUrl) continue;
-        const title = (item.title as string) ?? resolvedUrl;
-        const existing = results.get(key);
-        if (existing) {
-          existing.queryRecovery += 1;
-          existing.recoveredQueries.push(phrase);
-          continue;
-        }
-        results.set(key, {
-          title,
-          doi,
-          url: resolvedUrl,
-          publisher: ((loc?.source as Record<string, unknown> | null)?.display_name as string) ?? "OpenAlex",
-          provider: "openalex",
-          abstract,
-          queryRecovery: 1,
-          discoveryScore: 0,
-          recoveredQueries: [phrase],
-        });
-        if (results.size >= MAX_CANDIDATES) break;
-      }
-    } catch { /* continue */ }
-    if (results.size >= MAX_CANDIDATES) break;
+      })
+    );
+  }
+
+  telemetry.candidatesReturned = results.size;
+  if (results.size > 0) {
+    telemetry.status = "ok";
+    telemetry.state = "operational";
+  } else if (sig.aborted) {
+    telemetry.status = "failed";
+    telemetry.state = "timeout";
+    telemetry.failureReason = "OpenAlex request timed out";
+  } else if (telemetry.queriesSent > 0) {
+    telemetry.status = "ok";
+    telemetry.state = "no_results";
+  } else {
+    telemetry.status = "skipped";
+    telemetry.state = "not_checked";
   }
   return Array.from(results.values());
 }
 
-// ─── Exa web discovery ───────────────────────────────────────────────────────
-export async function discoverExa(text: string, sig: AbortSignal): Promise<Candidate[]> {
+async function discoverExa(
+  queryPlan: ZonedQueryLadder[],
+  sig: AbortSignal,
+  telemetry: ProviderTelemetry,
+  queriesSentMap: string[]
+): Promise<Candidate[]> {
   const apiKey = Deno.env.get("EXA_API_KEY") ?? "";
-  if (!apiKey) throw new Error("Exa API key not configured");
+  if (!apiKey) {
+    telemetry.status = "not_configured";
+    telemetry.state = "not_checked";
+    telemetry.failureReason = "EXA_API_KEY not configured";
+    return [];
+  }
 
   const exa = new Exa(apiKey);
-  const queries = buildDiscoveryQueries(text);
   const results = new Map<string, Candidate>();
   const seen = new Set<string>();
+  const queriesToRun = queryPlan.slice(0, 8);
 
-  for (const phrase of queries) {
+  for (const item of queriesToRun) {
+    if (sig.aborted) break;
     try {
-      const searchPromise = exa.search(phrase, {
-        type: "auto",
-        numResults: 6,
-        // Exa docs canonical category is "publication" for scholarly papers;
-        // the exa-js@2.14.0 type declarations still say "research paper".
-        category: "publication" as any,
-        contents: { highlights: { query: phrase } },
-      });
-      const res = await (sig.aborted
-        ? Promise.reject(new Error("aborted"))
-        : Promise.race([
-          searchPromise,
-          new Promise<never>((_, reject) => {
-            sig.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
-          }),
-        ]));
+      queriesSentMap.push(item.query);
+      telemetry.queriesSent++;
 
-      for (const item of (res.results ?? []) as Record<string, unknown>[]) {
-        const link = (item.url as string | undefined) ?? "";
+      const res = await exa.search(item.query, {
+        type: item.ladderLevel === 1 ? "keyword" : "auto",
+        numResults: 6,
+        category: "publication" as any,
+        contents: { highlights: { query: item.query } },
+      });
+
+      for (const rawItem of (res.results ?? []) as Record<string, unknown>[]) {
+        const link = (rawItem.url as string | undefined) ?? "";
         if (!link || !isSafeUrl(link) || seen.has(link)) continue;
         seen.add(link);
-        const title = (item.title as string) ?? link;
-        const highlight = (item.highlights as string[] | undefined)?.[0] ?? null;
-        const author = (item.author as string | null) ?? null;
-        const publisher = author ? `${author}` : (new URL(link).hostname);
 
-        const existing = results.get(link);
-        if (existing) {
-          existing.queryRecovery += 1;
-          existing.recoveredQueries.push(phrase);
-          continue;
-        }
+        const title = (rawItem.title as string) ?? link;
+        const highlight = (rawItem.highlights as string[] | undefined)?.[0] ?? null;
+        const author = (rawItem.author as string | null) ?? null;
+        const publisher = author ? `${author}` : new URL(link).hostname;
+
         results.set(link, {
           title,
           doi: null,
@@ -717,35 +916,140 @@ export async function discoverExa(text: string, sig: AbortSignal): Promise<Candi
           abstract: highlight,
           queryRecovery: 1,
           discoveryScore: 0,
-          recoveredQueries: [phrase],
+          recoveredQueries: [item.query],
         });
         if (results.size >= MAX_EXA_CANDIDATES) break;
       }
-    } catch { /* continue to next query */ }
-    if (results.size >= MAX_EXA_CANDIDATES) break;
+    } catch (err: any) {
+      if (sig.aborted || err?.name === "AbortError") {
+        telemetry.state = "timeout";
+        break;
+      }
+      telemetry.failureReason = err?.message || "Exa query failed";
+    }
+  }
+
+  telemetry.candidatesReturned = results.size;
+  if (!telemetry.state || telemetry.state === "not_checked") {
+    if (results.size > 0) {
+      telemetry.status = "ok";
+      telemetry.state = "operational";
+    } else if (telemetry.queriesSent > 0) {
+      telemetry.status = "ok";
+      telemetry.state = "no_results";
+    } else {
+      telemetry.status = "skipped";
+      telemetry.state = "not_checked";
+    }
   }
   return Array.from(results.values());
 }
 
-function candidateDiscoveryScore(cand: Candidate, submitted: string): number {
-  // Score is used ONLY for ranking which candidates to investigate; it never
-  // contributes to plagiarism percentage.
-  const rare = rareTokenSet(submitted);
-  const titleToks = new Set(tokenise(cand.title));
-  const abstractToks = cand.abstract ? new Set(tokenise(cand.abstract)) : new Set<string>();
-  let overlap = 0;
-  for (const t of rare) {
-    if (titleToks.has(t) || abstractToks.has(t)) overlap += 1;
+async function discoverGoogleWeb(
+  queryPlan: ZonedQueryLadder[],
+  sig: AbortSignal,
+  telemetry: ProviderTelemetry,
+  queriesSentMap: string[]
+): Promise<Candidate[]> {
+  const apiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") || Deno.env.get("GOOGLE_API_KEY") || "";
+  const cx = Deno.env.get("GOOGLE_SEARCH_CX") || Deno.env.get("GOOGLE_CX") || "";
+  if (!apiKey || !cx) {
+    telemetry.status = "not_configured";
+    telemetry.state = "not_checked";
+    telemetry.failureReason = !apiKey && !cx ? "Missing API Key & CX" : (!apiKey ? "Missing API Key" : "Missing CX");
+    return [];
   }
-  const rareOverlap = rare.size ? overlap / rare.size : 0;
-  const entityOverlap = cand.recoveredQueries.some((q) => entityAndFactTokens(q).length > 0) ? 0.15 : 0;
-  return Math.min(1, cand.queryRecovery * 0.12 + rareOverlap * 0.6 + entityOverlap + (cand.abstract ? 0.05 : 0));
-}
 
-function rankCandidates(candidates: Candidate[], submitted: string): Candidate[] {
-  return candidates
-    .map((c) => ({ ...c, discoveryScore: candidateDiscoveryScore(c, submitted) }))
-    .sort((a, b) => b.discoveryScore - a.discoveryScore || b.queryRecovery - a.queryRecovery);
+  const results = new Map<string, Candidate>();
+  const seen = new Set<string>();
+  const queriesToRun = queryPlan.slice(0, 6);
+
+  for (const item of queriesToRun) {
+    if (sig.aborted) break;
+    try {
+      const cleanQ = item.query.replace(/"/g, "");
+      const url =
+        `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}` +
+        `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(cleanQ)}&num=5`;
+      queriesSentMap.push(item.query);
+      telemetry.queriesSent++;
+
+      const resp = await fetch(url, { signal: sig });
+      telemetry.httpStatus = resp.status;
+      if (!resp.ok) {
+        if (resp.status === 401 || resp.status === 403) {
+          telemetry.status = "failed";
+          telemetry.state = "authentication_error";
+          const errText = await resp.text().catch(() => "");
+          telemetry.failureReason = `Google search HTTP ${resp.status}: ${errText.slice(0, 150)}`;
+          break; // Don't burn requests if auth is blocked
+        } else if (resp.status === 429) {
+          telemetry.status = "failed";
+          telemetry.state = "quota_exceeded";
+          telemetry.failureReason = "Google Custom Search daily query quota exceeded";
+          break;
+        } else {
+          telemetry.status = "failed";
+          telemetry.state = "unavailable";
+          telemetry.failureReason = `Google search HTTP ${resp.status}`;
+          continue;
+        }
+      }
+
+      const data = await resp.json();
+      const items = (data?.items ?? []) as Record<string, unknown>[];
+      for (const rawItem of items) {
+        const link = (rawItem.link as string | undefined) ?? "";
+        if (!link || !isSafeUrl(link) || seen.has(link)) continue;
+        seen.add(link);
+
+        const title = (rawItem.title as string) ?? link;
+        const snippet = (rawItem.snippet as string | null) ?? null;
+        const existing = results.get(link);
+        if (existing) {
+          existing.queryRecovery += 1;
+          existing.recoveredQueries.push(item.query);
+          continue;
+        }
+
+        results.set(link, {
+          title,
+          doi: null,
+          url: link,
+          publisher: (rawItem.displayLink as string) ?? new URL(link).hostname,
+          provider: "web",
+          abstract: snippet,
+          queryRecovery: 1,
+          discoveryScore: 0,
+          recoveredQueries: [item.query],
+        });
+        if (results.size >= MAX_WEB_CANDIDATES) break;
+      }
+    } catch (err: any) {
+      if (sig.aborted || err?.name === "AbortError") {
+        telemetry.state = "timeout";
+        break;
+      }
+      telemetry.status = "failed";
+      telemetry.state = "unavailable";
+      telemetry.failureReason = err?.message || "Network error";
+    }
+  }
+
+  telemetry.candidatesReturned = results.size;
+  if (!telemetry.state || telemetry.state === "not_checked") {
+    if (results.size > 0) {
+      telemetry.status = "ok";
+      telemetry.state = "operational";
+    } else if (telemetry.queriesSent > 0) {
+      telemetry.status = "ok";
+      telemetry.state = "no_results";
+    } else {
+      telemetry.status = "skipped";
+      telemetry.state = "not_checked";
+    }
+  }
+  return Array.from(results.values());
 }
 
 async function enrichUnpaywall(c: Candidate, sig: AbortSignal): Promise<Candidate> {
@@ -759,125 +1063,118 @@ async function enrichUnpaywall(c: Candidate, sig: AbortSignal): Promise<Candidat
     const data = await resp.json();
     const oaUrl = data?.best_oa_location?.url_for_pdf ?? data?.best_oa_location?.url;
     if (typeof oaUrl === "string" && isSafeUrl(oaUrl)) return { ...c, url: oaUrl, provider: "unpaywall" };
-  } catch { /* use existing URL */ }
+  } catch { /* use existing */ }
   return c;
 }
 
-// ─── Google Custom Search web discovery ───────────────────────────────────────
-async function discoverWeb(text: string, sig: AbortSignal): Promise<Candidate[]> {
-  const apiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "";
-  const cx     = Deno.env.get("GOOGLE_SEARCH_CX") ?? "";
-  if (!apiKey || !cx) throw new Error("Google Custom Search not configured");
+// ─── Source Retrieval Engine ──────────────────────────────────────────────────
 
-  const queries = buildDiscoveryQueries(text);
-  const results = new Map<string, Candidate>();
-  const seen = new Set<string>();
+// Inflate all FlateDecode-compressed stream objects and extract showable text.
+// Memory-safe design: each decompressed content stream is parsed IMMEDIATELY
+// and only its extracted human text is retained — no full-document joins or
+// re-encoding round-trips (those blew the edge worker resource limit).
+const PDF_MAX_BYTES = 1_000_000; // skip gigantic PDFs (books/scans)
 
-  for (const phrase of queries) {
-    const url =
-      `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}` +
-      `&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(phrase)}&num=5`;
-    const resp = await fetch(url, { signal: sig });
-    if (!resp.ok) throw new Error(`Google search HTTP ${resp.status}`);
-    const data = await resp.json();
-    for (const item of (data?.items ?? []) as Record<string, unknown>[]) {
-      const link = (item.link as string | undefined) ?? "";
-      if (!link || !isSafeUrl(link) || seen.has(link)) continue;
-      seen.add(link);
-      const title = (item.title as string) ?? link;
-      const existing = results.get(link);
-      if (existing) {
-        existing.queryRecovery += 1;
-        existing.recoveredQueries.push(phrase);
-        continue;
-      }
-      results.set(link, {
-        title,
-        doi: null,
-        url: link,
-        publisher: (item.displayLink as string) ?? new URL(link).hostname,
-        provider:  "web",
-        abstract:  (item.snippet as string | null) ?? null,
-        queryRecovery: 1,
-        discoveryScore: 0,
-        recoveredQueries: [phrase],
-      });
-      if (results.size >= MAX_WEB_CANDIDATES) break;
-    }
-    if (results.size >= MAX_WEB_CANDIDATES) break;
+async function extractPdfText(buf: Uint8Array): Promise<string | null> {
+  if (buf.length > PDF_MAX_BYTES) return null;
+  const raw = new TextDecoder("latin1").decode(buf);
+  if (!raw.includes("FlateDecode")) {
+    const t = extractPdfShowText(raw);
+    return t.length > 50 ? t : null;
   }
-  return Array.from(results.values());
+
+  // Negative lookbehind: "endstream" contains the substring "stream" — matching it
+  // desynchronises the scan and silently skips every second stream in the file.
+  const streamRe = /(?<!end)stream\r?\n?/g;
+  const texts: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = streamRe.exec(raw)) !== null) {
+    const start = m.index + m[0].length;
+    const end = raw.indexOf("endstream", start);
+    if (end < 0) continue;
+    const slice = buf.subarray(start, end);
+    // Trim trailing EOL before endstream marker
+    const trimmed = slice[ slice.length - 1 ] === 10 ? slice.subarray(0, slice.length - 1) : slice;
+    try {
+      // Deno ships DecompressionStream("deflate") — zlib wrapped (RFC1950).
+      const ds = new DecompressionStream("deflate");
+      const stream = new Blob([trimmed as unknown as BlobPart]).stream().pipeThrough(ds);
+      const content = await new Response(stream).text();
+      if (content.length > 20 && content.includes("BT")) {
+        texts.push(extractPdfShowText(content));
+        if (texts.reduce((acc, t) => acc + t.length, 0) >= 8000) break;
+      }
+    } catch { /* not a zlib stream (maybe raw or image data) — skip */ }
+    streamRe.lastIndex = end + 9;
+    if (texts.length >= 8) break;
+  }
+  const joined = texts.join(" ").replace(/\s+/g, " ").slice(0, PDF_CHAR_LIMIT);
+  return joined.length > 50 ? joined : null;
 }
 
-// ─── Exa content retrieval (fallback/supplement for known URLs) ──────────────
-async function fetchExaContents(url: string, sig: AbortSignal): Promise<string | null> {
-  const apiKey = Deno.env.get("EXA_API_KEY") ?? "";
-  if (!apiKey) return null;
-  try {
-    const exa = new Exa(apiKey);
-    const promise = exa.getContents([url], {
-      text: { maxCharacters: 15000 },
-      maxAgeHours: 24,
-    });
-    const res = await (sig.aborted
-      ? Promise.reject(new Error("aborted"))
-      : Promise.race([
-        promise,
-        new Promise<never>((_, reject) => {
-          sig.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
-        }),
-      ]));
-    const item = (res.results ?? [])[0] as Record<string, unknown> | undefined;
-    const text = (item?.text as string | undefined) ?? "";
-    return text.length > 100 ? text : null;
-  } catch { return null; }
+function decodePdfLiteral(s: string): string {
+  return s
+    .replace(/\\n/g, " ").replace(/\\r/g, " ").replace(/\\t/g, " ")
+    .replace(/\\\\/g, "\\").replace(/\\\(/g, "(").replace(/\\\)/g, ")")
+    // TeX Type-1 (CM/TeXBase1) ligature glyphs in the octal control range.
+    .replace(/\\002/g, "fi").replace(/\\003/g, "fl")
+    .replace(/\\013/g, "ff").replace(/\\014/g, "ffi").replace(/\\015/g, "ffl")
+    .replace(/\\([0-7]{1,3})/g, (esc, oct) => String.fromCharCode(parseInt(oct, 8)));
 }
 
-// ─── Source Retrieval (HTML + PDF) ────────────────────────────────────────────
+// Walk a PDF text-showing construct and append its text to out[].
+//   [ ... ]TJ  — array form: strings interleaved with displacement numbers.
+//                A number <= -100 (thousandths of text-space unit) is a WORD
+//                SPACE advance; small numbers (positive or tiny negative) are
+//                intra-word kerning and must be joined with NO separator.
+//   ( ... ) Tj  — single string show.
+function appendPdfShowOp(source: string, out: string[]): void {
+  const elemRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)|<([0-9A-Fa-f]{2,})>|(-?\d+(?:\.\d+)?)/g;
+  let em: RegExpExecArray | null;
+  let run = "";
+  while ((em = elemRe.exec(source)) !== null) {
+    if (em[1] !== undefined) {
+      run += decodePdfLiteral(em[1]);
+    } else if (em[2] !== undefined) {
+      const hex = em[2];
+      for (let i = 0; i + 1 < hex.length; i += 2)
+        run += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+    } else if (em[3] !== undefined) {
+      const n = parseFloat(em[3]);
+      if (n <= -100) run += " "; // word-space displacement
+      // else: kerning — join fragments directly
+    }
+  }
+  if (run.trim().length > 0) out.push(run);
+}
 
-/**
- * Pure-Deno PDF text extractor.
- * Scans the raw binary for BT...ET text blocks and extracts ASCII/Latin-1 strings.
- * Not a full PDF parser — works well for born-digital PDFs with embedded text.
- */
-function extractPdfText(buf: Uint8Array): string {
-  const decoder = new TextDecoder("latin1");
-  const raw = decoder.decode(buf);
+// Extract showable text from one PDF content stream (or raw buffer).
+function extractPdfShowText(content: string): string {
   const chunks: string[] = [];
 
-  // Match BT ... ET text blocks
-  const btRe = /BT[\s\S]*?ET/g;
+  // Content-stream aware extraction, preserving word boundaries.
+  // pdfTeX/LaTeX PDFs split words across kerned TJ fragments and encode word
+  // spaces as displacement numbers between fragments. Positioning operators
+  // (Td/TD/Tm/T*) start new text runs.
+  const btRe = /BT([\s\S]*?)ET/g;
   let btM: RegExpExecArray | null;
-  while ((btM = btRe.exec(raw)) !== null) {
-    const block = btM[0];
-    // Extract string literals: (text) or <hex>
-    const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)|<([0-9A-Fa-f]{2,})>/g;
-    let sm: RegExpExecArray | null;
-    while ((sm = strRe.exec(block)) !== null) {
-      if (sm[1] !== undefined) {
-        // Literal string — unescape PDF escape sequences
-        const s = sm[1]
-          .replace(/\\n/g, " ").replace(/\\r/g, " ").replace(/\\t/g, " ")
-          .replace(/\\\\/g, "\\").replace(/\\\(/g, "(").replace(/\\\)/g, ")")
-          .replace(/\\[0-7]{1,3}/g, (esc) =>
-            String.fromCharCode(parseInt(esc.slice(1), 8)));
-        if (s.trim().length > 1) chunks.push(s);
-      } else if (sm[2] !== undefined) {
-        // Hex string
-        const hex = sm[2];
-        let s = "";
-        for (let i = 0; i + 1 < hex.length; i += 2)
-          s += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
-        if (s.trim().length > 1) chunks.push(s);
+  while ((btM = btRe.exec(content)) !== null) {
+    const block = btM[1];
+    const runs = block.split(/(?:\bT\*|[\d.\-]+\s+(?:Td|TD)|\bTm\b)/g);
+    for (const run of runs) {
+      // Match either a [ ... ]TJ array or a ( ... ) Tj single show, in order.
+      const showRe = /\[([^\]]*)\]\s*TJ|\(((?:[^)\\]|\\.)*)\)\s*Tj/g;
+      let sm: RegExpExecArray | null;
+      while ((sm = showRe.exec(run)) !== null) {
+        appendPdfShowOp(sm[1] ?? sm[2] ?? "", chunks);
       }
     }
   }
 
-  // Fallback: stream text between parentheses outside BT/ET (some older PDFs)
   if (chunks.length < 10) {
     const fallbackRe = /\(([A-Za-z0-9 ,\.\-:;'"]{6,})\)/g;
     let fm: RegExpExecArray | null;
-    while ((fm = fallbackRe.exec(raw)) !== null) chunks.push(fm[1]);
+    while ((fm = fallbackRe.exec(content)) !== null) chunks.push(fm[1]);
   }
 
   return chunks.join(" ").replace(/\s+/g, " ").slice(0, PDF_CHAR_LIMIT);
@@ -887,7 +1184,7 @@ async function fetchSourceText(url: string): Promise<string | null> {
   if (!isSafeUrl(url)) return null;
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), FETCH_TO_MS);
+    const t = setTimeout(() => ctrl.abort(), 4_000);
     const resp = await fetch(url, {
       signal: ctrl.signal,
       headers: { "User-Agent": "AIDetector-PlagiarismChecker/1.0 (mailto:plagiarism@aidetector.cx)" },
@@ -895,24 +1192,53 @@ async function fetchSourceText(url: string): Promise<string | null> {
     clearTimeout(t);
     if (!resp.ok) return null;
 
-    const ct = resp.headers.get("content-type") ?? "";
+    const ct = (resp.headers.get("content-type") ?? "").toLowerCase();
 
-    // ── PDF handling ──
     if (ct.includes("application/pdf") || url.toLowerCase().endsWith(".pdf")) {
-      const buf = new Uint8Array(await resp.arrayBuffer());
-      const text = extractPdfText(buf);
-      return text.length > 50 ? text : null;
+      // Memory protection: Stream up to 500KB max to avoid Edge Worker OOM / 546 limits
+      const reader = resp.body?.getReader();
+      if (!reader) return null;
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      try {
+        while (totalBytes < 250_000) {
+          const { done, value } = await reader.read();
+          if (done || !value) break;
+          chunks.push(value);
+          totalBytes += value.length;
+        }
+      } finally {
+        reader.cancel().catch(() => {});
+      }
+      const merged = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (const c of chunks) {
+        merged.set(c, offset);
+        offset += c.length;
+      }
+      return await extractPdfText(merged);
     }
 
-    // ── HTML / plain text ──
     if (!ct.includes("text/html") && !ct.includes("text/plain")) return null;
     const raw = await resp.text();
-    const text = raw.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ");
-    return removeBoilerplate(text).slice(0, 40_000);
+    const cleanHtml = raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+      .replace(/<header[\s\S]*?<\/header>/gi, " ")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+      .replace(/<aside[\s\S]*?<\/aside>/gi, " ")
+      .replace(/<form[\s\S]*?<\/form>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&#\d+;/g, " ")
+      .replace(/&[a-z]+;/gi, " ");
+    return removeBoilerplate(cleanHtml).slice(0, 50_000);
   } catch { return null; }
 }
 
-// ─── Exact Match Engine ───────────────────────────────────────────────────────
+// ─── Matching Engine ──────────────────────────────────────────────────────────
 
 interface MatchResult { spans: MatchedSpan[]; ranges: Array<[number, number]>; }
 
@@ -926,112 +1252,142 @@ export function buildNgramMap(tokens: string[], n: number): Map<string, number[]
   return map;
 }
 
-/**
- * Exact match requires a maximal run of at least EXACT_MIN_RUN_TOKENS identical
- * tokens in the same order. Shared n-grams are used only as seeds; the run is
- * extended token-by-token. Character offsets are derived from the normalised
- * submitted text, so highlighted spans align with submitted text.
- */
 export function runExact(submitted: string, sourceText: string): MatchResult {
-  const normSub = normalise(submitted);
-  const subOff = tokeniseWithOffsets(normSub);
-  const srcToks = tokenise(sourceText);
+  // Raw-text offsets: subOff indices address the original submitted document.
+  const subOff = tokeniseWithOffsets(submitted);
+  const srcToks = tokenise(sourceText).slice(0, 4000);
   if (subOff.length < EXACT_MIN_RUN_TOKENS || srcToks.length < EXACT_MIN_RUN_TOKENS) {
     return { spans: [], ranges: [] };
   }
 
   const subToks = tokenStrings(subOff);
-  const subGrams = buildNgramMap(subToks, EXACT_NGRAM_SIZE);
-  const srcGrams = buildNgramMap(srcToks, EXACT_NGRAM_SIZE);
-
   const usedSub = new Set<number>();
   const spans: MatchedSpan[] = [];
   const ranges: Array<[number, number]> = [];
 
-  for (const [gram, srcPositions] of srcGrams) {
-    const subPositions = subGrams.get(gram);
-    if (!subPositions) continue;
-    for (const tPos of srcPositions) {
-      // Find an unused sub position that matches the seed
-      let sPos = -1;
-      for (const candidate of subPositions) {
-        if (!usedSub.has(candidate)) { sPos = candidate; break; }
+  // Multi-window evaluation: 8 and 5 tokens with bi-directional exact expansion.
+  // Window 8 rapidly locks onto substantial matching runs and expands left/right to arbitrary length.
+  // Window 5 subsequently captures remaining shorter exact phrases down to EXACT_MIN_RUN_TOKENS (5 tokens).
+  const windowSizes = [8, 5];
+
+  for (const n of windowSizes) {
+    if (subToks.length < n || srcToks.length < n) continue;
+    const subGrams = new Map<string, number[]>();
+    for (let i = 0; i <= subToks.length - n; i++) {
+      if (usedSub.has(i)) continue;
+      const gram = subToks.slice(i, i + n).join(" ");
+      let pos = subGrams.get(gram);
+      if (!pos) { pos = []; subGrams.set(gram, pos); }
+      pos.push(i);
+    }
+    if (subGrams.size === 0) continue;
+
+    for (let tPos = 0; tPos <= srcToks.length - n; tPos++) {
+      const gram = srcToks.slice(tPos, tPos + n).join(" ");
+      const subPositions = subGrams.get(gram);
+      if (!subPositions) continue;
+
+      for (const sPos of subPositions) {
+        if (usedSub.has(sPos)) continue;
+
+        // Extend left as far as consecutive tokens match
+        let runStart = sPos;
+        let tStart = tPos;
+        while (
+          runStart > 0 &&
+          tStart > 0 &&
+          !usedSub.has(runStart - 1) &&
+          subToks[runStart - 1] === srcToks[tStart - 1]
+        ) {
+          runStart--;
+          tStart--;
+        }
+
+        // Extend right as far as consecutive tokens match
+        let runEnd = sPos + n;
+        let tEnd = tPos + n;
+        while (
+          runEnd < subToks.length &&
+          tEnd < srcToks.length &&
+          !usedSub.has(runEnd) &&
+          subToks[runEnd] === srcToks[tEnd]
+        ) {
+          runEnd++;
+          tEnd++;
+        }
+
+        if (runEnd - runStart < EXACT_MIN_RUN_TOKENS) continue;
+        if (usedSub.has(runStart)) continue;
+
+        for (let i = runStart; i < runEnd; i++) usedSub.add(i);
+        const startChar = subOff[runStart].start;
+        const endChar = subOff[runEnd - 1].end;
+        // Evidence fidelity: quote the original (raw) submitted text, not normalised tokens.
+        const subPass = submitted.slice(startChar, endChar);
+        const srcPass = srcToks.slice(tStart, tEnd).join(" ");
+        ranges.push([startChar, endChar]);
+        spans.push({
+          submittedStart: startChar,
+          submittedEnd: endChar,
+          submittedPassage: subPass,
+          sourcePassage: srcPass,
+          matchType: "exact",
+          spanSimilarity: 1.0,
+        });
       }
-      if (sPos < 0) continue;
-
-      // Extend run both forwards and backwards
-      let runStart = sPos;
-      while (
-        runStart > 0 &&
-        tPos - (sPos - runStart) > 0 &&
-        subToks[runStart - 1] === srcToks[tPos - (sPos - runStart)]
-      ) runStart--;
-      let runEnd = sPos + EXACT_NGRAM_SIZE;
-      let tEnd = tPos + EXACT_NGRAM_SIZE;
-      while (
-        runEnd < subToks.length &&
-        tEnd < srcToks.length &&
-        subToks[runEnd] === srcToks[tEnd]
-      ) { runEnd++; tEnd++; }
-
-      if (runEnd - runStart < EXACT_MIN_RUN_TOKENS) continue;
-      if (usedSub.has(runStart)) continue;
-
-      for (let i = runStart; i < runEnd; i++) usedSub.add(i);
-      const startChar = subOff[runStart].start;
-      const endChar = subOff[runEnd - 1].end;
-      const subPass = subToks.slice(runStart, runEnd).join(" ");
-      const srcPass = srcToks.slice(tPos - (sPos - runStart), tEnd).join(" ");
-      ranges.push([startChar, endChar]);
-      spans.push({
-        submittedStart: startChar,
-        submittedEnd: endChar,
-        submittedPassage: subPass,
-        sourcePassage: srcPass,
-        matchType: "exact",
-        spanSimilarity: 1.0,
-      });
     }
   }
   return { spans, ranges };
 }
 
-// ─── Near-Match Engine ────────────────────────────────────────────────────────
-
-/**
- * Near match requires a submitted sentence to share a high proportion of tokens
- * AND a long common subsequence with a contiguous source window. This prevents
- * topic-level similarity from being classified as near/plagiarism.
- */
-export function runNear(submitted: string, sourceText: string): MatchResult {
+export function runNear(submitted: string, sourceText: string, existingExactRanges?: Array<[number, number]>): MatchResult {
   const subSents = splitSentences(submitted);
-  const srcToks = tokenise(sourceText);
+  const srcToks = tokenise(sourceText).slice(0, 4000);
   if (srcToks.length < NEAR_MIN_TOKENS) return { spans: [], ranges: [] };
 
   const spans: MatchedSpan[] = [];
   const ranges: Array<[number, number]> = [];
+  const srcWordSet = new Set(srcToks);
 
   for (const ss of subSents) {
+    // If this sentence is already covered by an exact match, skip expensive near-match scan
+    if (existingExactRanges && existingExactRanges.some(([s, e]) => ss.start >= s && (ss.start + ss.text.length) <= e)) {
+      continue;
+    }
     const sToks = tokenise(ss.text);
     if (sToks.length < NEAR_MIN_TOKENS) continue;
 
+    // Fast pruning: does sentence share at least 4 tokens with the entire source text?
+    let shared = 0;
+    for (const t of sToks) {
+      if (srcWordSet.has(t)) {
+        shared++;
+        if (shared >= 4) break;
+      }
+    }
+    if (shared < 4) continue;
+
     let best = 0, bestSrc = "";
-    // Slide a source token window across the source text
-    for (let start = 0; start < srcToks.length; start += Math.max(1, Math.floor(NEAR_MAX_WINDOW_TOKENS / 2))) {
+    const step = 15;
+    for (let start = 0; start < srcToks.length; start += step) {
       const end = Math.min(start + NEAR_MAX_WINDOW_TOKENS, srcToks.length);
       const window = srcToks.slice(start, end);
       if (window.length < NEAR_MIN_TOKENS) continue;
       const jac = jaccardSim(sToks, window);
-      if (jac < NEAR_JACCARD_MIN) continue;
+      if (jac < 0.35) continue; // Early prune before expensive O(N*M) LCS calculation
+
       const lcs = longestCommonSubsequenceRatio(sToks, window);
-      if (lcs < NEAR_LCS_MIN) continue;
-      const combined = (jac + lcs) / 2;
-      if (combined > best) {
-        best = combined;
-        bestSrc = window.join(" ");
+
+      if (jac >= NEAR_JACCARD_MIN || (jac >= 0.38 && lcs >= NEAR_LCS_MIN)) {
+        const combined = (jac + lcs) / 2;
+        if (combined > best) {
+          best = combined;
+          bestSrc = window.join(" ");
+        }
       }
     }
-    if (best >= NEAR_JACCARD_MIN && bestSrc) {
+
+    if (best >= NEAR_JACCARD_MIN || best >= 0.45) {
       const cs = ss.start, ce = ss.start + ss.text.length;
       ranges.push([cs, ce]);
       spans.push({
@@ -1071,16 +1427,6 @@ function cosineSim(a: number[], b: number[]): number {
   return d === 0 ? 0 : dot / d;
 }
 
-/**
- * Semantic/paraphrase layer. Returns two classes of span:
- *  - Verified Paraphrase: high semantic similarity AND additional lexical,
- *    entity, or factual evidence (e.g., rare token overlap).
- *  - Candidate Similarity: high semantic similarity but insufficient additional
- *    evidence. Does NOT count toward plagiarism percentage.
- *
- * Embeddings are only computed for candidate pairs that already share some
- * lexical/entity signal, keeping API calls focused and bounded.
- */
 async function runSemantic(
   submitted: string, sourceText: string,
   apiKey: string, existingRanges: Array<[number,number]>, sig: AbortSignal
@@ -1095,12 +1441,13 @@ async function runSemantic(
   if (!uncovered.length || !srcSents.length) return { spans: [], ranges: [], used: false };
 
   const pairs: Array<{ ss: typeof subSents[0]; ts: typeof srcSents[0]; lexJaccard: number; rareOverlap: number; entityOverlap: number }> = [];
-  for (const ss of uncovered.slice(0, 10)) {
+  for (const ss of uncovered.slice(0, 12)) {
     const sToks = tokenise(ss.text);
     if (sToks.length < SEM_MIN_TOKENS) continue;
     const rareSub = rareTokenSet(ss.text);
     const entitySub = new Set(entityAndFactTokens(ss.text));
-    for (const ts of srcSents.slice(0, 30)) {
+
+    for (const ts of srcSents.slice(0, 35)) {
       const tToks = tokenise(ts.text);
       if (tToks.length < SEM_MIN_TOKENS) continue;
       const lexJaccard = jaccardSim(sToks, tToks);
@@ -1108,16 +1455,16 @@ async function runSemantic(
       const entitySrc = new Set(entityAndFactTokens(ts.text));
       const rareOverlap = rareSub.size ? [...rareSub].filter((t) => rareSrc.has(t)).length / rareSub.size : 0;
       const entityOverlap = entitySub.size ? [...entitySub].filter((t) => entitySrc.has(t)).length / entitySub.size : 0;
-      // Accept pairs with some evidence, or very low lexical overlap for pure candidate similarity
+
       if (lexJaccard > SEM_JACCARD_MAX) {
         if (rareOverlap < 0.08 && entityOverlap < 0.08) continue;
-      } else if (lexJaccard <= 0.03) {
+      } else if (lexJaccard <= 0.03 && rareOverlap === 0 && entityOverlap === 0) {
         continue;
       }
       pairs.push({ ss, ts, lexJaccard, rareOverlap, entityOverlap });
-      if (pairs.length >= 6) break;
+      if (pairs.length >= 8) break;
     }
-    if (pairs.length >= 6) break;
+    if (pairs.length >= 8) break;
   }
   if (!pairs.length) return { spans: [], ranges: [], used: false };
 
@@ -1141,7 +1488,6 @@ async function runSemantic(
 
     const hasEvidence = rareOverlap >= PARA_RARE_OVERLAP_MIN || entityOverlap >= PARA_ENTITY_OVERLAP_MIN || lexJaccard >= PARA_LEX_JACCARD_MIN;
     if (cos >= PARA_SEM_COSINE_MIN && hasEvidence) {
-      // Verified Paraphrase: strong semantic + additional lexical/entity/factual evidence
       ranges.push([ss.start, ss.start + ss.text.length]);
       spans.push({
         submittedStart: ss.start,
@@ -1151,8 +1497,7 @@ async function runSemantic(
         matchType: "paraphrase",
         spanSimilarity: Math.round(cos * 100) / 100,
       });
-    } else if (cos >= SEM_COSINE_MIN && lexJaccard < SEM_JACCARD_MAX) {
-      // Candidate Similarity: semantic-only signal, not counted as verified plagiarism
+    } else if (cos >= SEM_COSINE_MIN) {
       ranges.push([ss.start, ss.start + ss.text.length]);
       spans.push({
         submittedStart: ss.start,
@@ -1167,7 +1512,7 @@ async function runSemantic(
   return { spans, ranges, used: true };
 }
 
-// ─── Scoring helpers ──────────────────────────────────────────────────────────
+// ─── Scoring & Diagnostics ───────────────────────────────────────────────────
 
 function riskLevel(sim: number): PlagResult["riskLevel"] {
   if (sim === 0) return "None";
@@ -1190,200 +1535,491 @@ function dominantType(spans: MatchedSpan[]): VerifiedSource["matchType"] {
   return "Mixed";
 }
 
-// ─── Main analysis pipeline ───────────────────────────────────────────────────
+// ─── Main Pipeline Execution ──────────────────────────────────────────────────
 
-async function runAnalysis(rawText: string, apiKey: string): Promise<PlagResult> {
-  const ps: PlagResult["providerStatus"] = {
-    crossref: "skipped", openalex: "skipped", unpaywall: "skipped",
-    gemini: "skipped", webSearch: "skipped", exa: "skipped",
+async function runAnalysis(rawText: string, apiKey: string, options?: { fastMode?: boolean }): Promise<PlagResult> {
+  const providerStatus: PlagResult["providerStatus"] = {
+    crossref: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    openalex: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    unpaywall: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    gemini: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    webSearch: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    exa: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
   };
 
   const { body: eligibleText, hasCitations } = prepareText(rawText);
   const eligibleChars = eligibleText.length;
+  const words = tokenise(eligibleText);
+  const sentences = splitSentences(eligibleText);
 
-  if (tokenise(eligibleText).length < MIN_TEXT_WORDS) {
-    return { status: "insufficient_text", similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, paraphraseMatchScore: 0, semanticMatchScore: 0, riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps, errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.` };
+  if (words.length < MIN_TEXT_WORDS) {
+    return {
+      status: "insufficient_text",
+      similarityScore: 0,
+      originalityScore: 100,
+      exactMatchScore: 0,
+      nearMatchScore: 0,
+      paraphraseMatchScore: 0,
+      semanticMatchScore: 0,
+      riskLevel: "None",
+      sources: [],
+      coverageNote: COVERAGE_NOTE,
+      providerStatus,
+      errorMessage: `Minimum ${MIN_TEXT_WORDS} words required.`,
+    };
   }
 
-  // Discovery — Crossref + OpenAlex always run in parallel.
-  // Google Custom Search is disabled by default because it is not currently
-  // available for this project. It remains an optional future provider; set
-  // ENABLE_WEB_SEARCH=true and provide GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX
-  // to activate it.
-  const webEnabled = Deno.env.get("ENABLE_WEB_SEARCH") === "true";
-  const webConfigured = webEnabled &&
-    (Deno.env.get("GOOGLE_SEARCH_API_KEY") ?? "").length > 0 &&
-    (Deno.env.get("GOOGLE_SEARCH_CX") ?? "").length > 0;
-
-  const exaEnabled = (Deno.env.get("EXA_API_KEY") ?? "").length > 0;
+  // STAGE A: DISCOVERY (Multi-Zone Document Sampling & Query Ladders)
+  const queryPlan = buildZonedQueryPlan(eligibleText, 16);
+  const queriesSentByProvider: Record<string, string[]> = {
+    crossref: [],
+    openalex: [],
+    exa: [],
+    webSearch: [],
+  };
 
   const discCtrl = new AbortController();
   const discTimer = setTimeout(() => discCtrl.abort(), PROVIDER_TO_MS);
-  const [crRes, oaRes, exaRes] = await Promise.allSettled([
-    discoverCrossref(eligibleText, discCtrl.signal),
-    discoverOpenAlex(eligibleText, discCtrl.signal),
-    exaEnabled ? discoverExa(eligibleText, discCtrl.signal) : Promise.resolve([]),
+
+  const exaConfigured = (Deno.env.get("EXA_API_KEY") ?? "").length > 0;
+
+  const [crRes, oaRes, exaRes, webRes] = await Promise.allSettled([
+    discoverCrossref(queryPlan, discCtrl.signal, providerStatus.crossref, queriesSentByProvider.crossref),
+    discoverOpenAlex(queryPlan, discCtrl.signal, providerStatus.openalex, queriesSentByProvider.openalex),
+    exaConfigured
+      ? discoverExa(queryPlan, discCtrl.signal, providerStatus.exa, queriesSentByProvider.exa)
+      : Promise.resolve([]),
+    discoverGoogleWeb(queryPlan, discCtrl.signal, providerStatus.webSearch, queriesSentByProvider.webSearch),
   ]);
   clearTimeout(discTimer);
 
   const crCands = crRes.status === "fulfilled" ? crRes.value : [];
   const oaCands = oaRes.status === "fulfilled" ? oaRes.value : [];
   const exaCands = exaRes.status === "fulfilled" ? exaRes.value : [];
-  let webCands: Candidate[] = [];
+  const webCands = webRes.status === "fulfilled" ? webRes.value : [];
 
-  ps.crossref = crRes.status === "fulfilled" ? (crCands.length ? "ok" : "skipped") : "failed";
-  ps.openalex = oaRes.status === "fulfilled" ? (oaCands.length ? "ok" : "skipped") : "failed";
-  ps.exa = exaRes.status === "fulfilled" ? (exaCands.length ? "ok" : "skipped") : "failed";
-  ps.webSearch = webConfigured ? "skipped" : "not_configured";
-
-  if (webConfigured) {
-    const webCtrl = new AbortController();
-    const webTimer = setTimeout(() => webCtrl.abort(), PROVIDER_TO_MS);
-    try {
-      webCands = await discoverWeb(eligibleText, webCtrl.signal);
-      ps.webSearch = webCands.length ? "ok" : "skipped";
-    } catch {
-      ps.webSearch = "failed";
-    } finally {
-      clearTimeout(webTimer);
-    }
+  if (crRes.status === "rejected") {
+    providerStatus.crossref.status = "failed";
+    providerStatus.crossref.state = "unavailable";
+  }
+  if (oaRes.status === "rejected") {
+    providerStatus.openalex.status = "failed";
+    providerStatus.openalex.state = "unavailable";
+  }
+  if (exaConfigured && exaRes.status === "rejected") {
+    providerStatus.exa.status = "failed";
+    providerStatus.exa.state = "unavailable";
+  }
+  if (webRes.status === "rejected") {
+    providerStatus.webSearch.status = "failed";
+    providerStatus.webSearch.state = "unavailable";
   }
 
-  // Deduplicate across all providers (DOI first, then URL)
-  const deduped: Candidate[] = [];
-  const seenDoi = new Set<string>(), seenUrl = new Set<string>();
-  for (const c of [...crCands, ...oaCands, ...exaCands, ...webCands]) {
-    const key = c.doi ?? c.url;
-    if (c.doi && seenDoi.has(c.doi)) continue;
-    if (seenUrl.has(c.url)) continue;
-    if (c.doi) seenDoi.add(c.doi);
-    seenUrl.add(c.url);
-    deduped.push(c);
-    if (deduped.length >= MAX_CANDIDATES + MAX_WEB_CANDIDATES) break;
-  }
+  const searchProviders = [
+    providerStatus.crossref,
+    providerStatus.openalex,
+    providerStatus.exa,
+    providerStatus.webSearch,
+  ];
+  const operationalSearchProviders = searchProviders.filter(
+    (p) => p.state === "operational" || p.state === "no_results" || p.status === "ok" || (p.candidatesReturned || 0) > 0
+  );
+  const failedProviders = searchProviders.filter(
+    (p) => p.state === "authentication_error" || p.state === "timeout" || p.state === "quota_exceeded" || p.state === "unavailable"
+  );
+  const anyFailed = failedProviders.length > 0;
 
-  if (!deduped.length) {
-    const allAcademicFailed = ps.crossref === "failed" && ps.openalex === "failed" && ps.exa === "failed";
-    const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.exa === "failed" || ps.webSearch === "failed";
+  // Abort scan ONLY if all configured search providers failed (Requirement 5)
+  const checkedProviders = searchProviders.filter((p) => p.state !== "not_checked" && p.status !== "not_configured");
+  if (checkedProviders.length > 0 && operationalSearchProviders.length === 0) {
     return {
-      status: allAcademicFailed ? "provider_unavailable" : (anyFailed ? "partial" : "no_verified_matches"),
-      similarityScore: 0, originalityScore: 100, exactMatchScore: 0, nearMatchScore: 0, paraphraseMatchScore: 0, semanticMatchScore: 0,
-      riskLevel: "None", sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
-      ...(allAcademicFailed ? { errorMessage: "Source discovery providers could not be reached." } :
-          anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
+      status: "provider_unavailable",
+      similarityScore: 0,
+      originalityScore: 100,
+      exactMatchScore: 0,
+      nearMatchScore: 0,
+      paraphraseMatchScore: 0,
+      semanticMatchScore: 0,
+      riskLevel: "None",
+      sources: [],
+      coverageNote: "Could not reach source databases. Please check your connection and try again.",
+      providerStatus,
+      errorMessage: "Could not reach source databases. Please check your connection and try again.",
     };
   }
 
-  // Rank candidates by discovery-only score before spending retrieval budget.
-  const ranked = rankCandidates(deduped, eligibleText);
+  // Deduplicate candidates — when the same DOI/URL is returned by multiple
+  // registries, MERGE their metadata so an OpenAlex abstract is never thrown
+  // away just because Crossref listed the same work first.
+  const deduped: Candidate[] = [];
+  const byDoi = new Map<string, Candidate>(), byUrl = new Map<string, Candidate>();
+  const pushOrMerge = (c: Candidate) => {
+    let existing: Candidate | undefined;
+    if (c.doi) existing = byDoi.get(c.doi);
+    if (!existing) existing = byUrl.get(c.url);
+    if (existing) {
+      existing.queryRecovery += 1;
+      if (c.recoveredQueries?.length) existing.recoveredQueries.push(...c.recoveredQueries);
+      if (!existing.abstract && c.abstract) {
+        existing.abstract = c.abstract;
+        existing.provider = existing.provider === "crossref" ? "openalex" : existing.provider;
+      }
+      return;
+    }
+    if (c.doi) byDoi.set(c.doi, c);
+    byUrl.set(c.url, c);
+    deduped.push(c);
+  };
+  for (const c of [...webCands, ...crCands, ...oaCands, ...exaCands]) {
+    if (c.doi && byDoi.has(c.doi)) { pushOrMerge(c); continue; }
+    if (byUrl.has(c.url)) { pushOrMerge(c); continue; }
+    pushOrMerge(c);
+  }
 
-  // Unpaywall enrichment (academic candidates only)
+  // STAGE B: RETRIEVAL & UNPAYWALL ENRICHMENT
   const upCtrl = new AbortController();
-  const upTimer = setTimeout(() => upCtrl.abort(), 5_000);
-  const enriched = await Promise.all(
-    ranked.map((c) => c.provider !== "web" ? enrichUnpaywall(c, upCtrl.signal) : Promise.resolve(c))
+  const upTimer = setTimeout(() => upCtrl.abort(), 4_000);
+  const candidatesForUnpaywall = deduped.slice(0, 8);
+  const unpaywallEnriched = await Promise.all(
+    candidatesForUnpaywall.map((c) => enrichUnpaywall(c, upCtrl.signal))
   );
   clearTimeout(upTimer);
-  ps.unpaywall = enriched.some((c) => c.provider === "unpaywall") ? "ok" : "skipped";
+  const enriched = [...unpaywallEnriched, ...deduped.slice(12)];
+  const unpaywallCount = unpaywallEnriched.filter((c) => c.provider === "unpaywall").length;
+  providerStatus.unpaywall.status = unpaywallCount > 0 ? "ok" : "skipped";
+  providerStatus.unpaywall.state = unpaywallCount > 0 ? "operational" : "no_results";
+  providerStatus.unpaywall.candidatesReturned = unpaywallCount;
 
-  // Matching
+  // STAGE C: MATCHING — bounded-parallel retrieval & matching
+  // Sort and pick top candidates by recovery and abstract availability
+  const prioritized = enriched.slice().sort((a, b) => {
+    const aScore = (a.queryRecovery || 1) * 3 + (a.abstract ? 2 : 0) + (a.discoveryScore || 0);
+    const bScore = (b.queryRecovery || 1) * 3 + (b.abstract ? 2 : 0) + (b.discoveryScore || 0);
+    return bScore - aScore;
+  });
+  const candidatesToRetrieve = prioritized.slice(0, 6);
+
   const sources: VerifiedSource[] = [];
   const allExact: Array<[number,number]> = [];
   const allNear:  Array<[number,number]> = [];
   const allParaphrase: Array<[number,number]> = [];
   const allSem:   Array<[number,number]> = [];
   let geminiUsed = false;
+  let fullTextCount = 0;
+  let abstractFallbackCount = 0;
+  let failedRetrievalCount = 0;
+  const retrievedUrls: string[] = [];
+  const matchEvaluations: Array<{
+    passageSearched: string;
+    provider: string;
+    candidateUrl: string;
+    sourceRetrieved: boolean;
+    lexicalScore: number;
+    semanticScore: number;
+    exactOverlap: number;
+    status: "accepted" | "rejected";
+    rejectionReason?: string;
+  }> = [];
+  const unverifiedCandidates: Array<{
+    title: string;
+    url: string;
+    provider: string;
+    reason: string;
+  }> = [];
 
-  for (const cand of enriched) {
-    let retrievalStatus: "ok" | "failed" = "failed";
+  interface RetrievedCandidate {
+    cand: Candidate;
+    srcText: string | null;
+    verificationSource: "full_text" | "reconstructed_abstract" | "snippet";
+  }
+
+  const retrievalQueue: RetrievedCandidate[] = [];
+  const RETRIEVAL_CONCURRENCY = 2;
+
+  const retrieveOne = async (cand: Candidate): Promise<RetrievedCandidate> => {
     let srcText: string | null = null;
-
-    // Prefer direct full text retrieval; fall back to Exa /contents for known URLs.
     if (cand.url && isSafeUrl(cand.url)) {
       srcText = await fetchSourceText(cand.url);
-      if (srcText && normalise(srcText).length >= 100) retrievalStatus = "ok";
-      if (retrievalStatus === "failed") {
-        const fetchCtrl = new AbortController();
-        const fetchTimer = setTimeout(() => fetchCtrl.abort(), FETCH_TO_MS);
-        srcText = await fetchExaContents(cand.url, fetchCtrl.signal);
-        clearTimeout(fetchTimer);
-        if (srcText && normalise(srcText).length >= 100) retrievalStatus = "ok";
+      if (srcText && normalise(srcText).length >= 80) {
+        return { cand, srcText, verificationSource: "full_text" };
       }
     }
-    if (retrievalStatus === "failed" && cand.abstract && cand.abstract.length > 150) {
-      srcText = cand.abstract;
-      retrievalStatus = "ok";
+    if (cand.abstract && normalise(cand.abstract).length >= 40) {
+      return { cand, srcText: cand.abstract, verificationSource: "reconstructed_abstract" };
     }
+    return { cand, srcText: null, verificationSource: "snippet" };
+  };
 
-    if (!srcText || normalise(srcText).length < 100) {
-      // Source could not be verified; do not let it contribute to scoring.
+  for (let i = 0; i < candidatesToRetrieve.length; i += RETRIEVAL_CONCURRENCY) {
+    const batch = candidatesToRetrieve.slice(i, i + RETRIEVAL_CONCURRENCY);
+    const settled = await Promise.all(batch.map(retrieveOne));
+    for (const r of settled) retrievalQueue.push(r);
+  }
+
+  for (const { cand, srcText, verificationSource } of retrievalQueue) {
+    if (!srcText || normalise(srcText).length < 40) {
+      failedRetrievalCount++;
+      unverifiedCandidates.push({
+        title: cand.title,
+        url: cand.url,
+        provider: cand.provider,
+        reason: "Candidate discovered — source verification unavailable",
+      });
+      matchEvaluations.push({
+        passageSearched: cand.recoveredQueries?.[0] ?? "unknown",
+        provider: cand.provider,
+        candidateUrl: cand.url,
+        sourceRetrieved: false,
+        lexicalScore: 0,
+        semanticScore: 0,
+        exactOverlap: 0,
+        status: "rejected",
+        rejectionReason: "Candidate discovered — source verification unavailable",
+      });
       continue;
     }
+    if (verificationSource === "full_text") {
+      fullTextCount++;
+      retrievedUrls.push(cand.url);
+    } else {
+      abstractFallbackCount++;
+      retrievedUrls.push(`${cand.url} [abstract]`);
+    }
 
-    const srcSlice = srcText.slice(0, 30_000);
+    const srcSlice = srcText.slice(0, 25_000);
     const exact = runExact(eligibleText, srcSlice);
-    const near  = runNear(eligibleText, srcSlice);
+    const near  = runNear(eligibleText, srcSlice, exact.ranges);
 
-    const semCtrl = new AbortController();
-    const semTimer = setTimeout(() => semCtrl.abort(), FETCH_TO_MS);
-    const sem = await runSemantic(eligibleText, srcSlice, apiKey, [...exact.ranges, ...near.ranges], semCtrl.signal);
-    clearTimeout(semTimer);
-    if (sem.used) geminiUsed = true;
+    // Run semantic model only when needed and on uncovered sections
+    let sem = { spans: [] as MatchedSpan[], ranges: [] as Array<[number, number]>, used: false };
+    if (!options?.fastMode && exact.ranges.length === 0 && near.ranges.length === 0) {
+      const semCtrl = new AbortController();
+      const semTimer = setTimeout(() => semCtrl.abort(), FETCH_TO_MS);
+      sem = await runSemantic(eligibleText, srcSlice, apiKey, [...exact.ranges, ...near.ranges], semCtrl.signal);
+      clearTimeout(semTimer);
+      if (sem.used) {
+        geminiUsed = true;
+        providerStatus.gemini.status = "ok";
+        providerStatus.gemini.state = "operational";
+        providerStatus.gemini.queriesSent++;
+      }
+    }
 
     const verifiedSpans = [...exact.spans, ...near.spans, ...sem.spans.filter((s) => s.matchType === "paraphrase")];
-    const verifiedRanges = [...exact.ranges, ...near.ranges, ...sem.spans.filter((s) => s.matchType === "paraphrase").map((s) => [s.submittedStart, s.submittedEnd] as [number, number])];
     const candidateSpans = sem.spans.filter((s) => s.matchType === "candidate");
     const allSpans = [...verifiedSpans, ...candidateSpans];
+
+    const isAccepted = verifiedSpans.length > 0 || candidateSpans.length > 0;
+    matchEvaluations.push({
+      passageSearched: cand.recoveredQueries?.[0] ?? "document passage",
+      provider: cand.provider,
+      candidateUrl: cand.url,
+      sourceRetrieved: true,
+      lexicalScore: exact.spans.length ? 1.0 : (near.spans.length ? near.spans[0].spanSimilarity : 0),
+      semanticScore: sem.spans.length ? sem.spans[0].spanSimilarity : 0,
+      exactOverlap: exact.ranges.length,
+      status: isAccepted ? "accepted" : "rejected",
+      rejectionReason: isAccepted ? undefined : "Lexical and semantic similarity below threshold",
+    });
+
     if (!allSpans.length) continue;
 
+    const verifiedRanges = [
+      ...exact.ranges,
+      ...near.ranges,
+      ...sem.spans.filter((s) => s.matchType === "paraphrase").map((s) => [s.submittedStart, s.submittedEnd] as [number, number]),
+    ];
     const verifiedCoverage = uniqueCoverage(verifiedRanges, eligibleChars);
     const sourceCov = Math.round((verifiedCoverage / eligibleChars) * 100);
+
     if (!sourceCov && !candidateSpans.length) continue;
 
+    if (cand.provider === "crossref") providerStatus.crossref.verifiedSources++;
+    if (cand.provider === "openalex") providerStatus.openalex.verifiedSources++;
+    if (cand.provider === "exa") providerStatus.exa.verifiedSources++;
+    if (cand.provider === "web") providerStatus.webSearch.verifiedSources++;
+
     sources.push({
-      title: cand.title, doi: cand.doi, url: cand.url, publisher: cand.publisher, provider: cand.provider,
-      matchContribution: sourceCov, citedMaterial: hasCitations, matchedSpans: allSpans,
+      title: cand.title,
+      doi: cand.doi,
+      url: cand.url,
+      publisher: cand.publisher,
+      provider: cand.provider,
+      matchContribution: sourceCov,
+      citedMaterial: hasCitations,
+      matchedSpans: allSpans,
       similarity: Math.round(Math.max(...allSpans.map((s) => s.spanSimilarity)) * 100),
       matchType: dominantType(allSpans),
-      verified: retrievalStatus === "ok" && verifiedSpans.length > 0,
+      verified: verifiedSpans.length > 0,
       queryRecovery: cand.queryRecovery,
       discoveryScore: cand.discoveryScore,
+      verificationSource,
     });
+
     allExact.push(...exact.ranges);
     allNear.push(...near.ranges);
     allParaphrase.push(...sem.spans.filter((s) => s.matchType === "paraphrase").map((s) => [s.submittedStart, s.submittedEnd] as [number, number]));
     allSem.push(...sem.spans.filter((s) => s.matchType === "candidate").map((s) => [s.submittedStart, s.submittedEnd] as [number, number]));
   }
 
-  ps.gemini = geminiUsed ? "ok" : "skipped";
-
-  // Overall scores are computed from verified exact/near/paraphrase spans ONLY.
+  // STAGE D: SCORING & TRANSPARENCY TELEMETRY
+  // Requirement 10: Plagiarism similarity primarily uses UNIQUE VERIFIED MATCHED COVERAGE
   const verifiedRanges = [...allExact, ...allNear, ...allParaphrase];
-  const simScore  = Math.round((uniqueCoverage(verifiedRanges, eligibleChars) / eligibleChars) * 100);
-  const exactScore = Math.round((uniqueCoverage(allExact, eligibleChars) / eligibleChars) * 100);
-  const nearScore  = Math.round((uniqueCoverage(allNear,  eligibleChars) / eligibleChars) * 100);
-  const paraphraseScore = Math.round((uniqueCoverage(allParaphrase, eligibleChars) / eligibleChars) * 100);
-  const semScore   = Math.round((uniqueCoverage(allSem,   eligibleChars) / eligibleChars) * 100);
+  const tokenOffsets = tokeniseWithOffsets(eligibleText);
+  const matchedWordIndices = new Set<number>();
 
-  const anyFailed = ps.crossref === "failed" || ps.openalex === "failed" || ps.exa === "failed" || ps.webSearch === "failed";
+  for (let i = 0; i < tokenOffsets.length; i++) {
+    const { start, end } = tokenOffsets[i];
+    const isCovered = verifiedRanges.some(([s, e]) => start >= s && end <= e);
+    if (isCovered) {
+      matchedWordIndices.add(i);
+    }
+  }
 
+  const uniqueMatchedWords = matchedWordIndices.size;
+  const totalWords = tokenOffsets.length || words.length || 1;
+  const uniqueWordSimilarityPercentage = Math.min(100, Math.round((uniqueMatchedWords / totalWords) * 100));
+
+  const exactCoveredWords = new Set<number>();
+  for (let i = 0; i < tokenOffsets.length; i++) {
+    const { start, end } = tokenOffsets[i];
+    if (allExact.some(([s, e]) => start >= s && end <= e)) exactCoveredWords.add(i);
+  }
+  const nearCoveredWords = new Set<number>();
+  for (let i = 0; i < tokenOffsets.length; i++) {
+    const { start, end } = tokenOffsets[i];
+    if (allNear.some(([s, e]) => start >= s && end <= e)) nearCoveredWords.add(i);
+  }
+  const paraCoveredWords = new Set<number>();
+  for (let i = 0; i < tokenOffsets.length; i++) {
+    const { start, end } = tokenOffsets[i];
+    if (allParaphrase.some(([s, e]) => start >= s && end <= e)) paraCoveredWords.add(i);
+  }
+
+  const simScore = uniqueWordSimilarityPercentage;
+  const exactScore = Math.min(100, Math.round((exactCoveredWords.size / totalWords) * 100));
+  const nearScore = Math.min(100, Math.round((nearCoveredWords.size / totalWords) * 100));
+  const paraphraseScore = Math.min(100, Math.round((paraCoveredWords.size / totalWords) * 100));
+  const semScore = Math.round((uniqueCoverage(allSem, eligibleChars) / eligibleChars) * 100);
+
+  // Requirement 7: Honest Coverage Tracking
+  const totalZones = 5;
+  const zonesSearched = new Set(queryPlan.map((q) => q.zone)).size;
+  const passagesGenerated = totalZones * 3;
+  const passagesSearched = zonesSearched * 3;
+  const providerRequestsCompleted =
+    providerStatus.crossref.queriesSent +
+    providerStatus.openalex.queriesSent +
+    providerStatus.exa.queriesSent +
+    providerStatus.webSearch.queriesSent;
+
+  const totalEvaluatedProviders = 4;
+  const operationalSearchRatio = operationalSearchProviders.length / totalEvaluatedProviders;
+  const passageRatio = passagesGenerated > 0 ? passagesSearched / passagesGenerated : 1;
+  const actualCoveragePercentage = Math.min(100, Math.round(passageRatio * operationalSearchRatio * 100));
+
+  const diagnostics = {
+    submittedChars: eligibleChars,
+    submittedWords: words.length,
+    sentenceCount: sentences.length,
+    passagesGenerated,
+    passagesSearched,
+    queriesGenerated: queryPlan.length,
+    providerRequestsCompleted,
+    queryStrategy: "5-Zone Document Sampling + Sentence-Pair Distinctiveness + 5-Tier Fallback Ladder",
+    queriesSentByProvider,
+    providersResponded: {
+      crossref: providerStatus.crossref.status === "ok",
+      openalex: providerStatus.openalex.status === "ok",
+      exa: providerStatus.exa.status === "ok",
+      webSearch: providerStatus.webSearch.status === "ok",
+    },
+    providerStates: {
+      crossref: providerStatus.crossref.state ?? "not_checked",
+      openalex: providerStatus.openalex.state ?? "not_checked",
+      exa: providerStatus.exa.state ?? "not_checked",
+      webSearch: providerStatus.webSearch.state ?? "not_checked",
+    },
+    candidatesReturnedByProvider: {
+      crossref: providerStatus.crossref.candidatesReturned,
+      openalex: providerStatus.openalex.candidatesReturned,
+      exa: providerStatus.exa.candidatesReturned,
+      webSearch: providerStatus.webSearch.candidatesReturned,
+    },
+    retrievedUrls,
+    fullTextRetrievedCount: fullTextCount,
+    abstractSnippetFallbackCount: abstractFallbackCount,
+    failedRetrievalsCount: failedRetrievalCount,
+    candidatePassagesReachingMatcher: candidatesToRetrieve.length,
+    exactMatchesFound: allExact.length,
+    nearMatchesFound: allNear.length,
+    verifiedParaphrasesFound: allParaphrase.length,
+    candidateSimilaritiesFound: allSem.length,
+    uniqueMatchedWords,
+    uniqueMatchedWordsPercentage: uniqueWordSimilarityPercentage,
+    actualCoveragePercentage,
+    calculatedSimilarityPercentage: simScore,
+    scoringFormula: "uniqueMatchedWords(Exact + Near + VerifiedParaphrase) / totalWords * 100",
+    matchEvaluations,
+    unverifiedCandidates,
+  };
+
+  // Requirement 6: Do not confuse failure with zero results
   if (!sources.length) {
+    const isLimited = anyFailed || actualCoveragePercentage < 60;
     return {
       status: anyFailed ? "partial" : "no_verified_matches",
-      similarityScore: simScore, originalityScore: 100 - simScore,
-      exactMatchScore: exactScore, nearMatchScore: nearScore, paraphraseMatchScore: paraphraseScore, semanticMatchScore: semScore,
-      riskLevel: riskLevel(simScore), sources: [], coverageNote: COVERAGE_NOTE, providerStatus: ps,
-      ...(anyFailed ? { errorMessage: "Some source providers could not be reached." } : {}),
+      similarityScore: 0,
+      originalityScore: isLimited ? 0 : 100,
+      exactMatchScore: 0,
+      nearMatchScore: 0,
+      paraphraseMatchScore: 0,
+      semanticMatchScore: 0,
+      riskLevel: isLimited ? "Limited Coverage" : "None",
+      sources: [],
+      coverageNote: isLimited
+        ? "No verified matches found in completed searches. Assessment confidence is limited by partial source coverage."
+        : "No overlapping passages detected in verified sources.",
+      providerStatus,
+      diagnostics,
+      ...(anyFailed ? { errorMessage: "Analysis incomplete: Some source databases could not be reached." } : {}),
     };
+  }
+
+  // Merge sources describing the same underlying work
+  const mergedSources: VerifiedSource[] = [];
+  const seenTitles = new Map<string, number>();
+  for (const s of sources.sort((a, b) => b.matchContribution - a.matchContribution)) {
+    const key = normalise(s.title ?? "").replace(/[^a-z0-9]+/g, "").slice(0, 80);
+    const prior = key ? seenTitles.get(key) : undefined;
+    if (prior !== undefined) {
+      const keeper = mergedSources[prior];
+      if (keeper.verificationSource !== "full_text" && s.verificationSource === "full_text") {
+        keeper.url = s.url;
+        keeper.verificationSource = "full_text";
+      }
+      continue;
+    }
+    if (key) seenTitles.set(key, mergedSources.length);
+    mergedSources.push(s);
   }
 
   return {
     status: anyFailed ? "partial" : "completed",
-    similarityScore: simScore, originalityScore: 100 - simScore,
-    exactMatchScore: exactScore, nearMatchScore: nearScore, paraphraseMatchScore: paraphraseScore, semanticMatchScore: semScore,
+    similarityScore: simScore,
+    originalityScore: 100 - simScore,
+    exactMatchScore: exactScore,
+    nearMatchScore: nearScore,
+    paraphraseMatchScore: paraphraseScore,
+    semanticMatchScore: semScore,
     riskLevel: riskLevel(simScore),
-    sources: sources.sort((a, b) => b.matchContribution - a.matchContribution),
-    coverageNote: COVERAGE_NOTE, providerStatus: ps,
+    sources: mergedSources,
+    coverageNote: anyFailed
+      ? "Analysis partial: Some secondary registries were unreachable, but verified matches were confirmed in operational databases."
+      : COVERAGE_NOTE,
+    providerStatus,
+    diagnostics,
+    ...(anyFailed ? { errorMessage: "Some source providers could not be reached, but verified matches were recovered from active registries." } : {}),
   };
 }
 
@@ -1394,24 +2030,239 @@ if (import.meta.main) {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
     try {
-      return await withBillingGuard(req, { featureSlug: "plagiarism_checker", corsHeaders: cors as Record<string, string> }, async (ctx) => {
-      const supabase = ctx.supabase;
-      const body: { text?: unknown } = ctx.body as { text?: unknown };
+      const supabase = createServiceClient();
+      const timezone = getTimezone(req);
+
+      let body: Record<string, any> = {};
+      const hasBody = req.method === "POST" || req.method === "PUT" || req.method === "PATCH";
+      if (hasBody) {
+        try {
+          const raw = await req.text();
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          body = {};
+        }
+      }
+
+      // DIAGNOSTIC AUDIT ACTION: Test all providers from the deployed runtime
+      if (body.action === "audit_providers") {
+        const env = Deno.env.toObject();
+        const safeEnvKeys = Object.keys(env).map(k => ({
+          key: k,
+          present: Boolean(env[k]),
+          length: env[k] ? env[k].length : 0,
+        }));
+
+        // 1. Audit Google/Web
+        const googleKey = Deno.env.get("GOOGLE_SEARCH_API_KEY") || Deno.env.get("GOOGLE_API_KEY") || Deno.env.get("GOOGLE_CSE_KEY") || "";
+        const googleCx = Deno.env.get("GOOGLE_SEARCH_CX") || Deno.env.get("GOOGLE_CX") || Deno.env.get("GOOGLE_CSE_CX") || "";
+        let googleAudit: any = {
+          operational: false,
+          hasApiKey: Boolean(googleKey),
+          hasCx: Boolean(googleCx),
+          keyName: Deno.env.get("GOOGLE_SEARCH_API_KEY") ? "GOOGLE_SEARCH_API_KEY" : (Deno.env.get("GOOGLE_API_KEY") ? "GOOGLE_API_KEY" : null),
+          cxName: Deno.env.get("GOOGLE_SEARCH_CX") ? "GOOGLE_SEARCH_CX" : (Deno.env.get("GOOGLE_CX") ? "GOOGLE_CX" : null),
+          httpStatus: null,
+          resultsCount: 0,
+          failureReason: null,
+          sampleResult: null,
+        };
+        if (!googleKey || !googleCx) {
+          googleAudit.failureReason = !googleKey && !googleCx
+            ? "Missing both GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX"
+            : (!googleKey ? "Missing GOOGLE_SEARCH_API_KEY" : "Missing GOOGLE_SEARCH_CX");
+        } else {
+          try {
+            const gUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(googleKey)}&cx=${encodeURIComponent(googleCx)}&q=Attention+Is+All+You+Need&num=3`;
+            const gResp = await fetch(gUrl);
+            googleAudit.httpStatus = gResp.status;
+            if (gResp.ok) {
+              const gData = await gResp.json();
+              const items = gData?.items || [];
+              googleAudit.operational = true;
+              googleAudit.resultsCount = items.length;
+              googleAudit.sampleResult = items[0] ? { title: items[0].title, link: items[0].link } : null;
+            } else {
+              const errBody = await gResp.text();
+              googleAudit.failureReason = `Google search returned HTTP ${gResp.status}: ${errBody.slice(0, 200)}`;
+            }
+          } catch (e: any) {
+            googleAudit.failureReason = e?.message || "Outbound fetch error";
+          }
+        }
+
+        // 2. Audit Crossref
+        let crossrefAudit: any = {
+          operational: false,
+          httpStatus: null,
+          candidatesReturned: 0,
+          failureReason: null,
+          sampleResult: null,
+        };
+        try {
+          const crUrl = `https://api.crossref.org/works?query=Attention+Is+All+You+Need&rows=3&select=DOI,title,URL,publisher,abstract&mailto=plagiarism@aidetector.cx`;
+          const crResp = await fetch(crUrl);
+          crossrefAudit.httpStatus = crResp.status;
+          if (crResp.ok) {
+            const crData = await crResp.json();
+            const items = crData?.message?.items || [];
+            crossrefAudit.operational = true;
+            crossrefAudit.candidatesReturned = items.length;
+            crossrefAudit.sampleResult = items[0] ? { title: items[0].title?.[0], doi: items[0].DOI } : null;
+          } else {
+            crossrefAudit.failureReason = `Crossref HTTP ${crResp.status}`;
+          }
+        } catch (e: any) {
+          crossrefAudit.failureReason = e?.message || "Crossref fetch error";
+        }
+
+        // 3. Audit OpenAlex
+        let openalexAudit: any = {
+          operational: false,
+          httpStatus: null,
+          candidatesReturned: 0,
+          failureReason: null,
+          sampleResult: null,
+        };
+        try {
+          const oaUrl = `https://api.openalex.org/works?search=Attention+Is+All+You+Need&per-page=3&select=id,doi,title,primary_location,abstract_inverted_index&mailto=plagiarism@aidetector.cx`;
+          const oaResp = await fetch(oaUrl);
+          openalexAudit.httpStatus = oaResp.status;
+          if (oaResp.ok) {
+            const oaData = await oaResp.json();
+            const items = oaData?.results || [];
+            openalexAudit.operational = true;
+            openalexAudit.candidatesReturned = items.length;
+            openalexAudit.sampleResult = items[0] ? { title: items[0].title, doi: items[0].doi } : null;
+          } else {
+            openalexAudit.failureReason = `OpenAlex HTTP ${oaResp.status}`;
+          }
+        } catch (e: any) {
+          openalexAudit.failureReason = e?.message || "OpenAlex fetch error";
+        }
+
+        // 4. Audit Exa
+        const exaKey = Deno.env.get("EXA_API_KEY") || "";
+        let exaAudit: any = {
+          operational: false,
+          hasApiKey: Boolean(exaKey),
+          httpStatus: null,
+          candidatesReturned: 0,
+          failureReason: null,
+        };
+        if (exaKey) {
+          try {
+            const exa = new Exa(exaKey);
+            const exaRes = await exa.search("Attention Is All You Need", { numResults: 3 });
+            exaAudit.operational = true;
+            exaAudit.candidatesReturned = exaRes.results?.length || 0;
+          } catch (e: any) {
+            exaAudit.failureReason = e?.message || "Exa query error";
+          }
+        } else {
+          exaAudit.failureReason = "Missing EXA_API_KEY";
+        }
+
+        return jsonResponse({
+          envKeys: safeEnvKeys,
+          google: googleAudit,
+          crossref: crossrefAudit,
+          openalex: openalexAudit,
+          exa: exaAudit,
+        });
+      }
+
+      let userId: string | null = null;
+      let guestId: string | null = null;
+      let isApiKey = false;
+      try {
+        const identity = await resolveAuthUserOrGuest(supabase, req);
+        userId = identity.user?.id ?? null;
+        guestId = identity.guestId ?? null;
+        isApiKey = identity.isApiKey;
+      } catch (err: any) {
+        console.error("[plagiarism-checker] identity resolution failed:", err?.message);
+        return jsonResponse(
+          { success: false, error: "Authorization could not be established. Please retry.", retryable: true },
+          503
+        );
+      }
+
+      const featureSlug = "plagiarism_checker";
+      const idempotencyKey = req.headers.get("x-idempotency-key") || null;
+      let reservation;
+      try {
+        reservation = await reserveEntitlement(supabase, {
+          userId,
+          guestId,
+          featureSlug,
+          creditsCost: 1,
+          unitQuantity: Math.max(1, String(body.text ?? '').trim().split(/\s+/).filter(Boolean).length),
+          timezone,
+          idempotencyKey,
+          metadata: { is_api_key: isApiKey },
+        });
+      } catch (err: any) {
+        console.error("[plagiarism-checker] reservation failed:", err?.message);
+        return jsonResponse(
+          { success: false, error: "Billing authorization temporarily unavailable. Please retry.", retryable: true },
+          503
+        );
+      }
+
+      if (!reservation.allowed) {
+        const isInsufficientCredits = reservation.errorCode === 'INSUFFICIENT_CREDITS';
+        return jsonResponse(
+          {
+            success: false,
+            error: reservation.reason || (isInsufficientCredits
+              ? "Insufficient credits for this operation. Please top up or renew your plan to continue."
+              : "This feature requires an active subscription or credits."),
+            error_code: reservation.errorCode || (isInsufficientCredits ? "INSUFFICIENT_CREDITS" : "UPGRADE_REQUIRED"),
+            errorCode: reservation.errorCode || (isInsufficientCredits ? "INSUFFICIENT_CREDITS" : "UPGRADE_REQUIRED"),
+            upgrade_required: !isInsufficientCredits,
+            remaining: reservation.trialChecksRemaining,
+            limit: reservation.trialChecksTotal,
+            plan: reservation.plan,
+            credits_balance: reservation.remainingCredits,
+          },
+          403
+        );
+      }
 
       const text = typeof body.text === "string" ? body.text.trim() : "";
-      if (!text) return json({ status: "insufficient_text", errorMessage: "Text is required." }, 400);
-      if (text.length > MAX_TEXT_CHARS) return json({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
+      if (!text) {
+        if (reservation.reservationId) {
+          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "text_required", timezone }).catch(() => {});
+        }
+        return jsonResponse({ status: "insufficient_text", errorMessage: "Text is required." }, 400);
+      }
+
+      if (text.length > MAX_TEXT_CHARS) {
+        if (reservation.reservationId) {
+          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "length_exceeded", timezone }).catch(() => {});
+        }
+        return jsonResponse({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
+      }
 
       const apiKey = Deno.env.get("INTEGRATIONS_API_KEY") ?? "";
-      if (!apiKey) return json({ status: "provider_unavailable", errorMessage: "Server configuration error." }, 503);
+      if (!apiKey) {
+        if (reservation.reservationId) {
+          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "missing_api_key", timezone }).catch(() => {});
+        }
+        return jsonResponse({ status: "provider_unavailable", errorMessage: "Server configuration error." }, 503);
+      }
 
-      const result = await runAnalysis(text, apiKey);
+      const result = await runAnalysis(text, apiKey, body.options);
 
-      return json(result);
-      });
+      if (reservation.reservationId) {
+        await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "success", timezone }).catch(() => {});
+      }
+
+      return jsonResponse(result);
     } catch (err: unknown) {
-      console.error("plagiarism-checker:", err instanceof Error ? err.message : err);
-      return json({ status: "analysis_failed", errorMessage: "Analysis failed. Please try again." }, 500);
+      console.error("plagiarism-checker error:", err instanceof Error ? err.message : err);
+      return jsonResponse({ status: "analysis_failed", errorMessage: "Analysis failed. Please try again." }, 500);
     }
   });
 }

@@ -109,15 +109,20 @@ export async function withBillingGuard(
   }
 
   if (!reservation.allowed) {
+    const isInsufficientCredits = reservation.errorCode === 'INSUFFICIENT_CREDITS';
     return json(
       {
         success: false,
-        error: reservation.reason || "This feature requires an active subscription or credits.",
-        error_code: reservation.errorCode || "UPGRADE_REQUIRED",
-        upgrade_required: true,
+        error: reservation.reason || (isInsufficientCredits
+          ? "Insufficient credits for this operation. Please top up or renew your plan to continue."
+          : "This feature requires an active subscription or credits."),
+        error_code: reservation.errorCode || (isInsufficientCredits ? "INSUFFICIENT_CREDITS" : "UPGRADE_REQUIRED"),
+        errorCode: reservation.errorCode || (isInsufficientCredits ? "INSUFFICIENT_CREDITS" : "UPGRADE_REQUIRED"),
+        upgrade_required: !isInsufficientCredits,
         remaining: reservation.trialChecksRemaining,
         limit: reservation.trialChecksTotal,
         plan: reservation.plan,
+        credits_balance: reservation.remainingCredits,
       },
       403,
       opts.corsHeaders

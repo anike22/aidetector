@@ -39,17 +39,22 @@ interface HBenchmarkItem { metric: string; ai: number; humanized: number; unit: 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DetectorAdminPage() {
-  const { profile } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin: contextIsAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = contextIsAdmin || profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
 
   useEffect(() => {
-    if (profile && !isAdmin) {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (!isAdmin) {
       navigate('/');
       toast.error('Admin access required');
     }
-  }, [profile, isAdmin, navigate]);
+  }, [authLoading, user, isAdmin, navigate]);
 
   const [saving, setSaving] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

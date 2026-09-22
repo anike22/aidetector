@@ -13,16 +13,21 @@ import PageMeta from '@/components/common/PageMeta';
 import { runBenchmark, BUILTIN_SAMPLES, type BenchmarkMetrics, type BenchmarkPrediction } from '@/lib/detection/benchmark';
 
 export default function DetectorBenchmarkPage() {
-  const { profile } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin: contextIsAdmin } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = contextIsAdmin || profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
 
   useEffect(() => {
-    if (profile && !isAdmin) {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (!isAdmin) {
       navigate('/');
       toast.error('Admin access required');
     }
-  }, [profile, isAdmin, navigate]);
+  }, [authLoading, user, isAdmin, navigate]);
 
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,9 +15,11 @@ import {
   UserPlus,
   Calendar,
   Layers,
+  PlusCircle,
 } from 'lucide-react';
 import { preserveDraftText } from '@/lib/visitorId';
 import { isTrialEligibleOperation, RATE_TABLE } from '@/lib/entitlements';
+import { TopUpModal } from '@/components/pricing/TopUpModal';
 
 interface LiveUsagePanelProps {
   featureSlug?: string;
@@ -38,6 +40,7 @@ export function LiveUsagePanel({
 }: LiveUsagePanelProps) {
   const navigate = useNavigate();
   const { summary, entitlement, loading, refresh } = useEntitlement(featureSlug);
+  const [topUpOpen, setTopUpOpen] = useState(false);
 
   const plan = summary?.plan || entitlement?.plan || 'guest';
   const isAuthenticated = summary?.isAuthenticated ?? entitlement?.isAuthenticated ?? false;
@@ -54,6 +57,8 @@ export function LiveUsagePanel({
   const trialChecksUsed = summary?.trialChecksUsed ?? Math.max(0, trialChecksTotal - trialChecksRemaining);
 
   const creditsBalance = summary?.creditsBalance ?? 0;
+  const planCredits = summary?.planCreditsBalance ?? creditsBalance;
+  const topUpCredits = summary?.topUpCreditsBalance ?? 0;
   const monthlyAllocation = summary?.monthlyCreditAllocation ?? 0;
   const refillDate = summary?.creditsRefillDate;
   const planEndDate = summary?.planEndDate;
@@ -203,7 +208,7 @@ export function LiveUsagePanel({
               {isPaid ? (
                 <>
                   <Coins className="h-3.5 w-3.5 text-primary" />
-                  Available Monthly Credits
+                  Available Credits
                 </>
               ) : (
                 <>
@@ -214,7 +219,11 @@ export function LiveUsagePanel({
             </span>
             <span className="font-bold text-foreground">
               {isPaid ? (
-                `${creditsBalance} / ${monthlyAllocation || creditsBalance} credits`
+                topUpCredits > 0 ? (
+                  `${creditsBalance} Total (${planCredits} Plan + ${topUpCredits} Top-Up)`
+                ) : (
+                  `${creditsBalance} / ${monthlyAllocation || creditsBalance} credits`
+                )
               ) : !isAuthenticated ? (
                 `${trialChecksRemaining} of 1 check remaining`
               ) : (
@@ -228,7 +237,9 @@ export function LiveUsagePanel({
           <div className="flex justify-between items-center text-[11px] text-muted-foreground">
             <span>
               {isPaid
-                ? `${summary?.creditsUsedTotal || 0} total credits used`
+                ? topUpCredits > 0
+                  ? `Plan credits: ${planCredits} · Top-up credits: ${topUpCredits} · Available: ${creditsBalance}`
+                  : `${summary?.creditsUsedTotal || 0} total credits used`
                 : `${trialChecksUsed} check${trialChecksUsed === 1 ? '' : 's'} used`}
             </span>
             {isPaid && formattedRefillDate && (
@@ -245,6 +256,27 @@ export function LiveUsagePanel({
           </div>
         </div>
 
+        {/* Top-up Button for Paid Users or Depleted Balance */}
+        {isPaid && (
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/5 border border-primary/15 text-xs">
+            <div className="flex items-center gap-2 text-foreground font-medium">
+              <Coins className="h-4 w-4 text-primary shrink-0" />
+              <span>Need more capacity before your next monthly refill?</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs border-primary/30 text-primary hover:bg-primary/10 font-semibold gap-1 shrink-0"
+              onClick={() => setTopUpOpen(true)}
+            >
+              <PlusCircle className="h-3 w-3" />
+              Buy More Credits
+            </Button>
+          </div>
+        )}
+
+        <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} onSuccess={() => refresh()} />
+
         {/* Status Callout when Low or Exhausted */}
         {isExhausted && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
@@ -252,7 +284,7 @@ export function LiveUsagePanel({
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>
                 {isPaid
-                  ? 'Your monthly credit balance is depleted. Top up credits or upgrade your plan to continue.'
+                  ? "You've used your included credits. Top up extra credits or upgrade your plan to continue."
                   : isExpiredPaidPlan
                   ? 'Your subscription period has ended. Renew your plan to restore paid features and credits.'
                   : isAuthenticated
@@ -260,14 +292,27 @@ export function LiveUsagePanel({
                   : 'You’ve used your free guest check. Create an account to get 4 additional free checks.'}
               </span>
             </div>
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground font-semibold shrink-0 text-xs h-7 px-3"
-              onClick={() => handleAction(isAuthenticated ? '/pricing' : '/signup')}
-            >
-              {isAuthenticated ? 'View Plans' : 'Create Account'}
-              <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {isPaid && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-border hover:bg-muted text-primary font-semibold text-xs h-7 px-3"
+                  onClick={() => setTopUpOpen(true)}
+                >
+                  <Coins className="h-3 w-3 mr-1 text-primary" />
+                  Buy More Credits
+                </Button>
+              )}
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground font-semibold shrink-0 text-xs h-7 px-3"
+                onClick={() => handleAction(isAuthenticated ? '/pricing' : '/signup')}
+              >
+                {isAuthenticated ? 'View Plans' : 'Create Account'}
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
           </div>
         )}
 

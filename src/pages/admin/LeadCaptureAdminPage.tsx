@@ -112,7 +112,7 @@ function MetricCard({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function LeadCaptureAdminPage() {
-  const { profile } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [popups, setPopups] = useState<PopupConfig[]>([]);
@@ -127,8 +127,14 @@ export default function LeadCaptureAdminPage() {
 
   // Admin guard
   useEffect(() => {
-    if (profile && profile.role !== 'admin') navigate('/');
-  }, [profile, navigate]);
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    const isUserAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
+    if (!isUserAdmin) navigate('/');
+  }, [authLoading, user, profile, navigate]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -232,7 +238,19 @@ export default function LeadCaptureAdminPage() {
     usage_limit: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
   };
 
-  if (!profile || profile.role !== 'admin') return null;
+  const isUserAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'anikeaidetector@gmail.com';
+
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center py-20 min-h-[50vh]">
+          <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!isUserAdmin) return null;
 
   return (
     <MainLayout>

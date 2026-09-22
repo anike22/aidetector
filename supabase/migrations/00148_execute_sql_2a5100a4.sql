@@ -1,0 +1,1 @@
+SET role TO service_role;

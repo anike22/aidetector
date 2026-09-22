@@ -1,16 +1,43 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   TextSearch, AlertTriangle, CheckCircle2,
   RefreshCw, Download, Link2, ExternalLink,
-  Info, WifiOff, BookOpen, Globe,
+  Info, WifiOff, BookOpen, Globe, Sparkles,
+  Layers, History, Network, Eye, SplitSquareVertical, Bot, Shield,
+  Zap, Compass, Table, Terminal, FolderLock, ShieldCheck, FileJson
 } from 'lucide-react';
 import { analyzePlagiarism, type PlagiarismAnalysisResult } from './detectionEngine';
 import HighlightedText, { HighlightLegend } from '@/components/plagiarism/HighlightedText';
+import { executePlagiarismForensicsPipeline } from '@/lib/plagiarism/plagiarismIntelligencePipeline';
+import { downloadForensicAuditPackage } from '@/lib/plagiarism/forensicReportGenerator';
+import {
+  getStoredPrivateCorpus,
+  savePrivateCorpus,
+  type PrivateCorpusDocument
+} from '@/lib/plagiarism/privateCorpusEngine';
+import { ForensicSummaryHeader } from '@/components/plagiarism/ForensicSummaryHeader';
+import { PlagiarismHeatmap } from '@/components/plagiarism/PlagiarismHeatmap';
+import { SideBySideEvidenceMap } from '@/components/plagiarism/SideBySideEvidenceMap';
+import { AiRewriteTraceCard } from '@/components/plagiarism/AiRewriteTraceCard';
+import { SourceClusteringView } from '@/components/plagiarism/SourceClusteringView';
+import { ChronologicalTimeline } from '@/components/plagiarism/ChronologicalTimeline';
+import { CitationIntelligenceView } from '@/components/plagiarism/CitationIntelligenceView';
+import { FalsePositiveInspector } from '@/components/plagiarism/FalsePositiveInspector';
+import { ConceptualStructuralView } from '@/components/plagiarism/ConceptualStructuralView';
+import { TableDataSimilarityView } from '@/components/plagiarism/TableDataSimilarityView';
+import { VisualPlagiarismView } from '@/components/plagiarism/VisualPlagiarismView';
+import { CodePlagiarismView } from '@/components/plagiarism/CodePlagiarismView';
+import { PrivateCorpusView } from '@/components/plagiarism/PrivateCorpusView';
+import { CoverageTransparencyCard } from '@/components/plagiarism/CoverageTransparencyCard';
+import { SourceBreakdownView } from '@/components/plagiarism/SourceBreakdownView';
+import { DiagnosticTelemetryInspector } from '@/components/plagiarism/DiagnosticTelemetryInspector';
+import { PlagiarismBenchmarkSuite } from '@/components/plagiarism/PlagiarismBenchmarkSuite';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import UpgradeModal from '@/components/common/UpgradeModal';
@@ -26,6 +53,7 @@ const riskBorder = (r: string) =>
 const riskBadgeClass = (r: string) =>
   r === 'High' || r === 'Critical' ? 'bg-destructive/10 text-destructive border-destructive/20' :
   r === 'Medium' ? 'bg-warning/10 text-warning border-warning/20' :
+  r === 'Limited Coverage' || r.includes('Limited') || r.includes('Insufficient') ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
   'bg-success/10 text-success border-success/20';
 
 export default function PlagiarismDetector() {
@@ -34,6 +62,33 @@ export default function PlagiarismDetector() {
   const [content, setContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<PlagiarismAnalysisResult | null>(null);
+  const [scanMode, setScanMode] = useState<'standard' | 'deep_forensic'>('deep_forensic');
+  const [corpusDocs, setCorpusDocs] = useState<PrivateCorpusDocument[]>(() => getStoredPrivateCorpus());
+  const [forensicTab, setForensicTab] = useState<
+    'heatmap' | 'sources' | 'evidence' | 'ai_rewrite' | 'citations' | 'timeline' | 'clusters' | 'conceptual' | 'tables' | 'code' | 'private_corpus' | 'coverage' | 'false_positives' | 'diagnostics' | 'benchmark'
+  >('heatmap');
+
+  const handleAddCorpusDoc = (doc: PrivateCorpusDocument) => {
+    setCorpusDocs((prev) => {
+      const updated = [doc, ...prev];
+      savePrivateCorpus(updated);
+      return updated;
+    });
+  };
+
+  const handleRemoveCorpusDoc = (id: string) => {
+    setCorpusDocs((prev) => {
+      const updated = prev.filter((d) => d.id !== id);
+      savePrivateCorpus(updated);
+      return updated;
+    });
+  };
+
+  const forensicIntelligence = useMemo(() => {
+    if (!result || !content) return null;
+    if (result.status === 'analysis_failed' || result.status === 'provider_unavailable') return null;
+    return executePlagiarismForensicsPipeline(content, result, corpusDocs);
+  }, [result, content, corpusDocs]);
 
   const handleAnalyze = async () => {
     if (!content.trim() || content.split(/\s+/).length < 20) return;
@@ -49,8 +104,17 @@ export default function PlagiarismDetector() {
     setResult(null);
     try {
       const res = await analyzePlagiarism(content);
-      if (res.upgrade_required) {
-        openUpgradeModal({ featureName: 'Plagiarism Checker', trigger: 'pro_feature' });
+      if (res.upgrade_required || res.errorCode) {
+        if (res.errorCode === 'INSUFFICIENT_CREDITS') {
+          toast.error(res.errorMessage || 'Insufficient credits for plagiarism check. Please top up your balance.');
+        } else {
+          openUpgradeModal({
+            featureName: 'Plagiarism Checker',
+            trigger: res.errorCode === 'TRIAL_EXHAUSTED' ? 'limit_reached' : 'pro_feature',
+            remaining: res.remaining ?? 0,
+            limit: res.limit ?? 1,
+          });
+        }
         return;
       }
       setResult(res);
@@ -104,12 +168,64 @@ export default function PlagiarismDetector() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Left: Input */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
+        <div className="lg:col-span-7 flex flex-col gap-4">
+
+          {/* ── Scan Mode & Engine Settings Bar (Always Visible) ── */}
+          <div className="bg-card border border-border rounded-xl p-3 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scan Mode:</span>
+              <div className="flex items-center bg-muted rounded-lg p-1 border border-border">
+                <Button
+                  variant={scanMode === 'standard' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5 gap-1 font-medium"
+                  onClick={() => setScanMode('standard')}
+                >
+                  <Zap className="w-3 h-3 text-warning" /> Standard Scan
+                </Button>
+                <Button
+                  variant={scanMode === 'deep_forensic' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5 gap-1 font-medium"
+                  onClick={() => setScanMode('deep_forensic')}
+                >
+                  <Compass className="w-3 h-3 text-primary-foreground" /> Deep Forensic Scan (Default)
+                </Button>
+              </div>
+            </div>
+
+            <Badge className={scanMode === 'deep_forensic' ? 'bg-primary/10 text-primary border-primary/20 text-[11px] py-1' : 'bg-muted text-muted-foreground text-[11px] py-1'}>
+              {scanMode === 'deep_forensic' ? '17 Forensic Engines Active' : 'Standard Pipeline'}
+            </Badge>
+          </div>
+
           <Card className="border-border shadow-card overflow-hidden flex flex-col h-[400px]">
-            <CardHeader className="bg-card border-b border-border py-4">
-              <CardTitle className="text-base font-semibold text-navy">
+            <CardHeader className="bg-card border-b border-border py-3 px-4 flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-sm font-semibold text-navy">
                 Input Text for Plagiarism Check
               </CardTitle>
+              <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-md border border-border">
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setContent('According to recent empirical investigations in artificial intelligence (Vaswani et al., 2017), transformer architectures compute contextual representations across sequence dimensions.');
+                    setResult(null);
+                  }}
+                >
+                  Academic
+                </Button>
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setContent('def compute_jaccard_similarity(set_a: set, set_b: set) -> float:\n    intersection_cardinality = len(set_a.intersection(set_b))\n    union_cardinality = len(set_a.union(set_b))\n    return intersection_cardinality / float(union_cardinality) if union_cardinality != 0 else 1.0');
+                    setResult(null);
+                  }}
+                >
+                  Code
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-y-auto relative">
               {/* Highlighted overlay — shown after analysis with matches */}
@@ -243,7 +359,7 @@ export default function PlagiarismDetector() {
                     <Progress value={result.similarityScore} className="h-2 mb-4" />
                     <div className="grid grid-cols-2 gap-2 text-xs mt-3 pt-3 border-t border-border/50">
                       {[
-                        ['Originality', `${result.originalityScore}%`],
+                        ['Originality', result.status === 'partial' && result.similarityScore === 0 ? 'Unconfirmed (Partial Coverage)' : `${result.originalityScore}%`],
                         ['Exact Match', `${result.exactMatchScore}%`],
                         ['Near Match', `${result.nearMatchScore}%`],
                         ['Verified Paraphrase', `${result.paraphraseMatchScore}%`],
@@ -260,7 +376,7 @@ export default function PlagiarismDetector() {
               )}
 
               {/* Verified sources */}
-              {result.sources.length > 0 && (
+              {(result.status === 'completed' || result.status === 'partial' || result.status === 'no_verified_matches') && result.sources.length > 0 && (
                 <Card className="border-border shadow-card">
                   <CardHeader className="pb-2 pt-4 px-5 border-b border-border/50">
                     <CardTitle className="text-sm font-semibold text-navy flex items-center justify-between">
@@ -306,41 +422,288 @@ export default function PlagiarismDetector() {
                 </Card>
               )}
 
+              {/* Verified sources — failure state */}
+              {(result.status === 'analysis_failed' || result.status === 'provider_unavailable') && (
+                <Card className="border-border shadow-card">
+                  <CardHeader className="pb-2 pt-4 px-5 border-b border-border/50">
+                    <CardTitle className="text-sm font-semibold text-navy flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-primary" /> Verified Sources
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal">Unavailable</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                    <WifiOff className="w-5 h-5 text-muted-foreground/50" />
+                    Analysis did not complete. Source results are unavailable.
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Coverage note */}
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2.5">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-pretty">{result.coverageNote ?? 'Searches Crossref, OpenAlex and Unpaywall.'}</span>
                   {result.providerStatus && (() => {
+                    if (result.status === 'analysis_failed' || result.status === 'provider_unavailable') {
+                      return <p className="mt-1 opacity-70">Providers: Not checked (analysis stopped before queries were executed)</p>;
+                    }
                     const ps = result.providerStatus;
                     const searched: string[] = [];
                     const failed: string[] = [];
-                    if (ps.crossref === 'ok') searched.push('Crossref');
-                    else if (ps.crossref === 'failed') failed.push('Crossref');
-                    if (ps.openalex === 'ok') searched.push('OpenAlex');
-                    else if (ps.openalex === 'failed') failed.push('OpenAlex');
-                    if (ps.unpaywall === 'ok') searched.push('Unpaywall');
-                    else if (ps.unpaywall === 'failed') failed.push('Unpaywall');
-                    if (ps.webSearch === 'ok') searched.push('Web');
-                    else if (ps.webSearch === 'failed') failed.push('Web Search');
+                    const getStat = (val: any) => (typeof val === 'object' && val !== null ? val.status : val);
+                    if (getStat(ps.crossref) === 'ok') searched.push('Crossref');
+                    else if (getStat(ps.crossref) === 'failed') failed.push('Crossref');
+                    if (getStat(ps.openalex) === 'ok') searched.push('OpenAlex');
+                    else if (getStat(ps.openalex) === 'failed') failed.push('OpenAlex');
+                    if (getStat(ps.unpaywall) === 'ok') searched.push('Unpaywall');
+                    else if (getStat(ps.unpaywall) === 'failed') failed.push('Unpaywall');
+                    if (getStat(ps.webSearch) === 'ok' || getStat(ps.exa) === 'ok') searched.push('Web Search');
+                    else if (getStat(ps.webSearch) === 'failed' || getStat(ps.exa) === 'failed') failed.push('Web Search');
                     const parts = [
                       searched.length ? `Searched: ${searched.join(', ')}` : '',
                       failed.length   ? `Unavailable: ${failed.join(', ')}` : '',
                     ].filter(Boolean).join(' · ');
-                    return parts ? <p className="mt-1 opacity-70">{parts}</p> : null;
+                    return parts ? <p className="mt-1 opacity-70">{parts}</p> : <p className="mt-1 opacity-70">Providers: Not checked</p>;
                   })()}
                 </div>
               </div>
 
-              {result.sources.length > 0 && (
-                <Button type="button" className="w-full h-10 gap-2 bg-primary text-primary-foreground" onClick={handleExport}>
-                  <Download className="w-4 h-4" /> Export Report
-                </Button>
+              {/* Actions */}
+              {result && (
+                <div className="space-y-2">
+                  {forensicIntelligence ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        className="w-full h-10 gap-2 bg-primary text-primary-foreground font-semibold"
+                        onClick={() => {
+                          downloadForensicAuditPackage(forensicIntelligence, 'txt');
+                          toast.success('Downloaded 8-Section Forensic Audit Package (.TXT)');
+                        }}
+                      >
+                        <Download className="w-4 h-4" /> Audit Package (.TXT)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-10 gap-2 border-primary/30 text-primary hover:bg-primary/5 font-semibold"
+                        onClick={() => {
+                          downloadForensicAuditPackage(forensicIntelligence, 'json');
+                          toast.success('Downloaded Forensic Audit Package (.JSON)');
+                        }}
+                      >
+                        <FileJson className="w-4 h-4" /> Audit Package (.JSON)
+                      </Button>
+                    </div>
+                  ) : (
+                    result.sources.length > 0 && (
+                      <Button type="button" className="w-full h-10 gap-2 bg-primary text-primary-foreground" onClick={handleExport}>
+                        <Download className="w-4 h-4" /> Export Report (.TXT)
+                      </Button>
+                    )
+                  )}
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Advanced Plagiarism Forensic Intelligence Suite ── */}
+      {forensicIntelligence && !isAnalyzing && (
+        <div className="mt-10 pt-8 border-t border-border flex flex-col gap-6">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-xl md:text-2xl font-extrabold text-navy flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-primary" />
+                Plagiarism Forensic Intelligence Suite
+              </h2>
+              <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
+                17-Stage Deep Evidence Mapping, Non-Overlapping Source Accounting & Multi-Modal Audit.
+              </p>
+            </div>
+
+            {/* Scan Mode & Export Controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center bg-muted/60 rounded-lg p-1 border border-border">
+                <Button
+                  variant={scanMode === 'standard' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5 gap-1"
+                  onClick={() => setScanMode('standard')}
+                >
+                  <Zap className="w-3 h-3" /> Standard Scan
+                </Button>
+                <Button
+                  variant={scanMode === 'deep_forensic' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5 gap-1"
+                  onClick={() => setScanMode('deep_forensic')}
+                >
+                  <Compass className="w-3 h-3" /> Deep Forensic Scan
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5 font-medium"
+                onClick={() => {
+                  downloadForensicAuditPackage(forensicIntelligence, 'txt');
+                  toast.success('Downloaded 8-Section Forensic Audit Package (.TXT)');
+                }}
+              >
+                <Download className="w-3.5 h-3.5" /> 8-Section Audit (.TXT)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5 font-medium"
+                onClick={() => {
+                  downloadForensicAuditPackage(forensicIntelligence, 'json');
+                  toast.success('Downloaded Forensic Audit Package (.JSON)');
+                }}
+              >
+                <FileJson className="w-3.5 h-3.5" /> JSON Export
+              </Button>
+            </div>
+          </div>
+
+          {/* Forensic Summary Metric Cards */}
+          <ForensicSummaryHeader intel={forensicIntelligence} />
+
+          {/* Forensic Navigation Tabs */}
+          <Card className="border-border shadow-card overflow-hidden">
+            <CardHeader className="bg-card border-b border-border py-3 px-4">
+              <Tabs
+                value={forensicTab}
+                onValueChange={(v: any) => setForensicTab(v)}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-12 h-auto p-1 bg-muted/60 gap-1">
+                  <TabsTrigger value="heatmap" className="text-xs py-1.5 gap-1">
+                    <Eye className="w-3.5 h-3.5" /> Heatmap
+                  </TabsTrigger>
+                  <TabsTrigger value="sources" className="text-xs py-1.5 gap-1">
+                    <Link2 className="w-3.5 h-3.5" /> Sources
+                  </TabsTrigger>
+                  <TabsTrigger value="evidence" className="text-xs py-1.5 gap-1">
+                    <SplitSquareVertical className="w-3.5 h-3.5" /> Evidence
+                  </TabsTrigger>
+                  <TabsTrigger value="ai_rewrite" className="text-xs py-1.5 gap-1">
+                    <Bot className="w-3.5 h-3.5" /> AI Rewrites
+                  </TabsTrigger>
+                  <TabsTrigger value="citations" className="text-xs py-1.5 gap-1">
+                    <BookOpen className="w-3.5 h-3.5" /> Citations
+                  </TabsTrigger>
+                  <TabsTrigger value="timeline" className="text-xs py-1.5 gap-1">
+                    <History className="w-3.5 h-3.5" /> Timeline
+                  </TabsTrigger>
+                  <TabsTrigger value="clusters" className="text-xs py-1.5 gap-1">
+                    <Network className="w-3.5 h-3.5" /> Clusters
+                  </TabsTrigger>
+                  <TabsTrigger value="conceptual" className="text-xs py-1.5 gap-1">
+                    <Layers className="w-3.5 h-3.5" /> Concepts
+                  </TabsTrigger>
+                  <TabsTrigger value="tables" className="text-xs py-1.5 gap-1">
+                    <Table className="w-3.5 h-3.5" /> Tables
+                  </TabsTrigger>
+                  <TabsTrigger value="code" className="text-xs py-1.5 gap-1">
+                    <Terminal className="w-3.5 h-3.5" /> Code
+                  </TabsTrigger>
+                  <TabsTrigger value="private_corpus" className="text-xs py-1.5 gap-1">
+                    <FolderLock className="w-3.5 h-3.5" /> Corpus
+                  </TabsTrigger>
+                  <TabsTrigger value="coverage" className="text-xs py-1.5 gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Coverage
+                  </TabsTrigger>
+                  <TabsTrigger value="diagnostics" className="text-xs py-1.5 gap-1">
+                    <Terminal className="w-3.5 h-3.5" /> Telemetry
+                  </TabsTrigger>
+                  <TabsTrigger value="benchmark" className="text-xs py-1.5 gap-1">
+                    <Zap className="w-3.5 h-3.5" /> Benchmarks
+                  </TabsTrigger>
+                </TabsList>
+
+                <div className="p-4">
+                  <TabsContent value="heatmap" className="m-0">
+                    <PlagiarismHeatmap text={content} matches={forensicIntelligence.evidenceMatches} />
+                  </TabsContent>
+
+                  <TabsContent value="sources" className="m-0">
+                    <SourceBreakdownView
+                      sources={forensicIntelligence.individualSourceContributions}
+                      overallSimilarity={forensicIntelligence.rawSimilarityPercentage}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="evidence" className="m-0">
+                    <SideBySideEvidenceMap matches={forensicIntelligence.evidenceMatches} />
+                  </TabsContent>
+
+                  <TabsContent value="ai_rewrite" className="m-0">
+                    <AiRewriteTraceCard traces={forensicIntelligence.aiRewriteTraces} />
+                  </TabsContent>
+
+                  <TabsContent value="citations" className="m-0">
+                    <CitationIntelligenceView citations={forensicIntelligence.citations} />
+                  </TabsContent>
+
+                  <TabsContent value="timeline" className="m-0">
+                    <ChronologicalTimeline timeline={forensicIntelligence.chronologicalTimeline} />
+                  </TabsContent>
+
+                  <TabsContent value="clusters" className="m-0">
+                    <SourceClusteringView
+                      clusters={forensicIntelligence.sourceClusters}
+                      credibilityMap={forensicIntelligence.sourceCredibilityMap}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="conceptual" className="m-0">
+                    <ConceptualStructuralView
+                      conceptual={forensicIntelligence.conceptualSimilarities}
+                      structural={forensicIntelligence.structuralSimilarities}
+                      crossLingual={forensicIntelligence.crossLingualMatches}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="tables" className="m-0">
+                    <TableDataSimilarityView matches={forensicIntelligence.tableSimilarityMatches} />
+                  </TabsContent>
+
+                  <TabsContent value="code" className="m-0">
+                    <CodePlagiarismView matches={forensicIntelligence.codePlagiarismMatches} />
+                  </TabsContent>
+
+                  <TabsContent value="private_corpus" className="m-0">
+                    <PrivateCorpusView
+                      matches={forensicIntelligence.selfSimilarityMatches}
+                      corpusDocuments={corpusDocs}
+                      onAddDocument={handleAddCorpusDoc}
+                      onRemoveDocument={handleRemoveCorpusDoc}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="coverage" className="m-0">
+                    <CoverageTransparencyCard report={forensicIntelligence.searchCoverageReport} />
+                  </TabsContent>
+
+                  <TabsContent value="diagnostics" className="m-0">
+                    {result && <DiagnosticTelemetryInspector result={result} />}
+                  </TabsContent>
+
+                  <TabsContent value="benchmark" className="m-0">
+                    <PlagiarismBenchmarkSuite />
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </CardHeader>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

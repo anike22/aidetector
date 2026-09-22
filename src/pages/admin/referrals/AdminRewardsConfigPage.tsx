@@ -14,7 +14,7 @@ const REWARD_TYPES: RewardType[] = ['Points','Credits','Badge','Achievement','Fr
 const ACHIEVEMENT_TYPES: AchievementType[] = ['FirstScan','100Scans','FirstHumanization','FirstAPICall','FirstReferral','10Referrals','TeamCreator','PowerUser','Educator','APIExpert','EarlyAdopter'];
 
 export default function AdminRewardsConfigPage() {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading, isAdmin } = useAuth();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [userId, setUserId] = useState('');
   const [type, setType] = useState<RewardType>('Points');
@@ -34,8 +34,8 @@ export default function AdminRewardsConfigPage() {
   };
 
   useEffect(() => {
-    if (profile?.role === 'admin') load();
-  }, [profile]);
+    if (isAdmin) load();
+  }, [isAdmin]);
 
   const grantReward = async () => {
     try {
@@ -56,7 +56,8 @@ export default function AdminRewardsConfigPage() {
     }
   };
 
-  if (profile?.role !== 'admin') return <p className="p-8 text-center">Admin access required.</p>;
+  if (authLoading) return <p className="p-8 text-center text-muted-foreground">Checking authorization...</p>;
+  if (!isAdmin) return <p className="p-8 text-center">Admin access required.</p>;
   if (loading) return <p className="p-8 text-center">Loading...</p>;
 
   return (

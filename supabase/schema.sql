@@ -2207,92 +2207,71 @@ $$;
 
 CREATE OR REPLACE FUNCTION "public"."allocate_team_member_credits"("p_owner_id" "uuid", "p_member_email" "text", "p_allocated_credits" integer, "p_seat_name" "text" DEFAULT NULL::"text", "p_role" "text" DEFAULT 'member'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_plan text;
-  v_owner_credits integer;
-  v_total_allocated integer;
-  v_member_user_id uuid;
-  v_new_total integer;
-  v_result jsonb;
+  v_owner profiles%ROWTYPE;
+  v_member_id uuid;
+  v_existing team_credit_allocations%ROWTYPE;
+  v_other_allocated integer;
+  v_active_seats integer;
+  v_email text := lower(trim(p_member_email));
+  v_result team_credit_allocations%ROWTYPE;
 BEGIN
-  -- Verify owner's plan is Business or Enterprise
-  SELECT subscription_plan, COALESCE(credits_balance, 0)
-  INTO v_plan, v_owner_credits
-  FROM public.profiles
-  WHERE id = p_owner_id;
-
-  IF v_plan IS NULL THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Owner account not found');
+  IF current_setting('role',true) NOT IN ('service_role','postgres')
+    AND auth.uid() IS DISTINCT FROM p_owner_id THEN
+    RAISE EXCEPTION 'Not authorized to manage this team';
+  END IF;
+  IF v_email = '' OR position('@' in v_email) <= 1 OR p_allocated_credits <= 0
+    OR p_role NOT IN ('member','admin') THEN
+    RAISE EXCEPTION 'Invalid team allocation';
   END IF;
 
-  IF v_plan NOT IN ('business', 'enterprise') THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Team credit allocation is available only on Business and Enterprise plans');
+  PERFORM refresh_billing_account(p_owner_id);
+  SELECT * INTO v_owner FROM profiles WHERE id=p_owner_id FOR UPDATE;
+  IF NOT FOUND OR NOT billing_paid_active(v_owner.subscription_plan,v_owner.subscription_status,v_owner.plan_end_date)
+    OR billing_plan_rank(v_owner.subscription_plan)<4 THEN
+    RAISE EXCEPTION 'An active Business or Enterprise plan is required';
+  END IF;
+  IF lower(COALESCE(v_owner.email,''))=v_email THEN
+    RAISE EXCEPTION 'The account owner cannot also be a team seat';
   END IF;
 
-  -- Check if member already has a registered account
-  SELECT id INTO v_member_user_id
-  FROM public.profiles
-  WHERE lower(email) = lower(p_member_email)
-  LIMIT 1;
-
-  -- Check current total allocated excluding this member
-  SELECT COALESCE(SUM(allocated_credits), 0)
-  INTO v_total_allocated
-  FROM public.team_credit_allocations
-  WHERE owner_id = p_owner_id
-    AND lower(member_email) != lower(p_member_email)
-    AND status = 'active';
-
-  v_new_total := v_total_allocated + GREATEST(0, p_allocated_credits);
-
-  -- Ensure allocated sub-quotas do not exceed total pool
-  IF v_new_total > v_owner_credits THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', format('Total allocations (%s credits) cannot exceed shared credit pool (%s credits)', v_new_total, v_owner_credits),
-      'available_unallocated', GREATEST(0, v_owner_credits - v_total_allocated)
-    );
+  SELECT id INTO v_member_id FROM profiles WHERE lower(email)=v_email ORDER BY created_at LIMIT 1;
+  IF v_member_id IS NOT NULL AND EXISTS(
+    SELECT 1 FROM team_credit_allocations
+    WHERE member_user_id=v_member_id AND owner_id<>p_owner_id AND status='active'
+  ) THEN
+    RAISE EXCEPTION 'This member already belongs to another active team';
   END IF;
 
-  -- Upsert allocation
-  INSERT INTO public.team_credit_allocations (
-    owner_id,
-    member_email,
-    member_user_id,
-    seat_name,
-    role,
-    allocated_credits,
-    status,
-    updated_at
-  )
-  VALUES (
-    p_owner_id,
-    lower(p_member_email),
-    v_member_user_id,
-    COALESCE(p_seat_name, split_part(p_member_email, '@', 1)),
-    COALESCE(p_role, 'member'),
-    GREATEST(0, p_allocated_credits),
-    'active',
-    now()
-  )
-  ON CONFLICT (owner_id, member_email)
-  DO UPDATE SET
-    member_user_id = COALESCE(EXCLUDED.member_user_id, team_credit_allocations.member_user_id),
-    seat_name = COALESCE(EXCLUDED.seat_name, team_credit_allocations.seat_name),
-    role = EXCLUDED.role,
-    allocated_credits = EXCLUDED.allocated_credits,
-    status = 'active',
-    updated_at = now()
-  RETURNING to_jsonb(team_credit_allocations.*) INTO v_result;
+  SELECT * INTO v_existing FROM team_credit_allocations
+  WHERE owner_id=p_owner_id AND lower(member_email)=v_email FOR UPDATE;
+  SELECT count(*) INTO v_active_seats FROM team_credit_allocations
+  WHERE owner_id=p_owner_id AND status='active'
+    AND (v_existing.id IS NULL OR id<>v_existing.id);
+  IF lower(v_owner.subscription_plan)='business' AND v_active_seats>=5 THEN
+    RAISE EXCEPTION 'Business plans support at most 5 active team seats';
+  END IF;
+  SELECT COALESCE(sum(allocated_credits),0) INTO v_other_allocated
+  FROM team_credit_allocations WHERE owner_id=p_owner_id AND status='active'
+    AND (v_existing.id IS NULL OR id<>v_existing.id);
+  IF v_other_allocated + GREATEST(p_allocated_credits,COALESCE(v_existing.consumed_credits,0))
+    > COALESCE(v_owner.monthly_credit_allocation,0) THEN
+    RAISE EXCEPTION 'Team allocations exceed the plan credit entitlement';
+  END IF;
 
-  RETURN jsonb_build_object(
-    'success', true,
-    'allocation', v_result,
-    'total_allocated', v_new_total,
-    'remaining_unallocated', GREATEST(0, v_owner_credits - v_new_total)
-  );
+  INSERT INTO team_credit_allocations(owner_id,member_email,member_user_id,seat_name,role,allocated_credits,consumed_credits,status,updated_at)
+  VALUES(p_owner_id,v_email,v_member_id,p_seat_name,p_role,
+    GREATEST(p_allocated_credits,COALESCE(v_existing.consumed_credits,0)),
+    COALESCE(v_existing.consumed_credits,0),'active',now())
+  ON CONFLICT(owner_id,member_email) DO UPDATE SET
+    member_user_id=COALESCE(EXCLUDED.member_user_id,team_credit_allocations.member_user_id),
+    seat_name=EXCLUDED.seat_name, role=EXCLUDED.role,
+    allocated_credits=GREATEST(EXCLUDED.allocated_credits,team_credit_allocations.consumed_credits),
+    status='active',updated_at=now()
+  RETURNING * INTO v_result;
+  RETURN jsonb_build_object('success',true,'allocation',to_jsonb(v_result));
 END;
 $$;
 
@@ -2320,6 +2299,78 @@ $$;
 
 
 --
+-- Name: apply_verified_subscription_payment("text", "text", "uuid", "text", "text", bigint, "text", timestamp with time zone, "uuid"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."apply_verified_subscription_payment"("p_provider" "text", "p_payment_reference" "text", "p_user_id" "uuid", "p_plan" "text", "p_interval" "text", "p_amount_minor" bigint, "p_currency" "text", "p_paid_at" timestamp with time zone, "p_order_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE price record; monthly record; prior record; p record; period_end timestamptz; old_grant boolean;
+BEGIN
+ IF current_setting('role',true)<>'service_role' AND session_user<>'postgres' THEN RAISE EXCEPTION 'Service role required'; END IF;
+ IF p_provider NOT IN ('stripe','paystack') OR p_payment_reference IS NULL OR length(p_payment_reference) NOT BETWEEN 1 AND 200
+ OR p_interval NOT IN ('month','year') OR p_paid_at IS NULL OR p_paid_at>now()+interval '5 minutes' THEN
+   RAISE EXCEPTION 'Invalid verified payment';
+ END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_provider||':'||p_payment_reference,0));
+ SELECT * INTO prior FROM billing_payments WHERE provider=p_provider AND payment_reference=p_payment_reference;
+ IF FOUND THEN
+   IF prior.user_id<>p_user_id OR prior.plan<>p_plan OR prior.billing_interval<>p_interval OR prior.amount_minor<>p_amount_minor OR prior.currency<>lower(p_currency) THEN
+     RAISE EXCEPTION 'Payment identity or amount mismatch';
+   END IF;
+   RETURN jsonb_build_object('success',true,'granted',true,'idempotent_replay',true,'plan',prior.plan,'period_end',prior.period_end);
+ END IF;
+ SELECT * INTO p FROM profiles WHERE id=p_user_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Billing account not found'; END IF;
+ IF billing_paid_active(p.subscription_plan,p.subscription_status,p.plan_end_date)
+   AND billing_plan_rank(p_plan)<billing_plan_rank(p.subscription_plan) THEN
+   RAISE EXCEPTION 'Downgrades can take effect only after the current paid period ends';
+ END IF;
+ SELECT * INTO price FROM plan_prices WHERE plan=p_plan AND billing_interval=p_interval AND currency=lower(p_currency) AND is_active;
+ SELECT * INTO monthly FROM plan_prices WHERE plan=p_plan AND billing_interval='month' AND currency=lower(p_currency) AND is_active;
+ IF price IS NULL OR monthly IS NULL OR price.amount_cents<>p_amount_minor THEN RAISE EXCEPTION 'Paid amount or currency does not match plan'; END IF;
+ period_end:=CASE WHEN p_interval='year' THEN p_paid_at+interval '1 year' ELSE p_paid_at+interval '30 days' END;
+ -- Do not issue new credits for an old payment that was already fulfilled before this migration.
+ SELECT EXISTS(SELECT 1 FROM usage_ledger WHERE user_id=p_user_id AND outcome='success'
+   AND (ledger_type='subscription' OR operation='grant') AND (
+     metadata->>'reference'=p_payment_reference OR metadata->>'session_id'=p_payment_reference
+     OR metadata->>'event_id'=p_payment_reference
+     OR (p_order_id IS NOT NULL AND metadata->>'order_id'=p_order_id::text))) INTO old_grant;
+ IF NOT old_grant AND period_end<=now() THEN RAISE EXCEPTION 'Paid period has already ended; manual reconciliation required'; END IF;
+ INSERT INTO billing_payments(provider,payment_reference,user_id,plan,billing_interval,amount_minor,currency,paid_at,period_end)
+ VALUES(p_provider,p_payment_reference,p_user_id,p_plan,p_interval,p_amount_minor,lower(p_currency),p_paid_at,period_end);
+ IF NOT old_grant THEN
+   -- Older deliveries never overwrite a more recent paid period.
+   IF p.plan_start_date IS NOT NULL AND p.plan_start_date>p_paid_at THEN RAISE EXCEPTION 'Out-of-order payment requires reconciliation'; END IF;
+   UPDATE profiles SET subscription_plan=p_plan,subscription_status='active',
+     billing_cycle=CASE WHEN p_interval='year' THEN 'annual' ELSE 'monthly' END,
+     plan_start_date=p_paid_at,plan_end_date=period_end,
+     billing_credit_period_start=p_paid_at,
+     credits_refill_date=CASE WHEN p_interval='year' THEN p_paid_at+interval '1 month' ELSE period_end END,
+     monthly_credit_allocation=monthly.credits,credits_balance=monthly.credits,
+     trial_checks_remaining=0,updated_at=now() WHERE id=p_user_id;
+   UPDATE team_credit_allocations SET consumed_credits=0,updated_at=now() WHERE owner_id=p_user_id;
+   INSERT INTO usage_ledger(user_id,feature_slug,operation,credits_amount,outcome,ledger_type,metadata)
+   VALUES(p_user_id,'subscription_refill','verified_payment_grant',monthly.credits,'success','subscription',
+     jsonb_build_object('provider',p_provider,'payment_reference',p_payment_reference,'period_start',p_paid_at,'period_end',period_end,'plan',p_plan));
+ END IF;
+ -- Order completion and entitlement grant commit together. Never mark an ungranted payment fulfilled.
+ IF p_order_id IS NOT NULL THEN
+   UPDATE orders SET status='completed',completed_at=now() WHERE id=p_order_id AND user_id=p_user_id;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Payment order ownership mismatch'; END IF;
+ ELSIF p_provider='paystack' THEN
+   INSERT INTO orders(user_id,items,total_amount,currency,status,paystack_reference,completed_at,metadata)
+   VALUES(p_user_id,jsonb_build_array(jsonb_build_object('plan',p_plan,'interval',p_interval)),p_amount_minor/100.0,
+     upper(p_currency),'completed',p_payment_reference,now(),jsonb_build_object('plan',p_plan,'interval',p_interval,'type','subscription'))
+   ON CONFLICT (paystack_reference) WHERE paystack_reference IS NOT NULL AND status='completed' DO NOTHING;
+ END IF;
+ RETURN jsonb_build_object('success',true,'granted',true,'plan',p_plan,'period_end',period_end,'legacy_payment',old_grant);
+END;
+$$;
+
+
+--
 -- Name: articles_set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2327,6 +2378,31 @@ CREATE OR REPLACE FUNCTION "public"."articles_set_updated_at"() RETURNS "trigger
     LANGUAGE "plpgsql"
     AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$;
+
+
+--
+-- Name: billing_paid_active("text", "text", timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."billing_paid_active"("p_plan" "text", "p_status" "text", "p_end" timestamp with time zone) RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+ SELECT COALESCE(public.billing_plan_rank(p_plan)>=2 AND lower(p_status) IN ('active','trialing','cancelled','canceled') AND p_end>now(),false);
+$$;
+
+
+--
+-- Name: billing_plan_rank("text"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."billing_plan_rank"("p_plan" "text") RETURNS integer
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+ SELECT CASE lower(p_plan) WHEN 'guest' THEN 0 WHEN 'free' THEN 1 WHEN 'pro' THEN 2
+ WHEN 'pro_plus' THEN 3 WHEN 'pro+' THEN 3 WHEN 'business' THEN 4 WHEN 'enterprise' THEN 5 ELSE -1 END;
 $$;
 
 
@@ -2516,66 +2592,16 @@ CREATE OR REPLACE FUNCTION "public"."check_entitlement"("p_user_id" "uuid", "p_f
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
-DECLARE
-  v_role TEXT := COALESCE(current_setting('role', true), 'anon');
-  v_auth_uid UUID := auth.uid();
-  v_rate RECORD;
-  v_profile RECORD;
-  v_cost INT;
-  v_trial_eligible BOOLEAN;
+DECLARE s record; r record; ok boolean;
 BEGIN
-  IF v_role <> 'service_role' THEN
-    IF v_auth_uid IS NOT NULL THEN
-      IF p_user_id IS NOT NULL AND p_user_id <> v_auth_uid THEN
-        RAISE EXCEPTION 'Not authorized';
-      END IF;
-      p_user_id := v_auth_uid;
-    ELSE
-      p_user_id := NULL;
-    END IF;
-  END IF;
-
-  SELECT * INTO v_rate FROM credit_rate_table WHERE feature_slug = p_feature_slug;
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT FALSE, 'This feature has no billing configuration.'::text, 0::bigint, 0::bigint, 'unknown'::text;
-    RETURN;
-  END IF;
-  v_cost := COALESCE(v_rate.base_credit_cost, 1);
-  v_trial_eligible := COALESCE(v_rate.trial_eligible, false);
-
-  IF p_user_id IS NULL THEN
-    RETURN QUERY SELECT FALSE, 'Guest session required.'::text, 0::bigint, 1::bigint, 'guest'::text;
-    RETURN;
-  END IF;
-
-  SELECT * INTO v_profile FROM profiles WHERE id = p_user_id;
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT FALSE, 'Profile not found.'::text, 0::bigint, 0::bigint, 'unknown'::text;
-    RETURN;
-  END IF;
-
-  IF v_trial_eligible AND COALESCE(v_profile.trial_checks_remaining, 0) > 0 THEN
-    RETURN QUERY SELECT TRUE, NULL::text,
-      COALESCE(v_profile.trial_checks_remaining, 0)::bigint,
-      COALESCE(v_profile.trial_checks_total, 5)::bigint,
-      COALESCE(v_profile.subscription_plan, 'free')::text;
-    RETURN;
-  END IF;
-
-  IF COALESCE(v_profile.credits_balance, 0) >= v_cost THEN
-    RETURN QUERY SELECT TRUE, NULL::text,
-      COALESCE(v_profile.credits_balance, 0)::bigint,
-      COALESCE(v_profile.monthly_credit_allocation, 0)::bigint,
-      COALESCE(v_profile.subscription_plan, 'free')::text;
-    RETURN;
-  END IF;
-
-  RETURN QUERY SELECT FALSE,
-    CASE WHEN COALESCE(v_profile.subscription_plan, 'free') = 'free'
-      THEN 'You''ve used your free checks. Choose a plan to continue.'
-      ELSE 'Insufficient credits for this operation. Please top up or renew your plan to continue.' END::text,
-    0::bigint, 0::bigint,
-    COALESCE(v_profile.subscription_plan, 'free')::text;
+ SELECT * INTO s FROM get_user_entitlement_summary(p_user_id,NULL,p_timezone);
+ SELECT * INTO r FROM credit_rate_table WHERE feature_slug=p_feature_slug;
+ IF NOT FOUND THEN RETURN QUERY SELECT false,'Billing rate missing.'::text,0::bigint,0::bigint,s.plan; RETURN; END IF;
+ ok:=CASE WHEN s.is_paid_active THEN billing_plan_rank(s.plan)>=billing_plan_rank(r.min_plan) AND s.credits_balance>=r.base_credit_cost
+ ELSE billing_plan_rank(s.plan)<2 AND r.trial_eligible AND billing_plan_rank(r.min_plan)<=1 AND s.trial_checks_remaining>0 END;
+ RETURN QUERY SELECT ok,CASE WHEN ok THEN NULL::text ELSE 'An active plan and sufficient credits are required.' END,
+ CASE WHEN s.is_paid_active THEN s.credits_balance ELSE s.trial_checks_remaining END::bigint,
+ CASE WHEN s.is_paid_active THEN s.monthly_credit_allocation ELSE s.trial_checks_total END::bigint,s.plan;
 END;
 $$;
 
@@ -3318,7 +3344,10 @@ DECLARE
   v_role TEXT := COALESCE(current_setting('role', true), 'anon');
   v_auth_uid UUID := auth.uid();
   v_res RECORD;
+  v_billable boolean;
+  v_owner_id uuid;
 BEGIN
+  IF p_outcome NOT IN ('success','failed') THEN RAISE EXCEPTION 'Invalid outcome'; END IF;
   SELECT * INTO v_res FROM public.credit_reservations WHERE id = p_reservation_id FOR UPDATE;
 
   IF v_res IS NULL OR v_res.status NOT IN ('reserved', 'pending') THEN
@@ -3338,6 +3367,10 @@ BEGIN
     END IF;
   END IF;
 
+  v_owner_id:=COALESCE(v_res.team_owner_id,v_res.user_id);
+  SELECT billing_paid_active(subscription_plan,subscription_status,plan_end_date)
+    AND (v_res.metadata->>'billing_period') IS NOT DISTINCT FROM to_jsonb(COALESCE(billing_credit_period_start,plan_start_date))#>>'{}'
+    INTO v_billable FROM profiles WHERE id=v_owner_id FOR UPDATE;
   IF p_outcome = 'success' THEN
     -- Deduction already happened at reserve time; settle the ledger.
     IF v_res.reservation_type = 'trial_check' THEN
@@ -3385,16 +3418,11 @@ BEGIN
             updated_at = now()
         WHERE guest_id = v_res.guest_id;
       END IF;
-    ELSIF v_res.reservation_type = 'team_credit' AND v_res.team_allocation_id IS NOT NULL THEN
-      UPDATE public.team_credit_allocations
-      SET used_credits = GREATEST(0, used_credits - COALESCE(v_res.credits_reserved, 0)),
-          updated_at = now()
-      WHERE id = v_res.team_allocation_id;
-    ELSE
-      UPDATE public.profiles
-      SET credits_balance = COALESCE(credits_balance, 0) + COALESCE(v_res.credits_reserved, 0),
-          updated_at = now()
-      WHERE id = v_res.user_id;
+    ELSIF COALESCE(v_billable,false) THEN
+      UPDATE profiles SET credits_balance=credits_balance+v_res.credits_reserved,updated_at=now() WHERE id=v_owner_id;
+      IF v_res.reservation_type='team_credit' THEN
+        UPDATE team_credit_allocations SET consumed_credits=GREATEST(0,consumed_credits-v_res.credits_reserved),updated_at=now() WHERE id=v_res.team_allocation_id;
+      END IF;
     END IF;
 
     UPDATE public.credit_reservations
@@ -3523,6 +3551,78 @@ CREATE OR REPLACE FUNCTION "public"."get_automation_analytics"("p_workflow_id" "
   WHERE a.date BETWEEN p_start_date AND p_end_date
     AND (p_workflow_id IS NULL OR a.workflow_id = p_workflow_id)
   ORDER BY a.date DESC, w.name;
+$$;
+
+
+--
+-- Name: get_billing_summary_internal("uuid"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_billing_summary_internal"("p_profile_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+  v_p RECORD;
+  v_credits_balance integer := 0;
+  v_trial_remaining integer := 0;
+  v_trial_total integer := 5;
+  v_plan text := 'free';
+  v_status text := 'none';
+  v_end timestamptz := NULL;
+  v_period_start timestamptz := NULL;
+  v_is_paid boolean := false;
+  v_credits_used integer := 0;
+BEGIN
+  IF p_profile_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'profile_id required');
+  END IF;
+
+  SELECT * INTO v_p FROM public.profiles WHERE id = p_profile_id;
+  IF v_p.id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'profile not found');
+  END IF;
+
+  v_plan := COALESCE(v_p.plan, 'free');
+  v_status := COALESCE(v_p.subscription_status, 'none');
+  v_end := v_p.subscription_period_end;
+  v_period_start := v_p.billing_credit_period_start;
+  v_trial_total := COALESCE(v_p.trial_checks_total, 5);
+  v_is_paid := public.billing_paid_active(v_plan, v_status, v_end);
+
+  IF v_is_paid THEN
+    IF v_period_start IS NOT NULL AND v_period_start > v_p.updated_at THEN
+      -- Fresh cycle
+      v_credits_balance := COALESCE(v_p.credits_balance, 0);
+    ELSE
+      v_credits_balance := COALESCE(v_p.credits_balance, 0);
+    END IF;
+    v_trial_remaining := 0;
+  ELSE
+    v_credits_balance := 0;
+    v_trial_remaining := GREATEST(0, v_trial_total - COALESCE(v_p.trial_checks_used, 0));
+  END IF;
+
+  -- Meter usage in current cycle
+  SELECT COALESCE(SUM(credits_deducted), 0) INTO v_credits_used
+  FROM public.usage_ledger
+  WHERE user_id = p_profile_id
+    AND created_at >= COALESCE(v_period_start, date_trunc('month', now()));
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'plan', v_plan,
+    'subscription_status', v_status,
+    'subscription_period_end', v_end,
+    'billing_credit_period_start', v_period_start,
+    'is_paid', v_is_paid,
+    'credits_balance', v_credits_balance,
+    'credits_used', v_credits_used,
+    'trial_checks_remaining', v_trial_remaining,
+    'trial_checks_total', v_trial_total,
+    'trial_checks_used', COALESCE(v_p.trial_checks_used, 0)
+  );
+END;
 $$;
 
 
@@ -4174,79 +4274,61 @@ $$;
 
 CREATE OR REPLACE FUNCTION "public"."get_team_credit_summary"("p_user_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_plan text;
-  v_credits_balance integer;
-  v_user_email text;
-  v_is_owner boolean := false;
+  v_profile profiles%ROWTYPE;
+  v_owner profiles%ROWTYPE;
+  v_member team_credit_allocations%ROWTYPE;
   v_allocations jsonb := '[]'::jsonb;
-  v_member_allocation record;
-  v_total_allocated integer := 0;
-  v_total_consumed integer := 0;
+  v_allocated integer := 0;
+  v_consumed integer := 0;
 BEGIN
-  SELECT email, subscription_plan, COALESCE(credits_balance, 0)
-  INTO v_user_email, v_plan, v_credits_balance
-  FROM public.profiles
-  WHERE id = p_user_id;
+  IF current_setting('role',true) NOT IN ('service_role','postgres')
+    AND auth.uid() IS DISTINCT FROM p_user_id THEN
+    RAISE EXCEPTION 'Not authorized to view this team';
+  END IF;
+  PERFORM refresh_billing_account(p_user_id);
+  SELECT * INTO v_profile FROM profiles WHERE id=p_user_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('is_team_account',false,'is_owner',false,'plan','free'); END IF;
 
-  IF v_plan IN ('business', 'enterprise') THEN
-    v_is_owner := true;
+  IF billing_paid_active(v_profile.subscription_plan,v_profile.subscription_status,v_profile.plan_end_date)
+    AND billing_plan_rank(v_profile.subscription_plan)>=4 THEN
+    SELECT COALESCE(sum(allocated_credits),0),COALESCE(sum(consumed_credits),0),
+      COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY created_at),'[]'::jsonb)
+    INTO v_allocated,v_consumed,v_allocations
+    FROM team_credit_allocations t WHERE owner_id=p_user_id AND status='active';
+    RETURN jsonb_build_object('is_team_account',true,'is_owner',true,
+      'plan',v_profile.subscription_plan,'status',v_profile.subscription_status,
+      'total_pool',COALESCE(v_profile.monthly_credit_allocation,0),
+      'remaining_pool',COALESCE(v_profile.credits_balance,0),
+      'total_allocated',v_allocated,'total_consumed',v_consumed,
+      'unallocated_pool',GREATEST(0,COALESCE(v_profile.monthly_credit_allocation,0)-v_allocated),
+      'credits_refill_date',v_profile.credits_refill_date,'plan_end_date',v_profile.plan_end_date,
+      'allocations',v_allocations);
   END IF;
 
-  -- If user is owner
-  IF v_is_owner THEN
-    SELECT
-      COALESCE(SUM(allocated_credits), 0),
-      COALESCE(SUM(consumed_credits), 0),
-      COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.created_at ASC), '[]'::jsonb)
-    INTO v_total_allocated, v_total_consumed, v_allocations
-    FROM public.team_credit_allocations t
-    WHERE t.owner_id = p_user_id AND t.status != 'removed';
-
-    RETURN jsonb_build_object(
-      'is_team_account', true,
-      'is_owner', true,
-      'plan', v_plan,
-      'total_pool', v_credits_balance,
-      'total_allocated', v_total_allocated,
-      'total_consumed', v_total_consumed,
-      'unallocated_pool', GREATEST(0, v_credits_balance - v_total_allocated),
-      'allocations', v_allocations
-    );
+  UPDATE team_credit_allocations SET member_user_id=p_user_id,updated_at=now()
+  WHERE member_user_id IS NULL AND status='active'
+    AND lower(member_email)=lower(COALESCE(v_profile.email,''));
+  SELECT * INTO v_member FROM team_credit_allocations
+  WHERE member_user_id=p_user_id AND status='active' ORDER BY owner_id LIMIT 1;
+  IF FOUND THEN
+    PERFORM refresh_billing_account(v_member.owner_id);
+    SELECT * INTO v_owner FROM profiles WHERE id=v_member.owner_id;
+    IF billing_paid_active(v_owner.subscription_plan,v_owner.subscription_status,v_owner.plan_end_date)
+      AND billing_plan_rank(v_owner.subscription_plan)>=4 THEN
+      RETURN jsonb_build_object('is_team_account',true,'is_owner',false,
+        'owner_id',v_member.owner_id,'seat_name',v_member.seat_name,'role',v_member.role,
+        'allocated_credits',v_member.allocated_credits,'consumed_credits',v_member.consumed_credits,
+        'remaining_credits',GREATEST(0,LEAST(COALESCE(v_owner.credits_balance,0),v_member.allocated_credits-v_member.consumed_credits)),
+        'owner_shared_pool',COALESCE(v_owner.credits_balance,0),'plan',v_owner.subscription_plan,
+        'status',v_owner.subscription_status,'credits_refill_date',v_owner.credits_refill_date,
+        'plan_end_date',v_owner.plan_end_date);
+    END IF;
   END IF;
-
-  -- Check if user is a member under another owner
-  SELECT t.*, p.subscription_plan as owner_plan, p.credits_balance as owner_pool
-  INTO v_member_allocation
-  FROM public.team_credit_allocations t
-  JOIN public.profiles p ON p.id = t.owner_id
-  WHERE (t.member_user_id = p_user_id OR lower(t.member_email) = lower(v_user_email))
-    AND t.status = 'active'
-  LIMIT 1;
-
-  IF v_member_allocation.id IS NOT NULL THEN
-    RETURN jsonb_build_object(
-      'is_team_account', true,
-      'is_owner', false,
-      'owner_id', v_member_allocation.owner_id,
-      'seat_name', v_member_allocation.seat_name,
-      'role', v_member_allocation.role,
-      'allocated_credits', v_member_allocation.allocated_credits,
-      'consumed_credits', v_member_allocation.consumed_credits,
-      'remaining_credits', GREATEST(0, v_member_allocation.allocated_credits - v_member_allocation.consumed_credits),
-      'owner_shared_pool', v_member_allocation.owner_pool,
-      'plan', v_member_allocation.owner_plan
-    );
-  END IF;
-
-  RETURN jsonb_build_object(
-    'is_team_account', false,
-    'is_owner', false,
-    'plan', COALESCE(v_plan, 'free'),
-    'credits_balance', v_credits_balance
-  );
+  RETURN jsonb_build_object('is_team_account',false,'is_owner',false,
+    'plan',COALESCE(v_profile.subscription_plan,'free'),'credits_balance',COALESCE(v_profile.credits_balance,0));
 END;
 $$;
 
@@ -4369,6 +4451,8 @@ DECLARE
   v_warning_level TEXT := 'normal';
   v_profile RECORD;
   v_guest RECORD;
+  v_team RECORD;
+  v_owner RECORD;
 BEGIN
   -- Identity enforcement
   IF v_role <> 'service_role' THEN
@@ -4383,13 +4467,13 @@ BEGIN
   END IF;
 
   IF p_user_id IS NOT NULL THEN
+    PERFORM refresh_billing_account(p_user_id);
     SELECT * INTO v_profile FROM public.profiles WHERE id = p_user_id;
     IF FOUND THEN
       v_plan := COALESCE(v_profile.subscription_plan, 'free');
       v_status := COALESCE(v_profile.subscription_status, 'Active');
       v_plan_end_date := v_profile.plan_end_date;
-      v_is_paid := (lower(v_plan) IN ('pro', 'pro_plus', 'pro+', 'business', 'enterprise')
-        AND (lower(v_status) IN ('active', 'trialing') OR (v_plan_end_date IS NOT NULL AND v_plan_end_date > NOW())));
+      v_is_paid := billing_paid_active(v_plan,v_status,v_plan_end_date);
       v_credits_balance := COALESCE(v_profile.credits_balance, 0);
       v_monthly_alloc := COALESCE(v_profile.monthly_credit_allocation, 0);
       v_refill_date := v_profile.credits_refill_date;
@@ -4399,8 +4483,23 @@ BEGIN
 
       SELECT COALESCE(SUM(credits_amount), 0) INTO v_credits_used
       FROM public.usage_ledger
-      WHERE user_id = p_user_id AND outcome = 'success';
+      WHERE (user_id = p_user_id OR team_owner_id = p_user_id) AND outcome = 'success'
+        AND reservation_id IS NOT NULL AND ledger_type IN ('usage','team','deduction')
+        AND (v_profile.billing_credit_period_start IS NULL OR created_at>=v_profile.billing_credit_period_start);
 
+      IF NOT v_is_paid THEN
+        SELECT * INTO v_team FROM team_credit_allocations t WHERE t.member_user_id=p_user_id AND t.status='active' ORDER BY t.owner_id LIMIT 1;
+        IF FOUND THEN
+          PERFORM refresh_billing_account(v_team.owner_id);
+          SELECT * INTO v_owner FROM profiles WHERE id=v_team.owner_id;
+          IF billing_paid_active(v_owner.subscription_plan,v_owner.subscription_status,v_owner.plan_end_date) AND billing_plan_rank(v_owner.subscription_plan)>=4 THEN
+            v_is_paid:=true; v_plan:=v_owner.subscription_plan; v_status:=v_owner.subscription_status;
+            v_plan_end_date:=v_owner.plan_end_date; v_refill_date:=v_owner.credits_refill_date;
+            v_credits_balance:=GREATEST(0,LEAST(v_owner.credits_balance,v_team.allocated_credits-v_team.consumed_credits));
+            v_monthly_alloc:=v_team.allocated_credits; v_trial_remaining:=0;
+          END IF;
+        END IF;
+      END IF;
       IF v_is_paid THEN
         IF v_credits_balance <= 0 THEN
           v_warning_level := 'exhausted';
@@ -4779,13 +4878,13 @@ $$;
 
 CREATE OR REPLACE FUNCTION "public"."increment_api_key_usage"("key_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
-  UPDATE api_keys
-  SET
-    requests_this_month = COALESCE(requests_this_month, 0) + 1,
-    last_used_at        = now()
-  WHERE id = key_id;
+  IF current_setting('role',true) NOT IN ('service_role','postgres') THEN
+    RAISE EXCEPTION 'Service role required';
+  END IF;
+  UPDATE api_keys SET last_used_at=now() WHERE id=key_id AND is_active AND revoked_at IS NULL;
 END;
 $$;
 
@@ -5110,17 +5209,17 @@ BEGIN
   v_effective_id := COALESCE(NULLIF(trim(p_guest_id), ''), 'gst_' || replace(gen_random_uuid()::text, '-', ''));
 
   SELECT * INTO v_session
-  FROM public.server_guest_sessions
-  WHERE guest_id = v_effective_id;
+  FROM public.server_guest_sessions sgs
+  WHERE sgs.guest_id = v_effective_id;
 
   IF FOUND THEN
     -- Returning visitor: touch, keep authoritative counters.
-    UPDATE public.server_guest_sessions
+    UPDATE public.server_guest_sessions sgs
     SET last_active_at = NOW(),
-        ip_address = COALESCE(v_ip, ip_address),
-        user_agent = COALESCE(p_user_agent, user_agent),
+        ip_address = COALESCE(v_ip, sgs.ip_address),
+        user_agent = COALESCE(p_user_agent, sgs.user_agent),
         updated_at = NOW()
-    WHERE guest_id = v_effective_id
+    WHERE sgs.guest_id = v_effective_id
     RETURNING * INTO v_session;
   ELSE
     -- New session (client- or server-supplied id): apply per-IP throttle.
@@ -5134,9 +5233,9 @@ BEGIN
 
     IF v_ip IS NOT NULL THEN
       SELECT COUNT(*) INTO v_ip_new_sessions
-      FROM public.server_guest_sessions
-      WHERE ip_address = v_ip
-        AND created_at > NOW() - interval '24 hours';
+      FROM public.server_guest_sessions sgs
+      WHERE sgs.ip_address = v_ip
+        AND sgs.created_at > NOW() - interval '24 hours';
       IF v_ip_new_sessions >= v_ip_daily_cap THEN
         RETURN QUERY SELECT v_effective_id, 0, 1, 1, TRUE;
         RETURN;
@@ -5149,7 +5248,7 @@ BEGIN
     ) VALUES (
       v_effective_id, 1, 1, 0, 0, v_ip, p_user_agent, NOW(), NOW(), NOW()
     )
-    ON CONFLICT (guest_id) DO UPDATE
+    ON CONFLICT ON CONSTRAINT server_guest_sessions_pkey DO UPDATE
     SET last_active_at = NOW(), updated_at = NOW()
     RETURNING * INTO v_session;
   END IF;
@@ -5496,117 +5595,7 @@ CREATE OR REPLACE FUNCTION "public"."process_subscription_refill"("p_provider" "
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-DECLARE
-  v_user_id uuid;
-  v_current_plan text;
-  v_effective_plan text;
-  v_grant_credits integer;
-  v_existing_entry record;
-  v_new_balance integer;
-BEGIN
-  -- Idempotency check in usage_ledger
-  SELECT id INTO v_existing_entry
-  FROM public.usage_ledger
-  WHERE ledger_type = 'subscription'
-    AND metadata->>'event_id' = p_event_id
-  LIMIT 1;
-
-  IF v_existing_entry.id IS NOT NULL THEN
-    RETURN jsonb_build_object(
-      'success', true,
-      'idempotent_replay', true,
-      'message', 'Event already processed'
-    );
-  END IF;
-
-  -- Lookup user profile
-  SELECT id, subscription_plan INTO v_user_id, v_current_plan
-  FROM public.profiles
-  WHERE lower(email) = lower(p_customer_email)
-  LIMIT 1;
-
-  IF v_user_id IS NULL THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', format('User profile with email %s not found', p_customer_email)
-    );
-  END IF;
-
-  v_effective_plan := COALESCE(p_plan_id, v_current_plan, 'pro');
-
-  -- Authoritative plan monthly credits calculation
-  IF p_credits_amount IS NOT NULL AND p_credits_amount > 0 THEN
-    v_grant_credits := p_credits_amount;
-  ELSE
-    CASE v_effective_plan
-      WHEN 'pro' THEN v_grant_credits := 300;
-      WHEN 'pro_plus' THEN v_grant_credits := 1000;
-      WHEN 'business' THEN v_grant_credits := 3000;
-      WHEN 'enterprise' THEN v_grant_credits := 10000;
-      ELSE v_grant_credits := 300;
-    END CASE;
-  END IF;
-
-  -- Atomically add credits and update subscription status
-  UPDATE public.profiles
-  SET
-    subscription_plan = v_effective_plan,
-    subscription_status = 'active',
-    billing_cycle = COALESCE(p_billing_cycle, 'monthly'),
-    plan_start_date = COALESCE(p_period_start, now()),
-    plan_end_date = COALESCE(p_period_end, now() + interval '1 month'),
-    credits_refill_date = now(),
-    monthly_credit_allocation = v_grant_credits,
-    credits_balance = COALESCE(credits_balance, 0) + v_grant_credits,
-    updated_at = now()
-  WHERE id = v_user_id
-  RETURNING credits_balance INTO v_new_balance;
-
-  -- Reset consumed credits on team allocations if billing period reset for Business/Enterprise
-  IF v_effective_plan IN ('business', 'enterprise') THEN
-    UPDATE public.team_credit_allocations
-    SET consumed_credits = 0, updated_at = now()
-    WHERE owner_id = v_user_id;
-  END IF;
-
-  -- Write to usage_ledger
-  INSERT INTO public.usage_ledger (
-    user_id,
-    feature_slug,
-    operation,
-    credits_amount,
-    outcome,
-    ledger_type,
-    metadata
-  )
-  VALUES (
-    v_user_id,
-    'subscription_refill',
-    format('Subscription credit grant (%s - %s)', p_provider, v_effective_plan),
-    v_grant_credits,
-    'success',
-    'subscription',
-    jsonb_build_object(
-      'provider', p_provider,
-      'event_id', p_event_id,
-      'plan', v_effective_plan,
-      'billing_cycle', p_billing_cycle,
-      'granted_credits', v_grant_credits,
-      'new_balance', v_new_balance,
-      'period_start', p_period_start,
-      'period_end', p_period_end,
-      'raw_metadata', p_metadata
-    )
-  );
-
-  RETURN jsonb_build_object(
-    'success', true,
-    'user_id', v_user_id,
-    'plan', v_effective_plan,
-    'granted_credits', v_grant_credits,
-    'new_balance', v_new_balance
-  );
-END;
+BEGIN RAISE EXCEPTION 'Use the verified payment grant endpoint'; END;
 $$;
 
 
@@ -5629,49 +5618,17 @@ $$;
 --
 
 CREATE OR REPLACE FUNCTION "public"."protect_billing_columns"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql"
     SET "search_path" TO 'public', 'auth'
     AS $$
-DECLARE
-  v_role TEXT := COALESCE(NULLIF(current_setting('role', true), ''), 'none');
-  v_auth_uid UUID := auth.uid();
-  v_is_admin BOOLEAN := FALSE;
 BEGIN
-  -- Trusted server context (Edge Functions use the service role key).
-  IF v_role = 'service_role' OR pg_has_role(session_user, 'service_role', 'member') THEN
-    RETURN NEW;
-  END IF;
-
-  -- Table owner / migrations run unrestricted.
-  IF session_user = 'postgres' AND v_role = 'none' THEN
-    -- Distinguish migration consoles (no auth context) from user sessions:
-    -- user sessions always carry a JWT claim.
-    IF v_auth_uid IS NULL AND current_setting('request.jwt.claims', true) IS NULL THEN
-      RETURN NEW;
-    END IF;
-  END IF;
-
-  IF v_auth_uid IS NOT NULL THEN
-    SELECT (role::text = 'admin') INTO v_is_admin FROM public.profiles WHERE id = v_auth_uid;
-  END IF;
-
-  IF COALESCE(v_is_admin, false) THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.subscription_plan IS DISTINCT FROM OLD.subscription_plan
-     OR NEW.subscription_status IS DISTINCT FROM OLD.subscription_status
-     OR NEW.credits_balance IS DISTINCT FROM OLD.credits_balance
-     OR NEW.credits_refill_date IS DISTINCT FROM OLD.credits_refill_date
-     OR NEW.trial_checks_remaining IS DISTINCT FROM OLD.trial_checks_remaining
-     OR NEW.trial_checks_used IS DISTINCT FROM OLD.trial_checks_used
-     OR NEW.plan_start_date IS DISTINCT FROM OLD.plan_start_date
-     OR NEW.plan_end_date IS DISTINCT FROM OLD.plan_end_date
-     OR NEW.role IS DISTINCT FROM OLD.role THEN
-    RAISE EXCEPTION 'Billing fields can only be modified by the billing system';
-  END IF;
-
-  RETURN NEW;
+ IF current_user IN ('postgres','supabase_admin','service_role') THEN RETURN NEW; END IF;
+ IF public.is_admin() THEN RETURN NEW; END IF;
+ IF (to_jsonb(NEW)-ARRAY['full_name','avatar_url','phone','display_name','updated_at','security_preferences','developer_profile','detector_zero_retention','detector_data_retention_days','allow_feedback_training','active_organization_id','active_workspace_id'])
+ IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['full_name','avatar_url','phone','display_name','updated_at','security_preferences','developer_profile','detector_zero_retention','detector_data_retention_days','allow_feedback_training','active_organization_id','active_workspace_id']) THEN
+   RAISE EXCEPTION 'Billing and account fields can only be modified by the billing system';
+ END IF;
+ RETURN NEW;
 END;
 $$;
 
@@ -5792,6 +5749,60 @@ $$;
 
 
 --
+-- Name: refresh_billing_account("uuid"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."refresh_billing_account"("p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE p profiles%ROWTYPE; cycle_start timestamptz; next_cycle timestamptz;
+BEGIN
+ SELECT * INTO p FROM profiles WHERE id=p_user_id FOR UPDATE;
+ IF NOT FOUND OR billing_plan_rank(p.subscription_plan)<2 THEN RETURN; END IF;
+ IF NOT billing_paid_active(p.subscription_plan,p.subscription_status,p.plan_end_date) THEN
+   -- Keep the purchased plan and dates for audit, but revoke its spendable allowance.
+   UPDATE profiles SET subscription_status=CASE WHEN plan_end_date IS NULL OR plan_end_date<=now() THEN 'expired' ELSE subscription_status END,
+     credits_balance=0, updated_at=now() WHERE id=p_user_id AND (credits_balance<>0 OR (plan_end_date IS NULL OR plan_end_date<=now()) AND subscription_status<>'expired');
+   RETURN;
+ END IF;
+ IF p.billing_cycle IN ('annual','year') AND p.plan_start_date IS NOT NULL
+    AND p.billing_credit_period_start IS NOT NULL THEN
+   SELECT max(p.plan_start_date+make_interval(months=>n)) INTO cycle_start
+   FROM generate_series(0,11) n WHERE p.plan_start_date+make_interval(months=>n)<=now();
+   SELECT min(p.plan_start_date+make_interval(months=>n)) INTO next_cycle
+   FROM generate_series(1,12) n WHERE p.plan_start_date+make_interval(months=>n)>now();
+   IF cycle_start>p.billing_credit_period_start THEN
+     UPDATE profiles SET credits_balance=monthly_credit_allocation,
+       billing_credit_period_start=cycle_start,credits_refill_date=LEAST(next_cycle,plan_end_date),updated_at=now() WHERE id=p_user_id;
+     UPDATE team_credit_allocations SET consumed_credits=0,updated_at=now() WHERE owner_id=p_user_id;
+     INSERT INTO usage_ledger(user_id,feature_slug,operation,credits_amount,outcome,ledger_type,metadata)
+     VALUES(p_user_id,'subscription_refill','annual_monthly_grant',p.monthly_credit_allocation,'success','subscription',jsonb_build_object('period_start',cycle_start));
+   END IF;
+ END IF;
+END;
+$$;
+
+
+--
+-- Name: refresh_due_billing_accounts(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."refresh_due_billing_accounts"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE account record;
+BEGIN
+ FOR account IN SELECT id FROM profiles WHERE billing_plan_rank(subscription_plan)>=2
+   AND ((plan_end_date<=now() AND (credits_balance>0 OR subscription_status<>'expired'))
+     OR billing_cycle IN ('annual','year') AND credits_refill_date<=now() AND plan_end_date>now())
+ LOOP PERFORM refresh_billing_account(account.id); END LOOP;
+END;
+$$;
+
+
+--
 -- Name: refresh_intelligence_profile("uuid"); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5861,6 +5872,29 @@ $$;
 
 
 --
+-- Name: remove_team_member("uuid"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."remove_team_member"("p_allocation_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE v_allocation team_credit_allocations%ROWTYPE;
+BEGIN
+  SELECT * INTO v_allocation FROM team_credit_allocations WHERE id=p_allocation_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Team allocation not found'; END IF;
+  IF current_setting('role',true) NOT IN ('service_role','postgres')
+    AND auth.uid() IS DISTINCT FROM v_allocation.owner_id THEN
+    RAISE EXCEPTION 'Not authorized to manage this team';
+  END IF;
+  UPDATE team_credit_allocations SET status='removed',
+    allocated_credits=consumed_credits,updated_at=now() WHERE id=p_allocation_id;
+  RETURN jsonb_build_object('success',true);
+END;
+$$;
+
+
+--
 -- Name: reserve_entitlement_and_credits("uuid", "text", "text", numeric, "text", "text", "jsonb", integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5875,7 +5909,6 @@ DECLARE
   v_effective_cost INTEGER;
   v_is_trial_eligible BOOLEAN;
   v_res_id UUID;
-  v_existing_res RECORD;
   v_guest RECORD;
   v_profile RECORD;
   v_team_alloc RECORD;
@@ -5886,6 +5919,13 @@ DECLARE
   v_trial_remaining_after INT;
   v_trial_max_words INT;
   v_intro_total INT := 5;
+  v_owner RECORD;
+  v_paid boolean;
+  v_is_api_key boolean := false;
+  v_user_email text;
+  v_engines integer := 1;
+  v_qty integer;
+  v_period timestamptz;
 BEGIN
   IF v_role = 'service_role' THEN
     NULL;
@@ -5899,32 +5939,32 @@ BEGIN
 
   SELECT * INTO v_rate FROM credit_rate_table WHERE feature_slug = v_canonical_slug;
 
-  IF NOT FOUND THEN
-    v_canonical_slug := CASE
-      WHEN p_feature_slug LIKE 'image_%' OR p_feature_slug = 'ai_image_detector' THEN 'ai_image_detector'
-      WHEN p_feature_slug LIKE 'video_%' OR p_feature_slug = 'ai_video_detector' THEN 'ai_video_detector'
-      WHEN p_feature_slug IN ('citation_verifier', 'citation_check') THEN 'citation_verify'
-      WHEN p_feature_slug IN ('hallucination_detector', 'hallucination_check') THEN 'hallucination_check'
-      WHEN p_feature_slug IN ('humanizer_rewrite', 'run_humanizer') THEN 'ai_humanizer'
-      WHEN p_feature_slug IN ('seo_content_studio', 'essay_studio') THEN 'seo_content_studio'
-      WHEN p_feature_slug IN ('seo_assistant', 'seo_audit', 'seo_agent', 'keyword_research', 'keyword_intelligence', 'link_building', 'link_intelligence', 'semrush_report', 'technical_audit', 'aeo_optimizer', 'content_strategy', 'gsc_traffic', 'domain_analysis', 'seo_analyzer') THEN 'seo_assistant'
-      WHEN p_feature_slug IN ('summarizer', 'text_summarizer') THEN 'ai_summarizer'
-      ELSE 'ai_detector'
-    END;
-    SELECT * INTO v_rate FROM credit_rate_table WHERE feature_slug = v_canonical_slug;
-  END IF;
-
   IF FOUND THEN
-    v_effective_cost := COALESCE(v_rate.base_credit_cost, GREATEST(p_credits_cost::INTEGER, 1));
-    v_is_trial_eligible := COALESCE(v_rate.trial_eligible, false);
-    -- Opt-in unit-scaled billing: when a caller supplies a unit quantity
-    -- (e.g. input words) for a words_1000 feature, charge the base rate
-    -- multiplied by started 1,000-word units instead of the flat base rate.
-    IF COALESCE(p_unit_quantity, 0) > 0 AND v_rate.billing_unit = 'words_1000' THEN
-      v_effective_cost := v_rate.base_credit_cost * GREATEST(1, CEIL(p_unit_quantity::NUMERIC / 1000))::INTEGER;
+    v_effective_cost := v_rate.base_credit_cost;
+    IF v_effective_cost IS NULL OR v_effective_cost <= 0 THEN RAISE EXCEPTION 'Invalid billing rate'; END IF;
+    v_qty := p_unit_quantity;
+    IF v_qty IS NOT NULL AND (v_qty <= 0 OR v_qty > 10000000) THEN RAISE EXCEPTION 'Invalid billing quantity'; END IF;
+    IF v_rate.billing_unit IN ('words_1000', 'words_500') AND v_qty IS NULL THEN RAISE EXCEPTION 'Input word count required for billing'; END IF;
+    IF v_rate.billing_unit IN ('video_30s','audio_min','references_5') AND v_qty IS NULL THEN RAISE EXCEPTION 'Input quantity required for billing'; END IF;
+
+    v_effective_cost := v_effective_cost * CASE v_rate.billing_unit
+      WHEN 'words_500' THEN GREATEST(1, ceil(v_qty::numeric / 500)::int)
+      WHEN 'words_1000' THEN GREATEST(1, ceil(v_qty::numeric / 1000)::int)
+      WHEN 'video_30s' THEN GREATEST(1, ceil(v_qty::numeric / 30)::int)
+      WHEN 'audio_min' THEN GREATEST(1, ceil(v_qty::numeric / 60)::int)
+      WHEN 'references_5' THEN GREATEST(1, ceil(v_qty::numeric / 5)::int)
+      WHEN 'image' THEN COALESCE(v_qty, 1)
+      ELSE 1
+    END;
+
+    IF p_feature_slug IN ('ai_detector','text_detect_balanced') THEN
+      v_engines := COALESCE((p_metadata->>'engines')::integer, 1);
+      IF v_engines NOT IN (1,2) THEN RAISE EXCEPTION 'Invalid engine count'; END IF;
+      v_effective_cost := v_effective_cost * v_engines;
     END IF;
-    -- Optional per-feature free-trial input cap (in words), stored in the
-    -- rate details JSONB. NULL when not configured (previous behaviour).
+
+    v_is_trial_eligible := COALESCE(v_rate.trial_eligible, false);
+
     BEGIN
       v_trial_max_words := NULLIF(COALESCE((v_rate.details->>'trial_max_words')::INT, 0), 0);
     EXCEPTION WHEN OTHERS THEN
@@ -5939,30 +5979,18 @@ BEGIN
     RETURN;
   END IF;
 
-  IF p_idempotency_key IS NOT NULL AND length(trim(p_idempotency_key)) > 0 THEN
-    SELECT * INTO v_existing_res
-    FROM credit_reservations
-    WHERE idempotency_key = p_idempotency_key
-      AND status IN ('reserved', 'committed');
-
-    IF FOUND THEN
-      RETURN QUERY SELECT
-        TRUE,
-        v_existing_res.id,
-        'cached'::TEXT,
-        0::NUMERIC,
-        v_existing_res.credits_reserved::NUMERIC,
-        1::NUMERIC,
-        1::NUMERIC,
-        (v_existing_res.reservation_type = 'trial_check'),
-        0::INTEGER,
-        1::INTEGER,
-        'Existing reservation recovered'::TEXT,
-        NULL::TEXT;
+  IF p_idempotency_key IS NOT NULL THEN
+    IF length(p_idempotency_key) > 200 THEN RAISE EXCEPTION 'Idempotency key too long'; END IF;
+    p_idempotency_key := md5(COALESCE(p_user_id::text, 'guest:' || p_guest_id) || ':' || v_canonical_slug || ':' || p_idempotency_key);
+    PERFORM pg_advisory_xact_lock(hashtextextended(p_idempotency_key, 0));
+    IF EXISTS(SELECT 1 FROM credit_reservations cr WHERE cr.idempotency_key = p_idempotency_key) THEN
+      RETURN QUERY SELECT false, NULL::uuid, 'unknown'::text, 0::numeric, 0::numeric, 0::numeric, 0::numeric, false, 0, 0,
+        'This operation was already submitted. Retrieve its existing result.'::text, 'OPERATION_ALREADY_SUBMITTED'::text;
       RETURN;
     END IF;
   END IF;
 
+  -- 1. Guest Handling
   IF p_user_id IS NULL THEN
     IF p_guest_id IS NULL OR trim(p_guest_id) = '' THEN
       RETURN QUERY SELECT
@@ -5972,11 +6000,12 @@ BEGIN
       RETURN;
     END IF;
 
-    IF NOT v_is_trial_eligible THEN
+    -- Pro or subscription-only feature for guests
+    IF NOT v_is_trial_eligible OR billing_plan_rank(v_rate.min_plan) > 1 THEN
       RETURN QUERY SELECT
         FALSE, NULL::UUID, 'guest'::TEXT, 0::NUMERIC, 0::NUMERIC, 0::NUMERIC, 1::NUMERIC,
         FALSE, 0::INTEGER, 1::INTEGER,
-        'This feature requires a paid subscription or registered free trial.'::TEXT, 'PAID_ONLY_FEATURE'::TEXT;
+        'This feature requires a paid subscription or registered free account.'::TEXT, 'PAID_ONLY_FEATURE'::TEXT;
       RETURN;
     END IF;
 
@@ -5987,17 +6016,19 @@ BEGIN
         v_client_ip := NULLIF(trim(split_part(
           COALESCE(current_setting('request.headers', true)::json->>'x-forwarded-for', ''),
           ',', 1)), '');
-        SELECT COUNT(*) INTO v_ip_new_sessions
-        FROM server_guest_sessions
-        WHERE ip_address = COALESCE(v_client_ip, 'unknown')
-          AND created_at > now() - interval '24 hours';
-        IF v_ip_new_sessions >= 10 THEN
-          RETURN QUERY SELECT
-            FALSE, NULL::UUID, 'guest'::TEXT, 0::NUMERIC, 0::NUMERIC, 0::NUMERIC, 1::NUMERIC,
-            FALSE, 0::INTEGER, 1::INTEGER,
-            'Too many new guest sessions from this network. Please create a free account to continue.'::TEXT,
-            'GUEST_SESSION_RATE_LIMITED'::TEXT;
-          RETURN;
+        IF v_client_ip IS NOT NULL AND v_client_ip <> '' THEN
+          SELECT COUNT(*) INTO v_ip_new_sessions
+          FROM server_guest_sessions
+          WHERE ip_address = v_client_ip
+            AND created_at > now() - interval '24 hours';
+          IF v_ip_new_sessions >= 10 THEN
+            RETURN QUERY SELECT
+              FALSE, NULL::UUID, 'guest'::TEXT, 0::NUMERIC, 0::NUMERIC, 0::NUMERIC, 1::NUMERIC,
+              FALSE, 0::INTEGER, 1::INTEGER,
+              'Too many new guest sessions from this network. Please create a free account to continue.'::TEXT,
+              'GUEST_SESSION_RATE_LIMITED'::TEXT;
+            RETURN;
+          END IF;
         END IF;
       END IF;
 
@@ -6005,6 +6036,10 @@ BEGIN
         (guest_id, trial_checks_remaining, trial_checks_total, trial_checks_used, total_used, last_active_at)
       VALUES (p_guest_id, 1, 1, 0, 0, now())
       RETURNING * INTO v_guest;
+    ELSIF v_guest.linked_user_id IS NOT NULL THEN
+      RETURN QUERY SELECT false, NULL::uuid, 'guest'::text, 0::numeric, 0::numeric, 0::numeric, 1::numeric, false, 0, 1,
+        'A valid guest session is required. Please sign in.'::text, 'MISSING_GUEST_ID'::text;
+      RETURN;
     END IF;
 
     IF COALESCE(v_guest.trial_checks_remaining, 0) <= 0 THEN
@@ -6013,16 +6048,6 @@ BEGIN
         FALSE, 0::INTEGER, 1::INTEGER,
         'You''ve used your free check. Register for 4 additional free checks.'::TEXT,
         'TRIAL_EXHAUSTED'::TEXT;
-      RETURN;
-    END IF;
-
-    -- Per-feature trial input cap (words). Blocks BEFORE consuming the check.
-    IF v_trial_max_words IS NOT NULL AND COALESCE(p_unit_quantity, 0) > v_trial_max_words THEN
-      RETURN QUERY SELECT
-        FALSE, NULL::UUID, 'guest'::TEXT, 0::NUMERIC, 0::NUMERIC, 0::NUMERIC, 1::NUMERIC,
-        FALSE, 0::INTEGER, 1::INTEGER,
-        'Free trial checks cover up to ' || v_trial_max_words || ' words. Create a free account and use plan credits to summarize longer text.'::TEXT,
-        'TRIAL_INPUT_LIMIT_EXCEEDED'::TEXT;
       RETURN;
     END IF;
 
@@ -6051,6 +6076,8 @@ BEGIN
     RETURN;
   END IF;
 
+  -- 2. Authenticated User Handling
+  PERFORM refresh_billing_account(p_user_id);
   SELECT * INTO v_profile FROM profiles WHERE id = p_user_id FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -6061,22 +6088,41 @@ BEGIN
     RETURN;
   END IF;
 
-  IF v_is_trial_eligible AND COALESCE(v_profile.trial_checks_remaining, 0) > 0 THEN
-    -- Per-feature trial input cap (words). Blocks BEFORE consuming the check.
-    IF v_trial_max_words IS NOT NULL AND COALESCE(p_unit_quantity, 0) > v_trial_max_words THEN
-      RETURN QUERY SELECT
-        FALSE, NULL::UUID,
-        COALESCE(v_profile.subscription_plan, 'free')::TEXT,
-        COALESCE(v_profile.credits_balance, 0)::NUMERIC,
-        0::NUMERIC, 0::NUMERIC, 0::NUMERIC,
-        FALSE,
-        COALESCE(v_profile.trial_checks_remaining, 0)::INTEGER,
-        v_intro_total,
-        'Free trial checks cover up to ' || v_trial_max_words || ' words. This input is longer — upgrade or top up credits to summarize it.'::TEXT,
-        'TRIAL_INPUT_LIMIT_EXCEEDED'::TEXT;
-      RETURN;
-    END IF;
+  v_user_email := lower(COALESCE(v_profile.email, ''));
+  IF v_user_email <> '' THEN
+    UPDATE team_credit_allocations
+    SET member_user_id = p_user_id, updated_at = now()
+    WHERE member_user_id IS NULL AND status = 'active'
+      AND lower(member_email) = v_user_email;
+  END IF;
 
+  BEGIN
+    v_is_api_key := COALESCE((p_metadata->>'is_api_key')::boolean,
+      (p_metadata->>'isApiKey')::boolean, false);
+  EXCEPTION WHEN invalid_text_representation THEN
+    v_is_api_key := false;
+  END;
+
+  v_paid := billing_paid_active(v_profile.subscription_plan, v_profile.subscription_status, v_profile.plan_end_date);
+  v_period := COALESCE(v_profile.billing_credit_period_start, v_profile.plan_start_date);
+  p_metadata := COALESCE(p_metadata, '{}'::jsonb) || jsonb_build_object('billing_period', v_period);
+
+  -- Strict Feature Plan Gating for Paid Users: If plan rank is less than feature requirement
+  IF v_paid AND billing_plan_rank(v_profile.subscription_plan) < billing_plan_rank(v_rate.min_plan) THEN
+    RETURN QUERY SELECT false, NULL::uuid, v_profile.subscription_plan::text, COALESCE(v_profile.credits_balance, 0)::numeric, 0::numeric, 0::numeric, 0::numeric, false, 0, 0,
+      'Your plan does not include this feature. Please upgrade to ' || v_rate.min_plan || ' to access it.'::text, 'UPGRADE_REQUIRED'::text;
+    RETURN;
+  END IF;
+
+  -- Feature Plan Gating for Non-Paid Users: If feature requires Pro (min_plan > 1), block immediately!
+  IF NOT v_paid AND billing_plan_rank(v_rate.min_plan) > 1 THEN
+    RETURN QUERY SELECT false, NULL::uuid, COALESCE(v_profile.subscription_plan, 'free')::text, COALESCE(v_profile.credits_balance, 0)::numeric, 0::numeric, 0::numeric, 0::numeric, false, COALESCE(v_profile.trial_checks_remaining, 0)::int, v_intro_total,
+      'This feature requires an active Pro subscription. Please upgrade to access full analysis.'::text, 'UPGRADE_REQUIRED'::text;
+    RETURN;
+  END IF;
+
+  -- Free Trial check consumption for free-tier eligible features
+  IF NOT v_paid AND NOT v_is_api_key AND billing_plan_rank(v_profile.subscription_plan) < 2 AND billing_plan_rank(v_rate.min_plan) <= 1 AND v_is_trial_eligible AND COALESCE(v_profile.trial_checks_remaining, 0) > 0 THEN
     UPDATE profiles up
     SET trial_checks_remaining = up.trial_checks_remaining - 1,
         trial_checks_used = up.trial_checks_used + 1,
@@ -6107,9 +6153,11 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Paid User Credit Reservation
   v_user_balance := COALESCE(v_profile.credits_balance, 0);
 
-  IF v_user_balance >= v_effective_cost THEN
+  IF v_paid AND (NOT v_is_api_key OR billing_plan_rank(v_profile.subscription_plan) >= 4)
+    AND v_user_balance >= v_effective_cost THEN
     UPDATE profiles up
     SET credits_balance = up.credits_balance - v_effective_cost,
         updated_at = now()
@@ -6136,51 +6184,61 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT * INTO v_team_alloc
-  FROM team_credit_allocations
-  WHERE member_user_id = p_user_id
-    AND status = 'active'
-  LIMIT 1
-  FOR UPDATE;
-
-  IF FOUND AND (v_team_alloc.allocated_credits - v_team_alloc.consumed_credits) >= v_effective_cost THEN
-    UPDATE team_credit_allocations tca
-    SET consumed_credits = tca.consumed_credits + v_effective_cost,
-        updated_at = now()
-    WHERE tca.id = v_team_alloc.id;
-
-    v_res_id := gen_random_uuid();
-    INSERT INTO credit_reservations (
-      id, user_id, guest_id, feature_slug, credits_reserved, status, idempotency_key, metadata,
-      reservation_type, team_allocation_id, team_owner_id, expires_at
-    ) VALUES (
-      v_res_id, p_user_id, p_guest_id, v_canonical_slug, v_effective_cost, 'reserved', p_idempotency_key, p_metadata,
-      'team_credit', v_team_alloc.id, v_team_alloc.owner_id, now() + interval '15 minutes'
-    );
-
-    RETURN QUERY SELECT
-      TRUE, v_res_id, 'team_member'::TEXT,
-      (v_team_alloc.allocated_credits - v_team_alloc.consumed_credits)::NUMERIC,
-      v_effective_cost::NUMERIC,
-      (v_team_alloc.allocated_credits - v_team_alloc.consumed_credits)::NUMERIC,
-      v_team_alloc.allocated_credits::NUMERIC,
-      FALSE, 0::INTEGER, 0::INTEGER,
-      'Team credit reserved'::TEXT, NULL::TEXT;
-    RETURN;
+  -- Team shared allocation fallback for Business/Enterprise team members
+  SELECT * INTO v_team_alloc FROM team_credit_allocations
+    WHERE member_user_id = p_user_id AND status = 'active' ORDER BY owner_id LIMIT 1;
+  IF FOUND THEN
+    PERFORM refresh_billing_account(v_team_alloc.owner_id);
+    SELECT * INTO v_owner FROM profiles WHERE id = v_team_alloc.owner_id FOR UPDATE;
+    SELECT * INTO v_team_alloc FROM team_credit_allocations WHERE id = v_team_alloc.id FOR UPDATE;
+    IF v_team_alloc.status = 'active' AND billing_paid_active(v_owner.subscription_plan, v_owner.subscription_status, v_owner.plan_end_date)
+      AND billing_plan_rank(v_owner.subscription_plan) >= GREATEST(4, billing_plan_rank(v_rate.min_plan))
+      AND v_owner.credits_balance >= v_effective_cost
+      AND v_team_alloc.allocated_credits - v_team_alloc.consumed_credits >= v_effective_cost THEN
+      UPDATE profiles SET credits_balance = credits_balance - v_effective_cost, updated_at = now() WHERE id = v_owner.id;
+      UPDATE team_credit_allocations SET consumed_credits = consumed_credits + v_effective_cost, updated_at = now() WHERE id = v_team_alloc.id;
+      v_res_id := gen_random_uuid();
+      INSERT INTO credit_reservations (
+        id, user_id, guest_id, feature_slug, credits_reserved, status, idempotency_key, metadata,
+        reservation_type, expires_at
+      ) VALUES (
+        v_res_id, p_user_id, p_guest_id, v_canonical_slug, v_effective_cost, 'reserved', p_idempotency_key,
+        p_metadata || jsonb_build_object('team_owner_id', v_owner.id, 'team_alloc_id', v_team_alloc.id),
+        'team_credit', now() + interval '15 minutes'
+      );
+      RETURN QUERY SELECT
+        TRUE, v_res_id,
+        COALESCE(v_profile.subscription_plan, 'business')::TEXT,
+        (v_team_alloc.allocated_credits - v_team_alloc.consumed_credits)::NUMERIC,
+        v_effective_cost::NUMERIC,
+        (v_team_alloc.allocated_credits - v_team_alloc.consumed_credits)::NUMERIC,
+        v_team_alloc.allocated_credits::NUMERIC,
+        FALSE, 0::INTEGER, 0::INTEGER,
+        'Team pool credits reserved successfully.'::TEXT, NULL::TEXT;
+      RETURN;
+    END IF;
   END IF;
 
+  -- Default Failure Return: Clear distinction between insufficient credits vs subscription upgrade needed
   RETURN QUERY SELECT
     FALSE, NULL::UUID,
     COALESCE(v_profile.subscription_plan, 'free')::TEXT,
-    v_user_balance, 0::NUMERIC, 0::NUMERIC, 0::NUMERIC,
+    COALESCE(v_profile.credits_balance, 0)::NUMERIC,
+    0::NUMERIC, 0::NUMERIC, 0::NUMERIC,
     FALSE,
     COALESCE(v_profile.trial_checks_remaining, 0)::INTEGER,
     v_intro_total,
     CASE
-      WHEN v_profile.subscription_plan = 'free' THEN 'You''ve used your free checks. Choose a plan to continue.'
-      ELSE 'Insufficient credits for this operation. Please top up or renew your plan to continue.'
+      WHEN NOT v_paid THEN 'This feature requires an active Pro subscription. Upgrade to continue.'
+      WHEN v_is_api_key AND (NOT v_paid OR billing_plan_rank(v_profile.subscription_plan) < 4)
+        THEN 'API access requires an active Business or Enterprise subscription.'
+      ELSE 'Insufficient credits for this operation (' || v_effective_cost || ' credits needed, balance: ' || v_user_balance || '). Please top up or renew your plan to continue.'
     END::TEXT,
-    'INSUFFICIENT_CREDITS'::TEXT;
+    CASE
+      WHEN NOT v_paid THEN 'UPGRADE_REQUIRED'
+      WHEN v_is_api_key AND (NOT v_paid OR billing_plan_rank(v_profile.subscription_plan) < 4) THEN 'UPGRADE_REQUIRED'
+      ELSE 'INSUFFICIENT_CREDITS'
+    END::TEXT;
 END;
 $$;
 
@@ -6269,10 +6327,10 @@ $$;
 
 
 --
--- Name: settle_client_reservation("uuid", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: -
+-- Name: settle_client_reservation("uuid", "text", "jsonb", "text"); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION "public"."settle_client_reservation"("p_reservation_id" "uuid", "p_outcome" "text" DEFAULT 'success'::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS TABLE("settled" boolean, "refunded" boolean, "reason" "text")
+CREATE OR REPLACE FUNCTION "public"."settle_client_reservation"("p_reservation_id" "uuid", "p_outcome" "text" DEFAULT 'success'::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_guest_id" "text" DEFAULT NULL::"text") RETURNS TABLE("settled" boolean, "refunded" boolean, "reason" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
@@ -6309,45 +6367,22 @@ BEGIN
       END IF;
       v_identity_key := 'user:' || v_auth_uid::TEXT;
     ELSE
-      IF v_res.user_id IS NOT NULL THEN
+      IF v_res.user_id IS NOT NULL OR p_guest_id IS NULL OR p_guest_id IS DISTINCT FROM v_res.guest_id THEN
         RETURN QUERY SELECT FALSE, FALSE, 'not_authorized'::TEXT;
         RETURN;
       END IF;
-      v_identity_key := 'guest:' || COALESCE(v_res.guest_id, 'unknown');
+      v_identity_key := 'guest:' || p_guest_id;
     END IF;
   ELSE
     v_identity_key := 'user:' || COALESCE(v_res.user_id::TEXT, v_res.guest_id);
   END IF;
 
-  IF p_outcome = 'success' THEN
-    -- Deduction already happened at reserve time; just settle.
-    IF v_res.reservation_type = 'trial_check' THEN
-      INSERT INTO public.usage_ledger (
-        user_id, guest_id, feature_slug, operation, credits_amount, trial_checks_amount,
-        outcome, reservation_id, ledger_type, metadata
-      ) VALUES (
-        v_res.user_id, v_res.guest_id, v_res.feature_slug, 'trial_check_settled', 0, 1,
-        'success', p_reservation_id, 'trial', p_metadata || '{"settled_by":"client"}'::jsonb
-      );
-    ELSE
-      INSERT INTO public.usage_ledger (
-        user_id, guest_id, feature_slug, operation, credits_amount,
-        outcome, reservation_id, ledger_type, metadata
-      ) VALUES (
-        v_res.user_id, v_res.guest_id, v_res.feature_slug, 'credit_deducted', COALESCE(v_res.credits_reserved, 0),
-        'success', p_reservation_id, 'usage', p_metadata || '{"settled_by":"client"}'::jsonb
-      );
-    END IF;
-
-    UPDATE public.credit_reservations
-    SET status = 'committed', finalized_at = now()
-    WHERE id = p_reservation_id;
-
-    RETURN QUERY SELECT TRUE, FALSE, NULL::TEXT;
-    RETURN;
+  -- Serialize each identity's refund budget; client claims never bypass the cap.
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_identity_key,0));
+  IF p_outcome='success' THEN
+    PERFORM finalize_credit_reservation(p_reservation_id,'success',p_metadata);
+    RETURN QUERY SELECT true,false,NULL::text; RETURN;
   END IF;
-
-  -- ── outcome = 'failed': refund under window + daily cap ────────────────
   SELECT COUNT(*) INTO v_recent_releases
   FROM public.usage_ledger
   WHERE operation = 'client_release'
@@ -6355,32 +6390,7 @@ BEGIN
     AND created_at > now() - interval '24 hours';
 
   IF now() - v_res.created_at <= v_age_limit AND v_recent_releases < v_refund_cap THEN
-    -- Genuine recent failure: restore the deduction.
-    IF v_res.reservation_type = 'trial_check' THEN
-      IF v_res.user_id IS NOT NULL THEN
-        UPDATE public.profiles
-        SET trial_checks_remaining = LEAST(COALESCE(trial_checks_total, 5), COALESCE(trial_checks_remaining, 0) + 1),
-            trial_checks_used = GREATEST(0, COALESCE(trial_checks_used, 0) - 1),
-            updated_at = now()
-        WHERE id = v_res.user_id;
-      ELSIF v_res.guest_id IS NOT NULL THEN
-        UPDATE public.server_guest_sessions
-        SET trial_checks_remaining = LEAST(COALESCE(trial_checks_total, 1), COALESCE(trial_checks_remaining, 0) + 1),
-            trial_checks_used = GREATEST(0, COALESCE(trial_checks_used, 0) - 1),
-            updated_at = now()
-        WHERE guest_id = v_res.guest_id;
-      END IF;
-    ELSE
-      UPDATE public.profiles
-      SET credits_balance = COALESCE(credits_balance, 0) + COALESCE(v_res.credits_reserved, 0),
-          updated_at = now()
-      WHERE id = v_res.user_id;
-    END IF;
-
-    UPDATE public.credit_reservations
-    SET status = 'released', finalized_at = now()
-    WHERE id = p_reservation_id;
-
+    PERFORM finalize_credit_reservation(p_reservation_id,'failed',p_metadata,'client_reported_failure');
     INSERT INTO public.usage_ledger (
       user_id, guest_id, feature_slug, operation, credits_amount,
       outcome, reservation_id, ledger_type, metadata
@@ -6461,6 +6471,68 @@ BEGIN
   END LOOP;
 
   RETURN v_count;
+END;
+$$;
+
+
+--
+-- Name: settle_guest_trial_check("text", "uuid", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION "public"."settle_guest_trial_check"("p_guest_id" "text", "p_reservation_id" "uuid", "p_feature_slug" "text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+  v_session RECORD;
+  v_res RECORD;
+BEGIN
+  IF p_guest_id IS NULL OR p_guest_id = '' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'guest_id required');
+  END IF;
+
+  -- Verify reservation
+  IF p_reservation_id IS NOT NULL THEN
+    SELECT * INTO v_res FROM public.credit_reservations
+    WHERE id = p_reservation_id AND guest_id = p_guest_id AND status = 'reserved'
+    FOR UPDATE;
+
+    IF v_res.id IS NOT NULL THEN
+      UPDATE public.credit_reservations
+      SET status = 'finalized', updated_at = now()
+      WHERE id = v_res.id;
+    END IF;
+  END IF;
+
+  -- Ensure server guest session row exists and mark trial consumed
+  INSERT INTO public.server_guest_sessions (guest_id, trial_checks_used, trial_checks_total, last_active_at)
+  VALUES (p_guest_id, 1, 1, now())
+  ON CONFLICT (guest_id) DO UPDATE
+  SET trial_checks_used = public.server_guest_sessions.trial_checks_used + 1,
+      last_active_at = now();
+
+  -- Record usage ledger
+  INSERT INTO public.usage_ledger (
+    guest_id,
+    feature_slug,
+    credits_deducted,
+    outcome,
+    metadata,
+    created_at
+  ) VALUES (
+    p_guest_id,
+    COALESCE(p_feature_slug, 'ai_detector'),
+    0,
+    'success',
+    p_metadata,
+    now()
+  );
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'guest_id', p_guest_id,
+    'settled', true
+  );
 END;
 $$;
 
@@ -7739,6 +7811,26 @@ CREATE TABLE IF NOT EXISTS "public"."billing_contracts" (
     "purchase_order_number" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+--
+-- Name: billing_payments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE IF NOT EXISTS "public"."billing_payments" (
+    "provider" "text" NOT NULL,
+    "payment_reference" "text" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "plan" "text" NOT NULL,
+    "billing_interval" "text" NOT NULL,
+    "amount_minor" bigint NOT NULL,
+    "currency" "text" NOT NULL,
+    "paid_at" timestamp with time zone NOT NULL,
+    "period_end" timestamp with time zone NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "billing_payments_billing_interval_check" CHECK (("billing_interval" = ANY (ARRAY['month'::"text", 'year'::"text"]))),
+    CONSTRAINT "billing_payments_provider_check" CHECK (("provider" = ANY (ARRAY['stripe'::"text", 'paystack'::"text"])))
 );
 
 
@@ -10086,7 +10178,8 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "billing_cycle" "text" DEFAULT 'monthly'::"text",
     "credits_refill_date" timestamp with time zone,
     "monthly_credit_allocation" integer DEFAULT 0,
-    "trial_checks_total" integer DEFAULT 5
+    "trial_checks_total" integer DEFAULT 5,
+    "billing_credit_period_start" timestamp with time zone
 );
 
 
@@ -12953,6 +13046,29 @@ BEGIN
     EXECUTE $pg_schema_sql$
 ALTER TABLE ONLY "public"."billing_contracts"
     ADD CONSTRAINT "billing_contracts_pkey" PRIMARY KEY ("id");
+$pg_schema_sql$;
+  END IF;
+END
+$pg_schema_restore$;
+
+
+--
+-- Name: billing_payments billing_payments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+DO $pg_schema_restore$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint con
+    JOIN pg_class c ON c.oid = con.conrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE con.conname = 'billing_payments_pkey'
+      AND n.nspname = 'public'
+      AND c.relname = 'billing_payments'
+  ) THEN
+    EXECUTE $pg_schema_sql$
+ALTER TABLE ONLY "public"."billing_payments"
+    ADD CONSTRAINT "billing_payments_pkey" PRIMARY KEY ("provider", "payment_reference");
 $pg_schema_sql$;
   END IF;
 END
@@ -22338,6 +22454,29 @@ $pg_schema_restore$;
 
 
 --
+-- Name: billing_payments billing_payments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+DO $pg_schema_restore$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint con
+    JOIN pg_class c ON c.oid = con.conrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE con.conname = 'billing_payments_user_id_fkey'
+      AND n.nspname = 'public'
+      AND c.relname = 'billing_payments'
+  ) THEN
+    EXECUTE $pg_schema_sql$
+ALTER TABLE ONLY "public"."billing_payments"
+    ADD CONSTRAINT "billing_payments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id");
+$pg_schema_sql$;
+  END IF;
+END
+$pg_schema_restore$;
+
+
+--
 -- Name: brand_guidelines brand_guidelines_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -29631,6 +29770,30 @@ $pg_schema_restore$;
 
 
 --
+-- Name: api_keys Business users can create own api keys; Type: POLICY; Schema: public; Owner: -
+--
+
+DO $pg_schema_restore$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policy pol
+    JOIN pg_class c ON c.oid = pol.polrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE pol.polname = 'Business users can create own api keys'
+      AND n.nspname = 'public'
+      AND c.relname = 'api_keys'
+  ) THEN
+    EXECUTE $pg_schema_sql$
+CREATE POLICY "Business users can create own api keys" ON "public"."api_keys" FOR INSERT TO "authenticated" WITH CHECK (((("user_id" = "auth"."uid"()) OR ("owner_user_id" = "auth"."uid"())) AND (EXISTS ( SELECT 1
+   FROM "public"."profiles" "p"
+  WHERE (("p"."id" = "auth"."uid"()) AND "public"."billing_paid_active"("p"."subscription_plan", "p"."subscription_status", "p"."plan_end_date") AND ("public"."billing_plan_rank"("p"."subscription_plan") >= 4))))));
+$pg_schema_sql$;
+  END IF;
+END
+$pg_schema_restore$;
+
+
+--
 -- Name: feature_flags Only admins can insert feature_flags; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -30823,7 +30986,7 @@ $pg_schema_restore$;
 
 
 --
--- Name: team_credit_allocations Team owners can manage allocations; Type: POLICY; Schema: public; Owner: -
+-- Name: team_credit_allocations Team owners can view allocations; Type: POLICY; Schema: public; Owner: -
 --
 
 DO $pg_schema_restore$
@@ -30832,12 +30995,12 @@ BEGIN
     SELECT 1 FROM pg_policy pol
     JOIN pg_class c ON c.oid = pol.polrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE pol.polname = 'Team owners can manage allocations'
+    WHERE pol.polname = 'Team owners can view allocations'
       AND n.nspname = 'public'
       AND c.relname = 'team_credit_allocations'
   ) THEN
     EXECUTE $pg_schema_sql$
-CREATE POLICY "Team owners can manage allocations" ON "public"."team_credit_allocations" TO "authenticated" USING (("owner_id" = "auth"."uid"())) WITH CHECK (("owner_id" = "auth"."uid"()));
+CREATE POLICY "Team owners can view allocations" ON "public"."team_credit_allocations" FOR SELECT TO "authenticated" USING (("owner_id" = "auth"."uid"()));
 $pg_schema_sql$;
   END IF;
 END
@@ -30881,7 +31044,7 @@ BEGIN
       AND c.relname = 'api_keys'
   ) THEN
     EXECUTE $pg_schema_sql$
-CREATE POLICY "Users can delete own api keys" ON "public"."api_keys" FOR DELETE USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "Users can delete own api keys" ON "public"."api_keys" FOR DELETE TO "authenticated" USING ((("user_id" = "auth"."uid"()) OR ("owner_user_id" = "auth"."uid"())));
 $pg_schema_sql$;
   END IF;
 END
@@ -31108,28 +31271,6 @@ BEGIN
   ) THEN
     EXECUTE $pg_schema_sql$
 CREATE POLICY "Users can insert audit events" ON "public"."authorship_audit_events" FOR INSERT WITH CHECK (true);
-$pg_schema_sql$;
-  END IF;
-END
-$pg_schema_restore$;
-
-
---
--- Name: api_keys Users can insert own api keys; Type: POLICY; Schema: public; Owner: -
---
-
-DO $pg_schema_restore$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policy pol
-    JOIN pg_class c ON c.oid = pol.polrelid
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE pol.polname = 'Users can insert own api keys'
-      AND n.nspname = 'public'
-      AND c.relname = 'api_keys'
-  ) THEN
-    EXECUTE $pg_schema_sql$
-CREATE POLICY "Users can insert own api keys" ON "public"."api_keys" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 $pg_schema_sql$;
   END IF;
 END
@@ -31438,28 +31579,6 @@ BEGIN
   ) THEN
     EXECUTE $pg_schema_sql$
 CREATE POLICY "Users can manage own personalization settings" ON "public"."personalization_settings" TO "authenticated" USING ((("user_id" = "auth"."uid"()) OR "public"."is_admin"())) WITH CHECK ((("user_id" = "auth"."uid"()) OR "public"."is_admin"()));
-$pg_schema_sql$;
-  END IF;
-END
-$pg_schema_restore$;
-
-
---
--- Name: api_keys Users can manage their own API keys; Type: POLICY; Schema: public; Owner: -
---
-
-DO $pg_schema_restore$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policy pol
-    JOIN pg_class c ON c.oid = pol.polrelid
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE pol.polname = 'Users can manage their own API keys'
-      AND n.nspname = 'public'
-      AND c.relname = 'api_keys'
-  ) THEN
-    EXECUTE $pg_schema_sql$
-CREATE POLICY "Users can manage their own API keys" ON "public"."api_keys" USING (("auth"."uid"() = "user_id"));
 $pg_schema_sql$;
   END IF;
 END
@@ -32131,7 +32250,7 @@ BEGIN
       AND c.relname = 'api_keys'
   ) THEN
     EXECUTE $pg_schema_sql$
-CREATE POLICY "Users can view own api keys" ON "public"."api_keys" FOR SELECT USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "Users can view own api keys" ON "public"."api_keys" FOR SELECT TO "authenticated" USING ((("user_id" = "auth"."uid"()) OR ("owner_user_id" = "auth"."uid"())));
 $pg_schema_sql$;
   END IF;
 END
@@ -34482,6 +34601,12 @@ $pg_schema_sql$;
 END
 $pg_schema_restore$;
 
+
+--
+-- Name: billing_payments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE "public"."billing_payments" ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: organization_billing billing_select_admins; Type: POLICY; Schema: public; Owner: -
@@ -42933,6 +43058,20 @@ BEGIN
     );
   ELSE
     PERFORM cron.schedule('settle-expired-reservations', '*/5 * * * *', 'SELECT public.settle_expired_reservations();');
+  END IF;
+END
+$pg_cron_restore$;
+DO $pg_cron_restore$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'billing-period-refresh') THEN
+    PERFORM cron.alter_job(
+      job_id := (SELECT jobid FROM cron.job WHERE jobname = 'billing-period-refresh'),
+      schedule := '*/5 * * * *',
+      command := 'SELECT public.refresh_due_billing_accounts();',
+      active := true
+    );
+  ELSE
+    PERFORM cron.schedule('billing-period-refresh', '*/5 * * * *', 'SELECT public.refresh_due_billing_accounts();');
   END IF;
 END
 $pg_cron_restore$;

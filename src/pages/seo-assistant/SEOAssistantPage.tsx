@@ -30,7 +30,6 @@ import {
   analyzeTransitionWords, analyzeGrammar, analyzeHeadingStructure,
   analyzeEEAT, analyzeEngagement, analyzeSnippetPotential,
   analyzeAIRisk, analyzeUniqueness, generateMeta, computeOverallScores,
-  suggestInternalLinks,
   type KeywordUsageResult, type SemanticKeywordsResult, type SearchIntentResult,
   type ReadabilityResult, type SentenceAnalysisResult, type ParagraphAnalysisResult,
   type TransitionWordsResult, type GrammarResult, type HeadingStructureResult,
@@ -38,6 +37,12 @@ import {
   type AIRiskResult, type UniquenessResult, type MetaResult, type OverallScores,
   type CompetitorResult, type ContentGapResult
 } from './analysisEngine';
+import {
+  type DiscoveredInternalLink,
+  normalizeAndValidateDomain,
+  extractLinksFromJsonResponse,
+  matchInternalLinksToArticle,
+} from '@/lib/seo/internalLinkDiscovery';
 
 // Modules 1–10
 import {
@@ -100,7 +105,10 @@ export default function SEOAssistantPage() {
   const [aiRiskResult, setAiRiskResult] = useState<AIRiskResult>({ humanScore: 50, aiScore: 50, riskLevel: 'Medium', recommendations: [] });
   const [uniquenessResult, setUniquenessResult] = useState<UniquenessResult>({ score: 100, duplicatePhrases: [], overusedWords: [], recommendations: [] });
   const [metaResult, setMetaResult] = useState<MetaResult>({ suggestedTitle: '', suggestedDescription: '', suggestedSlug: '', titleLength: 0, descLength: 0, titleOk: false, descOk: false });
-  const [internalLinks, setInternalLinks] = useState<ReturnType<typeof suggestInternalLinks>>([]);
+  const [internalLinks, setInternalLinks] = useState<DiscoveredInternalLink[]>([]);
+  const [internalLinkDomain, setInternalLinkDomain] = useState<string>('');
+  const [internalLinkStatus, setInternalLinkStatus] = useState<'not_fetched' | 'loading' | 'success' | 'no_opportunities' | 'site_blocked' | 'invalid_domain' | 'error'>('not_fetched');
+  const [internalLinkStatusMessage, setInternalLinkStatusMessage] = useState<string>('');
   const [competitors, setCompetitors] = useState<CompetitorResult[]>([]);
   const [contentGap, setContentGap] = useState<ContentGapResult | null>(null);
   
@@ -121,6 +129,7 @@ export default function SEOAssistantPage() {
   const [aiRecLoading, setAiRecLoading] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const versionRef = useRef<number>(1);
   const editorRef = useRef<RichTextEditorRef>(null);
 
   // Redirect if not logged in
@@ -149,7 +158,6 @@ export default function SEOAssistantPage() {
     const risk = analyzeAIRisk(text);
     const uniq = analyzeUniqueness(text);
     const meta = generateMeta(text, kw);
-    const links = suggestInternalLinks(text);
 
     setKwResult(kwr);
     setSemanticResult(sem);
@@ -169,9 +177,12 @@ export default function SEOAssistantPage() {
     setAiRiskResult(risk);
     setUniquenessResult(uniq);
     setMetaResult(meta);
-    if (!currentAiLinksActive) {
-      setInternalLinks(links);
-    }
+
+    // Keep active internal links grounded and mapped against current article edits with locked keywords
+    setInternalLinks(prev => {
+      if (prev.length === 0) return prev;
+      return matchInternalLinksToArticle(prev, text, kw, sem.recommended || []);
+    });
 
     const computed = computeOverallScores({ kwResult: kwr, readability: read, grammar: gram, eeat, headings: head, engagement: eng, snippet: snip, uniqueness: uniq });
     setScores(computed);
@@ -180,14 +191,27 @@ export default function SEOAssistantPage() {
   const handleContentChange = (val: string) => {
     setContent(val);
     setAiGrammarActive(false); // Reset AI grammar when user types
+    versionRef.current += 1;
+    const currentVer = versionRef.current;
+    editorRef.current?.clearHighlights();
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runAnalysis(val, keyword, aiLinksActive, false), 800);
+    debounceRef.current = setTimeout(() => {
+      if (versionRef.current === currentVer) {
+        runAnalysis(val, keyword, aiLinksActive, false);
+      }
+    }, 350);
   };
 
   const handleKeywordChange = (val: string) => {
     setKeyword(val);
+    versionRef.current += 1;
+    const currentVer = versionRef.current;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runAnalysis(content, val, aiLinksActive, aiGrammarActive), 600);
+    debounceRef.current = setTimeout(() => {
+      if (versionRef.current === currentVer) {
+        runAnalysis(content, val, aiLinksActive, aiGrammarActive);
+      }
+    }, 350);
   };
 
   const gateAIAccess = async (): Promise<boolean> => {
@@ -360,26 +384,89 @@ ${content.slice(0, 3000)}`
   };
 
   // Fetch site links
-  const handleGenerateLinks = async (domain: string) => {
-    if (!content.trim()) { toast.error('Add content first to match links.'); return; }
-    if (!domain.trim()) { toast.error('Enter a domain.'); return; }
-    if (!(await gateAIAccess())) return;
+  const handleGenerateLinks = async (rawDomain: string) => {
+    if (!content.trim()) { toast.error('Add article content first to match links.'); return; }
+    
+    const norm = normalizeAndValidateDomain(rawDomain);
+    if (!norm.valid || !norm.domain || !norm.origin) {
+      setInternalLinkStatus('invalid_domain');
+      setInternalLinkStatusMessage(norm.error || 'Please enter a valid website domain.');
+      toast.error(norm.error || 'Invalid domain format.');
+      return;
+    }
 
+    const { domain: normalizedDomain, origin: canonicalOrigin } = norm;
+    setInternalLinkDomain(normalizedDomain);
+    setInternalLinkStatus('loading');
+    setInternalLinkStatusMessage(`Discovering verified pages and matching internal link opportunities on ${normalizedDomain}...`);
     setGeneratingLinks(true);
-    let raw = '';
-    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
+    if (!(await gateAIAccess())) {
+      setGeneratingLinks(false);
+      setInternalLinkStatus(internalLinks.length > 0 ? 'success' : 'not_fetched');
+      return;
+    }
+
+    // Strategy 1: High-speed server-side sitemap & domain discovery
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/fetch-internal-links`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          domain: normalizedDomain,
+          articleText: content,
+          primaryKeyword: keyword,
+          relatedKeywords: semanticResult.recommended || [],
+        }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'success' && Array.isArray(data.links) && data.links.length > 0) {
+          const matched = matchInternalLinksToArticle(data.links, content, keyword, semanticResult.recommended || []);
+          if (matched.length > 0) {
+            setInternalLinks(matched);
+            setAiLinksActive(true);
+            setInternalLinkStatus('success');
+            setInternalLinkStatusMessage(`Discovered ${matched.length} qualified internal link opportunities from ${data.discoveredCount || matched.length} verified pages on ${normalizedDomain}.`);
+            toast.success(`Found ${matched.length} internal links on ${normalizedDomain}`);
+            setGeneratingLinks(false);
+            return;
+          } else {
+            setInternalLinks([]);
+            setInternalLinkStatus('no_opportunities');
+            setInternalLinkStatusMessage(`Discovered ${data.discoveredCount || 0} indexable pages on ${normalizedDomain}, but none met the relevance threshold for the current article and keywords.`);
+            setGeneratingLinks(false);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Edge function sitemap discovery fallback to search grounding:', e);
+    }
+
+    // Strategy 2: Web-aware Google Search grounding
+    let raw = '';
     await streamLLM({
       featureSlug: FEATURE_SLUG,
       contents: [{
         role: 'user',
         parts: [{
-          text: `You have access to Google Search. Find relevant internal links from the website "${cleanDomain}" that match the following content. Suggest exactly 3 to 5 internal links.
+          text: `You have access to Google Search. Discover real indexable pages and URLs from the website "${normalizedDomain}" (canonical origin: ${canonicalOrigin}).
+Find 3 to 6 genuinely existing pages on this website that are relevant to this article.
 
-Article excerpt: "${content.slice(0, 1500)}"
+Article excerpt: "${content.slice(0, 2000)}"
+Target Keyword: "${keyword || 'general topic'}"
 
-Return ONLY valid JSON:
-{"links":[{"url":"https://${cleanDomain}/...","title":"Page Title","anchorText":"exact phrase from excerpt to hyperlink","reason":"why"}]}`
+CRITICAL REQUIREMENTS:
+1. Every URL must be a REAL, VERIFIED URL belonging to https://${normalizedDomain}/
+2. Do not invent fake /blog/ URLs that do not exist.
+3. Return ONLY a valid JSON object in this exact format:
+{"links":[{"url":"https://${normalizedDomain}/page-slug","title":"Actual Page Title","anchorText":"exact phrase from article or relevant keyword","reason":"Relevance explanation"}]}`
         }]
       }],
       tools: [{ googleSearch: {} }],
@@ -388,19 +475,68 @@ Return ONLY valid JSON:
       onChunk: (c) => { raw += c; },
       onComplete: () => {
         setGeneratingLinks(false);
-        try {
-          const m = raw.match(/\{[\s\S]*\}/);
-          if (!m) throw new Error();
-          const parsed = JSON.parse(m[0]);
-          if (parsed.links && Array.isArray(parsed.links)) {
+        const extracted = extractLinksFromJsonResponse(raw, normalizedDomain);
+
+        if (extracted.length > 0) {
+          const matched = matchInternalLinksToArticle(extracted, content, keyword, semanticResult.recommended || []);
+          if (matched.length > 0) {
+            setInternalLinks(matched);
             setAiLinksActive(true);
-            setInternalLinks(parsed.links);
-            toast.success(`Found ${parsed.links.length} internal links from ${cleanDomain}`);
+            setInternalLinkStatus('success');
+            setInternalLinkStatusMessage(`Discovered ${matched.length} qualified internal link opportunities from ${normalizedDomain}.`);
+            toast.success(`Found ${matched.length} verified internal links from ${normalizedDomain}`);
+          } else {
+            setInternalLinks([]);
+            setInternalLinkStatus('no_opportunities');
+            setInternalLinkStatusMessage(`Discovered pages on ${normalizedDomain}, but none met the relevance threshold for the current article and keywords.`);
+            toast.info(`No high-relevance link opportunities found on ${normalizedDomain} for this article.`);
           }
-        } catch { toast.error('Failed to parse links from website.'); }
+        } else {
+          const isBlocked = /blocked|cloudflare|captcha|403|access denied|forbidden/i.test(raw);
+          if (isBlocked) {
+            setInternalLinkStatus('site_blocked');
+            setInternalLinkStatusMessage(`Could not retrieve pages from ${normalizedDomain} due to access challenge or crawler protection.`);
+            toast.error(`Could not retrieve pages from ${normalizedDomain} (Access Protected).`);
+          } else {
+            setInternalLinkStatus('no_opportunities');
+            setInternalLinkStatusMessage(`Discovered pages on ${normalizedDomain}, but no direct contextual anchor matches were found in the current article text.`);
+            toast.info(`No relevant link opportunities found on ${normalizedDomain} for this article.`);
+          }
+        }
       },
-      onError: () => { setGeneratingLinks(false); toast.error('Link fetch failed.'); },
+      onError: (err: any) => {
+        setGeneratingLinks(false);
+        setInternalLinkStatus('error');
+        setInternalLinkStatusMessage(`Failed to connect to link discovery service: ${err?.message || 'Network error'}. Please retry.`);
+        toast.error('Internal link fetch failed. Please retry.');
+      },
     });
+  };
+
+  const handleApplyInternalLink = (link: DiscoveredInternalLink) => {
+    const success = editorRef.current?.applyHyperlink(link.anchorText, link.url, {
+      text: link.anchorText,
+      start: link.start,
+      end: link.end,
+      contextSnippet: link.contextSnippet,
+      sentenceIndex: link.sentenceIndex
+    });
+
+    if (success) {
+      setInternalLinks(prev => prev.map(l => l.url === link.url ? { ...l, isApplied: true } : l));
+      toast.success(`Applied link "${link.anchorText}" → ${link.url}`);
+    } else {
+      toast.error('Could not apply link to editor.');
+    }
+  };
+
+  const handleNavigateIssue = (location: any) => {
+    editorRef.current?.locateIssue(location);
+  };
+
+  const handleInsertHook = (text: string, target: 'intro' | 'after_h1' | 'end' | 'cursor' = 'intro') => {
+    editorRef.current?.insertTextAtLocation(text, target);
+    toast.success('Inserted snippet into editor');
   };
 
   // Identify Grammar AI Suggestions
@@ -662,10 +798,10 @@ Return ONLY valid JSON with no markdown fences, formatted exactly like this:
             <SemanticKeywordsPanel result={semanticResult} />
             <SearchIntentPanel result={intentResult} />
             <ReadabilityPanel result={readabilityResult} />
-            <SentenceAnalysisPanel result={sentenceResult} />
-            <ParagraphAnalysisPanel result={paraResult} />
+            <SentenceAnalysisPanel result={sentenceResult} onNavigateIssue={handleNavigateIssue} />
+            <ParagraphAnalysisPanel result={paraResult} onNavigateIssue={handleNavigateIssue} />
             <TransitionWordsPanel result={transitionResult} />
-            <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} />
+            <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
 
             <CompetitorIntelligencePanel 
               competitors={competitors} 
@@ -676,13 +812,35 @@ Return ONLY valid JSON with no markdown fences, formatted exactly like this:
             />
 
             {/* Modules 11–20 */}
-            <HeadingStructurePanel result={headingResult} />
-            <EEATPanel result={eeatResult} />
-            <EngagementPanel result={engagementResult} />
-            <InternalLinkingPanel links={internalLinks} onGenerateLinks={handleGenerateLinks} generatingLinks={generatingLinks} />
+            <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
+            <EEATPanel 
+              result={eeatResult} 
+              content={content}
+              keyword={keyword}
+              onInsertHook={handleInsertHook} 
+              onNavigateLocation={handleNavigateIssue}
+            />
+            <EngagementPanel 
+              result={engagementResult} 
+              content={content}
+              keyword={keyword}
+              onInsertHook={handleInsertHook} 
+              onNavigateLocation={handleNavigateIssue}
+            />
+            <InternalLinkingPanel 
+              links={internalLinks} 
+              onGenerateLinks={handleGenerateLinks} 
+              generatingLinks={generatingLinks} 
+              discoveryStatus={internalLinkStatus}
+              statusMessage={internalLinkStatusMessage}
+              domain={internalLinkDomain}
+              onDomainChange={setInternalLinkDomain}
+              onNavigateLocation={handleNavigateIssue}
+              onApplyLink={handleApplyInternalLink}
+            />
             <SnippetPanel result={snippetResult} />
             <MetaOptimizationPanel result={metaResult} />
-            <UniquenessPanel result={uniquenessResult} />
+            <UniquenessPanel result={uniquenessResult} onNavigateOccurrence={handleNavigateIssue} />
             <AIRiskPanel result={aiRiskResult} />
             <FAQPanel faqs={faqs} onGenerate={handleGenerateFAQ} generating={generatingFaq} />
             <ExportPanel

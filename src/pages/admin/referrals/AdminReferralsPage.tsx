@@ -11,7 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ShieldAlert, Trash2 } from 'lucide-react';
 
 export default function AdminReferralsPage() {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading, isAdmin } = useAuth();
   const [links, setLinks] = useState<ReferralLink[]>([]);
   const [journeys, setJourneys] = useState<Record<string, ReferralJourney[]>>({});
   const [loading, setLoading] = useState(true);
@@ -34,8 +34,8 @@ export default function AdminReferralsPage() {
   };
 
   useEffect(() => {
-    if (profile?.role === 'admin') load();
-  }, [profile]);
+    if (isAdmin) load();
+  }, [isAdmin]);
 
   const remove = async (id: string) => {
     try {
@@ -56,7 +56,8 @@ export default function AdminReferralsPage() {
     }
   };
 
-  if (profile?.role !== 'admin') return <p className="p-8 text-center">Admin access required.</p>;
+  if (authLoading) return <p className="p-8 text-center text-muted-foreground">Checking authorization...</p>;
+  if (!isAdmin) return <p className="p-8 text-center">Admin access required.</p>;
   if (loading) return <p className="p-8 text-center">Loading...</p>;
 
   return (

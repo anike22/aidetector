@@ -1,4 +1,6 @@
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, Extension } from '@tiptap/react';
+import { TextSelection, Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
@@ -295,10 +297,101 @@ function Toolbar({ editor }: { editor: Editor | null }) {
 }
 
 /* ── Main export ── */
+export interface IssueLocation {
+  start?: number;
+  end?: number;
+  text?: string;
+  contextSnippet?: string;
+  type?: string;
+  sentenceIndex?: number;
+  paragraphIndex?: number;
+  severity?: 'warning' | 'error' | 'info';
+}
+
 export interface RichTextEditorRef {
   setContent: (content: string) => void;
   getContent: () => string;
+  locateAndHighlight: (searchText: string) => void;
+  focusRange: (start: number, end: number, severity?: 'warning' | 'error' | 'info') => void;
+  locateIssue: (location: IssueLocation | string) => void;
+  insertTextAtLocation: (text: string, target?: 'intro' | 'after_h1' | 'end' | 'cursor') => void;
+  applyHyperlink: (anchorText: string, url: string, location?: IssueLocation) => boolean;
+  clearHighlights: () => void;
 }
+
+interface HighlightMeta {
+  from: number;
+  to: number;
+  severity: 'warning' | 'error' | 'info';
+  isSpacing: boolean;
+}
+
+const issueHighlightPluginKey = new PluginKey<HighlightMeta | null>('issueHighlight');
+
+const IssueHighlightExtension = Extension.create({
+  name: 'issueHighlight',
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<HighlightMeta | null>({
+        key: issueHighlightPluginKey,
+        state: {
+          init() {
+            return null;
+          },
+          apply(tr, prev) {
+            const meta = tr.getMeta(issueHighlightPluginKey);
+            if (meta !== undefined) {
+              return meta;
+            }
+            if (tr.docChanged && prev) {
+              const mappedFrom = tr.mapping.map(prev.from);
+              const mappedTo = tr.mapping.map(prev.to);
+              if (mappedFrom < mappedTo) {
+                return { ...prev, from: mappedFrom, to: mappedTo };
+              }
+              return null;
+            }
+            return prev;
+          },
+        },
+        props: {
+          decorations(state) {
+            const highlight = issueHighlightPluginKey.getState(state);
+            if (!highlight) return DecorationSet.empty;
+
+            const { from, to, severity, isSpacing } = highlight;
+            const validFrom = Math.max(0, Math.min(from, state.doc.content.size));
+            const validTo = Math.max(validFrom, Math.min(to, state.doc.content.size));
+
+            if (validFrom >= validTo) return DecorationSet.empty;
+
+            let className = '';
+            let style = '';
+
+            if (isSpacing) {
+              className = 'issue-highlight-spacing bg-amber-400/35 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500 rounded px-1 relative inline-block mx-0.5 select-none font-bold animate-pulse';
+              style = 'background-color: rgba(245, 158, 11, 0.35); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.75); border-radius: 3px; min-width: 14px; min-height: 1.1em; display: inline-block; vertical-align: middle;';
+            } else if (severity === 'error') {
+              className = 'issue-highlight-exact bg-destructive/25 text-destructive-foreground ring-2 ring-destructive/60 rounded px-0.5 shadow-sm font-medium transition-all duration-300';
+            } else if (severity === 'info') {
+              className = 'issue-highlight-exact bg-primary/25 text-primary-foreground ring-2 ring-primary/60 rounded px-0.5 shadow-sm font-medium transition-all duration-300';
+            } else {
+              className = 'issue-highlight-exact bg-warning/35 text-foreground ring-2 ring-warning/60 rounded px-0.5 shadow-sm font-medium transition-all duration-300';
+            }
+
+            const dec = Decoration.inline(validFrom, validTo, {
+              class: className,
+              style: style || undefined,
+            });
+
+            return DecorationSet.create(state.doc, [dec]);
+          },
+        },
+      }),
+    ];
+  },
+});
 
 interface RichTextEditorProps {
   initialValue: string;            // plain text (markdown-flavored) fed to analysis engine
@@ -312,6 +405,22 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
   ({ initialValue, onChange, onHTMLChange, placeholder, className }, ref) => {
   // Track whether we're programmatically setting content to avoid loops
   const isExternalUpdate = useRef(false);
+  const activeHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Helper to safely reset editor scroll position to top
+  const resetScrollToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = 0;
+        }
+      }, 30);
+    });
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -321,15 +430,49 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
       Image.configure({ allowBase64: false, inline: false }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: placeholder || 'Start writing your article…' }),
+      IssueHighlightExtension,
     ],
     content: markdownToHTML(initialValue || ''),
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-4 md:px-6 py-4 text-foreground leading-relaxed',
       },
+      handlePaste(view, event) {
+        // Allow default ProseMirror paste behavior to process and insert content/formatting faithfully
+        const pastedText = (event as ClipboardEvent)?.clipboardData?.getData('text/plain') || '';
+        const isSubstantialPaste = pastedText.length > 150 || pastedText.split(/\s+/).filter(Boolean).length > 25;
+
+        // Reset the editor's scroll container to top only for substantial/full article pastes
+        if (isSubstantialPaste) {
+          requestAnimationFrame(() => {
+            if (scrollContainerRef.current) {
+              scrollContainerRef.current.scrollTop = 0;
+            }
+            if (view && !view.isDestroyed) {
+              try {
+                // Position cursor at top so viewport remains at top without jumping to the end
+                const tr = view.state.tr.setSelection(
+                  TextSelection.create(view.state.doc, 0)
+                );
+                view.dispatch(tr);
+              } catch {}
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop = 0;
+              }
+            }
+            setTimeout(() => {
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop = 0;
+              }
+            }, 30);
+          });
+        }
+        return false;
+      },
     },
     onUpdate({ editor: ed }) {
       if (isExternalUpdate.current) return;
+      clearExistingHighlights();
       const html = ed.getHTML();
       const plain = htmlToPlainText(html);
       onChange(plain);
@@ -337,26 +480,531 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
     },
   });
 
+  const clearExistingHighlights = () => {
+    if (activeHighlightTimeoutRef.current) {
+      clearTimeout(activeHighlightTimeoutRef.current);
+      activeHighlightTimeoutRef.current = null;
+    }
+    if (!editor || editor.isDestroyed) return;
+    try {
+      const clearTr = editor.state.tr.setMeta(issueHighlightPluginKey, null);
+      editor.view.dispatch(clearTr);
+    } catch {}
+  };
+
+  const scrollToElement = (el: HTMLElement) => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const cRect = container.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      const relTop = eRect.top - cRect.top + container.scrollTop;
+      const targetTop = relTop - (container.clientHeight / 2) + (eRect.height / 2);
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Authoritative ProseMirror-based exact location and highlighting
+  const locateAndHighlightRange = useCallback((
+    targetText?: string,
+    startOffset?: number,
+    endOffset?: number,
+    sentenceIndex?: number,
+    paragraphIndex?: number,
+    contextSnippet?: string,
+    severity: 'warning' | 'error' | 'info' = 'warning'
+  ) => {
+    if (!editor || editor.isDestroyed) return;
+    clearExistingHighlights();
+
+    const doc = editor.state.doc;
+    const docSize = doc.content.size;
+    let pmFrom: number | null = null;
+    let pmTo: number | null = null;
+
+    // Clean search text
+    let cleanText = (targetText || '').replace(/^["']|["']$/g, '');
+    const isWhitespaceOnly = cleanText.length > 0 && /^\s+$/.test(cleanText);
+
+    if (!isWhitespaceOnly) {
+      cleanText = cleanText.trim();
+      if (cleanText.endsWith('...') || cleanText.endsWith('…')) {
+        cleanText = cleanText.replace(/(\.\.\.|…)$/, '').trim();
+      }
+    }
+
+    // Build comprehensive plain text offset to ProseMirror position mapping
+    interface BlockMapping {
+      nodePos: number;
+      plainStart: number;
+      plainEnd: number;
+      prefixLen: number;
+      blockIndex: number;
+      charToPmMap: number[];
+    }
+
+    const blockMappings: BlockMapping[] = [];
+    const plainCharToPmPos: (number | null)[] = [];
+    let currentPlainOffset = 0;
+    let currentBlockIdx = 0;
+
+    doc.descendants((node, pos) => {
+      if (node.isBlock && !node.isText) {
+        let prefix = '';
+        if (node.type.name === 'heading') {
+          const level = node.attrs.level || 1;
+          prefix = '#'.repeat(level) + ' ';
+        } else if (node.type.name === 'blockquote') {
+          prefix = '> ';
+        } else if (node.type.name === 'listItem') {
+          prefix = '- ';
+        }
+
+        for (let p = 0; p < prefix.length; p++) {
+          plainCharToPmPos.push(pos + 1);
+        }
+
+        const blockText = node.textBetween(0, node.content.size, '\n', '\n');
+        const charToPmMap: number[] = new Array(blockText.length).fill(null);
+
+        let currentOffsetInBlock = 0;
+        node.descendants((childNode, childPos) => {
+          if (childNode.isText && childNode.text) {
+            const childLen = childNode.text.length;
+            for (let i = 0; i < childLen; i++) {
+              const bIdx = currentOffsetInBlock + i;
+              const actualPmPos = pos + 1 + childPos + i;
+              charToPmMap[bIdx] = actualPmPos;
+            }
+            currentOffsetInBlock += childLen;
+          }
+          return true;
+        });
+
+        for (let i = 0; i < blockText.length; i++) {
+          const actualPmPos = charToPmMap[i] ?? (pos + 1 + i);
+          plainCharToPmPos.push(actualPmPos);
+        }
+
+        const plainStart = currentPlainOffset;
+        const plainEnd = plainStart + prefix.length + blockText.length;
+
+        blockMappings.push({
+          nodePos: pos,
+          plainStart,
+          plainEnd,
+          prefixLen: prefix.length,
+          blockIndex: currentBlockIdx++,
+          charToPmMap,
+        });
+
+        currentPlainOffset = plainEnd + 2;
+        plainCharToPmPos.push(null);
+        plainCharToPmPos.push(null);
+      }
+      return true;
+    });
+
+    // Strategy 1: Direct Verified Plain Text Offset Mapping
+    if (typeof startOffset === 'number' && startOffset >= 0 && startOffset < plainCharToPmPos.length) {
+      const candidateFrom = plainCharToPmPos[startOffset];
+      const targetLen = (typeof endOffset === 'number' && endOffset > startOffset)
+        ? (endOffset - startOffset)
+        : (cleanText.length || 1);
+      const targetEndOffset = startOffset + targetLen;
+      const candidateTo = (targetEndOffset < plainCharToPmPos.length && plainCharToPmPos[targetEndOffset] !== null)
+        ? plainCharToPmPos[targetEndOffset]
+        : (candidateFrom !== null ? candidateFrom + targetLen : null);
+
+      if (candidateFrom !== null && candidateTo !== null && candidateFrom < candidateTo) {
+        const textAtRange = doc.textBetween(candidateFrom, candidateTo);
+        const matchExact = cleanText.length > 0 && (textAtRange.toLowerCase() === cleanText.toLowerCase() || (isWhitespaceOnly && /^\s+$/.test(textAtRange)));
+        
+        if (matchExact || !cleanText) {
+          pmFrom = candidateFrom;
+          pmTo = candidateTo;
+        }
+      }
+    }
+
+    // Strategy 2: ContextSnippet exact matching within block text
+    if (pmFrom === null && contextSnippet && contextSnippet.trim().length > 0) {
+      const normalizedSnippet = contextSnippet.toLowerCase().trim();
+      let bestDist = Infinity;
+
+      for (const bm of blockMappings) {
+        const node = doc.nodeAt(bm.nodePos);
+        if (!node) continue;
+        const blockText = node.textBetween(0, node.content.size, '\n', '\n');
+        const normalizedBlock = blockText.toLowerCase();
+        let searchIdx = 0;
+
+        while (searchIdx < normalizedBlock.length) {
+          const matchIdx = normalizedBlock.indexOf(normalizedSnippet, searchIdx);
+          if (matchIdx === -1) break;
+
+          let relOffset = 0;
+          let targetLen = 0;
+
+          if (cleanText) {
+            const idxInSnippet = normalizedSnippet.indexOf(cleanText.toLowerCase());
+            if (idxInSnippet !== -1) {
+              relOffset = idxInSnippet;
+              targetLen = cleanText.length;
+            } else {
+              targetLen = normalizedSnippet.length;
+            }
+          } else if (typeof startOffset === 'number' && typeof endOffset === 'number') {
+            targetLen = Math.max(1, endOffset - startOffset);
+          } else {
+            targetLen = normalizedSnippet.length;
+          }
+
+          const targetFromInBlock = matchIdx + relOffset;
+          const targetToInBlock = targetFromInBlock + targetLen;
+          const fromPm = bm.charToPmMap[targetFromInBlock] ?? (bm.nodePos + 1 + targetFromInBlock);
+          const toPm = bm.charToPmMap[targetToInBlock] ?? (fromPm + targetLen);
+
+          const plainPos = bm.plainStart + bm.prefixLen + targetFromInBlock;
+          const dist = typeof startOffset === 'number' ? Math.abs(plainPos - startOffset) : 0;
+
+          if (dist < bestDist) {
+            bestDist = dist;
+            pmFrom = fromPm;
+            pmTo = toPm;
+          }
+
+          searchIdx = matchIdx + Math.max(1, normalizedSnippet.length);
+        }
+      }
+    }
+
+    // Strategy 3: TargetText search with closest plain-text offset disambiguation
+    if (pmFrom === null && cleanText.length > 0) {
+      const normalizedTarget = cleanText.toLowerCase();
+      interface Candidate {
+        from: number;
+        to: number;
+        plainOffset: number;
+        blockIndex: number;
+        distance: number;
+      }
+      const candidates: Candidate[] = [];
+
+      for (const bm of blockMappings) {
+        const node = doc.nodeAt(bm.nodePos);
+        if (!node) continue;
+        const blockText = node.textBetween(0, node.content.size, '\n', '\n');
+        const normalizedBlock = blockText.toLowerCase();
+        let searchIdx = 0;
+
+        while (searchIdx < normalizedBlock.length) {
+          const foundIdx = normalizedBlock.indexOf(normalizedTarget, searchIdx);
+          if (foundIdx === -1) break;
+
+          const endIdx = foundIdx + cleanText.length;
+          const fromPm = bm.charToPmMap[foundIdx] ?? (bm.nodePos + 1 + foundIdx);
+          const toPm = bm.charToPmMap[endIdx] ?? (fromPm + cleanText.length);
+          const plainPos = bm.plainStart + bm.prefixLen + foundIdx;
+          const dist = typeof startOffset === 'number' ? Math.abs(plainPos - startOffset) : 0;
+
+          candidates.push({
+            from: fromPm,
+            to: toPm,
+            plainOffset: plainPos,
+            blockIndex: bm.blockIndex,
+            distance: dist,
+          });
+
+          searchIdx = foundIdx + Math.max(1, cleanText.length);
+        }
+      }
+
+      if (candidates.length > 0) {
+        if (typeof paragraphIndex === 'number' && candidates.some(c => c.blockIndex === paragraphIndex)) {
+          const match = candidates.find(c => c.blockIndex === paragraphIndex);
+          if (match) {
+            pmFrom = match.from;
+            pmTo = match.to;
+          }
+        } else if (typeof sentenceIndex === 'number' && candidates[sentenceIndex]) {
+          pmFrom = candidates[sentenceIndex].from;
+          pmTo = candidates[sentenceIndex].to;
+        } else if (typeof startOffset === 'number') {
+          candidates.sort((a, b) => a.distance - b.distance);
+          pmFrom = candidates[0].from;
+          pmTo = candidates[0].to;
+        } else {
+          pmFrom = candidates[0].from;
+          pmTo = candidates[0].to;
+        }
+      }
+    }
+
+    // Strategy 4: Fallback Plain Text Offset Mapping
+    if (pmFrom === null && typeof startOffset === 'number' && startOffset >= 0) {
+      if (startOffset < plainCharToPmPos.length && plainCharToPmPos[startOffset] !== null) {
+        pmFrom = plainCharToPmPos[startOffset];
+        const targetLen = (typeof endOffset === 'number' && endOffset > startOffset)
+          ? (endOffset - startOffset)
+          : (cleanText.length || 1);
+        const endPos = startOffset + targetLen;
+        pmTo = (endPos < plainCharToPmPos.length && plainCharToPmPos[endPos] !== null)
+          ? plainCharToPmPos[endPos]
+          : (pmFrom! + targetLen);
+      }
+    }
+
+    // Step 5: Apply highlight decoration and scroll isolated editor container
+    if (pmFrom !== null) {
+      const validFrom = Math.max(0, Math.min(pmFrom, docSize));
+      const validTo = pmTo !== null ? Math.max(validFrom, Math.min(pmTo, docSize)) : Math.min(validFrom + 1, docSize);
+
+      if (validFrom < validTo) {
+        const textInRange = doc.textBetween(validFrom, validTo);
+        const isSpacing = /^\s+$/.test(textInRange) || isWhitespaceOnly;
+
+        try {
+          // 1. Dispatch ProseMirror decoration
+          const tr = editor.state.tr.setMeta(issueHighlightPluginKey, {
+            from: validFrom,
+            to: validTo,
+            severity,
+            isSpacing,
+          });
+
+          // Also set selection without focusing browser to prevent viewport shifts
+          tr.setSelection(TextSelection.create(editor.state.doc, validFrom, validTo));
+          editor.view.dispatch(tr);
+
+          // 2. Scope scrolling strictly to the editor's dedicated scroll container
+          const container = scrollContainerRef.current || (editor.view.dom.closest('.editor-scroll-region') as HTMLElement | null);
+          if (container) {
+            const coords = editor.view.coordsAtPos(validFrom);
+            const cRect = container.getBoundingClientRect();
+            const relTop = coords.top - cRect.top + container.scrollTop;
+            const targetTop = relTop - (container.clientHeight / 2);
+            container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+          }
+
+          // 3. Auto-clear decoration after 3.5 seconds
+          activeHighlightTimeoutRef.current = setTimeout(() => {
+            if (editor && !editor.isDestroyed) {
+              const clearTr = editor.state.tr.setMeta(issueHighlightPluginKey, null);
+              editor.view.dispatch(clearTr);
+            }
+          }, 3500);
+        } catch (err) {
+          console.error('Failed to apply ProseMirror decoration highlight:', err);
+        }
+      }
+    }
+  }, [editor]);
+
   React.useImperativeHandle(ref, () => ({
+    clearHighlights: () => {
+      clearExistingHighlights();
+    },
     setContent: (content: string) => {
       if (!editor) return;
       isExternalUpdate.current = true;
       const html = markdownToHTML(content);
       editor.commands.setContent(html, { emitUpdate: false } as any);
-      editor.commands.focus('end');
-      setTimeout(() => { isExternalUpdate.current = false; }, 0);
+      editor.commands.setTextSelection(0);
+      resetScrollToTop();
+      setTimeout(() => { 
+        isExternalUpdate.current = false; 
+        resetScrollToTop();
+      }, 0);
     },
     getContent: () => {
       if (!editor) return '';
       return htmlToPlainText(editor.getHTML());
+    },
+    focusRange: (start: number, end: number, severity: 'warning' | 'error' | 'info' = 'warning') => {
+      locateAndHighlightRange(undefined, start, end, undefined, undefined, undefined, severity);
+    },
+    locateIssue: (location: IssueLocation | string) => {
+      if (!editor || !location) return;
+
+      if (typeof location === 'string') {
+        locateAndHighlightRange(location, undefined, undefined, undefined, undefined, undefined, 'warning');
+        return;
+      }
+
+      const severity = location.severity || (location.type?.includes('very_long') || location.type?.includes('error') ? 'error' : 'warning');
+      locateAndHighlightRange(
+        location.text,
+        location.start,
+        location.end,
+        location.sentenceIndex,
+        location.paragraphIndex,
+        location.contextSnippet,
+        severity
+      );
+    },
+    locateAndHighlight: (searchText: string) => {
+      if (!editor || !searchText?.trim()) return;
+      locateAndHighlightRange(searchText, undefined, undefined, undefined, undefined, undefined, 'warning');
+    },
+    insertTextAtLocation: (textToInsert: string, target: 'intro' | 'after_h1' | 'end' | 'cursor' = 'cursor') => {
+      if (!editor || !textToInsert) return;
+
+      if (target === 'cursor') {
+        editor.chain().focus().insertContent(`\n\n${textToInsert}\n\n`).run();
+        return;
+      }
+
+      if (target === 'end') {
+        editor.chain().focus('end').insertContent(`\n\n${textToInsert}\n\n`).run();
+        return;
+      }
+
+      if (target === 'intro' || target === 'after_h1') {
+        const doc = editor.state.doc;
+        let h1EndPos: number | null = null;
+        doc.descendants((node, pos) => {
+          if (node.type.name === 'heading' && node.attrs.level === 1 && h1EndPos === null) {
+            h1EndPos = pos + node.nodeSize;
+          }
+        });
+
+        if (h1EndPos !== null) {
+          editor.chain().focus().setTextSelection(h1EndPos).insertContent(`\n\n${textToInsert}\n\n`).run();
+        } else {
+          editor.chain().focus('start').insertContent(`${textToInsert}\n\n`).run();
+        }
+      }
+    },
+    applyHyperlink: (anchorText: string, url: string, location?: IssueLocation): boolean => {
+      if (!editor || !url) return false;
+      const cleanAnchor = anchorText?.trim() || '';
+      const doc = editor.state.doc;
+      const docSize = doc.content.size;
+
+      let matchFrom: number | null = null;
+      let matchTo: number | null = null;
+
+      // Strategy 1: Match within contextSnippet if available
+      if (location?.contextSnippet && cleanAnchor) {
+        const snippetText = location.contextSnippet.trim().toLowerCase();
+        const targetText = cleanAnchor.toLowerCase();
+
+        doc.descendants((node, pos) => {
+          if (node.isBlock && !node.isText) {
+            const blockText = node.textBetween(0, node.content.size, '\n', '\n');
+            const normBlock = blockText.toLowerCase();
+            const snippetIdx = normBlock.indexOf(snippetText);
+
+            if (snippetIdx !== -1 && matchFrom === null) {
+              const relAnchorIdx = snippetText.indexOf(targetText);
+              const targetFromInBlock = relAnchorIdx !== -1 ? snippetIdx + relAnchorIdx : snippetIdx;
+              const targetToInBlock = targetFromInBlock + cleanAnchor.length;
+
+              let currentOffsetInBlock = 0;
+              node.descendants((childNode, childPos) => {
+                if (childNode.isText && childNode.text) {
+                  const childLen = childNode.text.length;
+                  const nodeStartOffset = currentOffsetInBlock;
+                  const nodeEndOffset = currentOffsetInBlock + childLen;
+
+                  if (matchFrom === null && targetFromInBlock >= nodeStartOffset && targetFromInBlock < nodeEndOffset) {
+                    matchFrom = pos + 1 + childPos + (targetFromInBlock - nodeStartOffset);
+                  }
+                  if (matchTo === null && targetToInBlock > nodeStartOffset && targetToInBlock <= nodeEndOffset) {
+                    matchTo = pos + 1 + childPos + (targetToInBlock - nodeStartOffset);
+                  }
+                  currentOffsetInBlock += childLen;
+                }
+                return true;
+              });
+            }
+          }
+          return true;
+        });
+      }
+
+      // Strategy 2: If start & end offsets are provided or snippet didn't match, find exact occurrence candidate
+      if (matchFrom === null && cleanAnchor) {
+        const normalizedTarget = cleanAnchor.toLowerCase();
+        interface Candidate { from: number; to: number; dist: number }
+        const candidates: Candidate[] = [];
+
+        doc.descendants((node, pos) => {
+          if (node.isBlock && !node.isText) {
+            const blockText = node.textBetween(0, node.content.size, '\n', '\n');
+            const normalizedBlock = blockText.toLowerCase();
+            let searchIdx = 0;
+
+            while (searchIdx < normalizedBlock.length) {
+              const foundIdx = normalizedBlock.indexOf(normalizedTarget, searchIdx);
+              if (foundIdx === -1) break;
+
+              let currentOffsetInBlock = 0;
+              let cFrom: number | null = null;
+              let cTo: number | null = null;
+              const matchEndInBlock = foundIdx + cleanAnchor.length;
+
+              node.descendants((childNode, childPos) => {
+                if (childNode.isText && childNode.text) {
+                  const childLen = childNode.text.length;
+                  const nodeStartOffset = currentOffsetInBlock;
+                  const nodeEndOffset = currentOffsetInBlock + childLen;
+
+                  if (cFrom === null && foundIdx >= nodeStartOffset && foundIdx < nodeEndOffset) {
+                    cFrom = pos + 1 + childPos + (foundIdx - nodeStartOffset);
+                  }
+                  if (cTo === null && matchEndInBlock > nodeStartOffset && matchEndInBlock <= nodeEndOffset) {
+                    cTo = pos + 1 + childPos + (matchEndInBlock - nodeStartOffset);
+                  }
+                  currentOffsetInBlock += childLen;
+                }
+                return true;
+              });
+
+              if (cFrom !== null) {
+                const finalTo = cTo !== null ? cTo : (cFrom + cleanAnchor.length);
+                const dist = typeof location?.start === 'number' ? Math.abs(pos - location.start) : 0;
+                candidates.push({ from: cFrom, to: Math.min(finalTo, docSize), dist });
+              }
+
+              searchIdx = foundIdx + Math.max(1, cleanAnchor.length);
+            }
+          }
+          return true;
+        });
+
+        if (candidates.length > 0) {
+          if (typeof location?.start === 'number') {
+            candidates.sort((a, b) => a.dist - b.dist);
+          }
+          matchFrom = candidates[0].from;
+          matchTo = candidates[0].to;
+        }
+      }
+
+      if (matchFrom !== null) {
+        const finalTo = matchTo !== null ? matchTo : (matchFrom + cleanAnchor.length);
+        editor.chain().focus().setTextSelection({ from: matchFrom, to: Math.min(finalTo, docSize) }).setLink({ href: url, target: '_blank' }).run();
+        locateAndHighlightRange(cleanAnchor, undefined, undefined, undefined, undefined, location?.contextSnippet, 'info');
+        return true;
+      } else {
+        // Fallback: If anchor text does not exist verbatim, insert hyperlinked anchor at cursor position
+        editor.chain().focus().insertContent(` <a href="${url}" target="_blank">${cleanAnchor || url}</a> `).run();
+        return true;
+      }
     }
   }), [editor]);
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full min-h-0 overflow-hidden', className)}>
       <Toolbar editor={editor} />
-      <div className="flex-1 overflow-y-auto">
-        <EditorContent editor={editor} className="h-full" />
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain editor-scroll-region"
+      >
+        <EditorContent editor={editor} className="min-h-full" />
       </div>
     </div>
   );

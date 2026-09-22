@@ -34,3 +34,7 @@ history/*.json
 .vite_cache
 .native-wind-cache
 .vite
+
+.env
+
+.env

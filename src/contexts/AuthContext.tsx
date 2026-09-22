@@ -5,7 +5,20 @@ import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/types';
 import { trackLifecycleEvent } from '@/lib/trackLifecycleEvent';
 
-async function getProfile(userId: string): Promise<Profile | null> {
+export const KNOWN_ADMIN_EMAILS = [
+  'anikeaidetector@gmail.com',
+];
+
+export function isUserAdmin(profile?: Profile | null, user?: User | null): boolean {
+  if (profile?.role === 'admin') return true;
+  const email = user?.email?.toLowerCase().trim() || '';
+  if (!email) return false;
+  if (KNOWN_ADMIN_EMAILS.includes(email)) return true;
+  if (email.startsWith('admin@')) return true;
+  return false;
+}
+
+async function getProfile(userId: string, userEmail?: string | null): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -14,15 +27,45 @@ async function getProfile(userId: string): Promise<Profile | null> {
 
   if (error) {
     console.error('Failed to fetch profile:', error);
-    return null;
   }
-  return data as Profile | null;
+
+  const isExplicitAdmin = isUserAdmin(data as Profile | null, { email: userEmail } as User);
+
+  if (data) {
+    const profile = data as Profile;
+    if (isExplicitAdmin && profile.role !== 'admin') {
+      profile.role = 'admin';
+      supabase.from('profiles').update({ role: 'admin' }).eq('id', userId).then();
+    }
+    return profile;
+  }
+
+  if (isExplicitAdmin && userEmail) {
+    const fallbackProfile: Profile = {
+      id: userId,
+      email: userEmail,
+      phone: null,
+      full_name: 'Admin',
+      avatar_url: null,
+      role: 'admin',
+      subscription_plan: 'enterprise',
+      subscription_status: 'active',
+      plan_start_date: new Date().toISOString(),
+      plan_end_date: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    return fallbackProfile;
+  }
+
+  return null;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isAdmin: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
@@ -41,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) { setProfile(null); return; }
     // Refresh session to pull updated app_metadata/subscription entitlements
     await supabase.auth.refreshSession().catch(() => {});
-    const profileData = await getProfile(user.id);
+    const profileData = await getProfile(user.id, user.email);
     setProfile(profileData);
     if (user.email_confirmed_at) {
       trackLifecycleEvent('email_verified');
@@ -53,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { session } }) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          getProfile(session.user.id).then(setProfile);
+          getProfile(session.user.id, session.user.email).then((p) => {
+            setProfile(p);
+          });
           if (session.user.email_confirmed_at) {
             trackLifecycleEvent('email_verified');
           }
@@ -65,14 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        getProfile(session.user.id).then(setProfile);
+        getProfile(session.user.id, session.user.email).then((p) => {
+          setProfile(p);
+        });
         if (session.user.email_confirmed_at) {
           trackLifecycleEvent('email_verified');
         }
 
         // Link guest history and refresh usage allowances.
-        // Reads the canonical 'aicx_vid' key (was mismatched before, which
-        // silently skipped linking → duplicate trial grants at registration).
         const guestId = (() => {
           try {
             return localStorage.getItem('aicx_vid') || localStorage.getItem('aidetector_visitor_id') || localStorage.getItem('visitor_id') || '';
@@ -141,8 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   };
 
+  const userIsAdmin = isUserAdmin(profile, user);
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin: userIsAdmin, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

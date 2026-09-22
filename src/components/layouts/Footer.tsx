@@ -20,6 +20,7 @@ const footerColumns = [
       { label: 'AI Video Detector', href: '/ai-video-detector' },
       { label: 'Essay Studio', href: '/essay-studio' },
       { label: 'SEO Assistant', href: '/seo-assistant' },
+      { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers' },
       { label: 'Content Studio', href: '/content-studio' },
       { label: 'Browse AI Tools Directory', href: '/tools' },
     ],

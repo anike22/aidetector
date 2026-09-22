@@ -176,12 +176,21 @@ export interface FeatureRateInfo {
   name: string;
   trialEligible: boolean;
   baseCreditCost: number;
-  billingUnit: 'words_1000' | 'image' | 'video_30s' | 'audio_min' | 'references_5' | 'fixed';
+  billingUnit: 'words_500' | 'words_1000' | 'image' | 'video_30s' | 'audio_min' | 'references_5' | 'fixed';
   minPlan: 'guest' | 'free' | 'pro' | 'pro_plus' | 'business' | 'enterprise';
   description: string;
 }
 
 export const RATE_TABLE: Record<string, FeatureRateInfo> = {
+  ai_checker_for_bloggers: {
+    featureSlug: 'ai_checker_for_bloggers',
+    name: 'AI Checker for Bloggers (SEO Analysis)',
+    trialEligible: false,
+    baseCreditCost: 5,
+    billingUnit: 'words_500',
+    minPlan: 'pro',
+    description: '5 credits per started 500 words for full blog SEO & publishing report (Pro plan required)',
+  },
   text_detect_balanced: {
     featureSlug: 'text_detect_balanced',
     name: 'Text Detection (Balanced)',
@@ -230,11 +239,11 @@ export const RATE_TABLE: Record<string, FeatureRateInfo> = {
   seo_assistant: {
     featureSlug: 'seo_assistant',
     name: 'SEO Assistant Report',
-    trialEligible: true,
+    trialEligible: false,
     baseCreditCost: 3,
     billingUnit: 'words_1000',
-    minPlan: 'free',
-    description: '3 credits per started 1,000 words for standard report',
+    minPlan: 'pro',
+    description: '3 credits per started 1,000 words for standard report (Pro plan required)',
   },
   image_detect_standard: {
     featureSlug: 'image_detect_standard',
@@ -335,14 +344,37 @@ export const RATE_TABLE: Record<string, FeatureRateInfo> = {
     minPlan: 'business',
     description: '1 credit per API call (Business only)',
   },
+  generate_article: {
+    featureSlug: 'generate_article',
+    name: 'Generate Article / With AI',
+    trialEligible: false,
+    baseCreditCost: 5,
+    billingUnit: 'fixed',
+    minPlan: 'pro',
+    description: '5 credits per AI article generation (Pro plan required)',
+  },
 };
 
 for (const [alias, canonical] of Object.entries({
   ai_detector: 'text_detect_balanced', ai_detection: 'text_detect_balanced',
-  ai_humanizer: 'humanizer_rewrite', plagiarism_checker: 'plagiarism_check',
+  ai_humanizer: 'humanizer_rewrite', humanizer: 'humanizer_rewrite',
+  plagiarism_checker: 'plagiarism_check', plagiarism_deep: 'plagiarism_check',
   ai_image_detector: 'image_detect_standard', ai_video_detector: 'video_detect_balanced',
   citation_verifier: 'citation_verify', hallucination_detector: 'hallucination_check',
+  blogger_seo_check: 'ai_checker_for_bloggers', ai_checker_blogger: 'ai_checker_for_bloggers',
+  blogger_checker: 'ai_checker_for_bloggers', seo_assistant_blogger: 'ai_checker_for_bloggers',
+  seo_generate_article: 'generate_article',
 })) RATE_TABLE[alias] = { ...RATE_TABLE[canonical], featureSlug: alias };
+
+/**
+ * Calculate exact credit cost for /ai-checker-for-bloggers main analysis:
+ * 5 credits for every started block of up to 500 words.
+ * Math.ceil(wordCount / 500) * 5
+ */
+export function calculateBloggerAnalysisCost(wordCount: number): number {
+  const words = Math.max(1, wordCount || 1);
+  return Math.ceil(words / 500) * 5;
+}
 
 /**
  * Calculate exact credit cost based on units and rate table.
@@ -351,6 +383,7 @@ export function calculateOperationCreditCost(
   featureSlug: string,
   units: {
     words?: number;
+    wordCount?: number;
     engines?: number;
     images?: number;
     videoSeconds?: number;
@@ -362,8 +395,13 @@ export function calculateOperationCreditCost(
   if (!rate) return 1;
 
   switch (rate.billingUnit) {
+    case 'words_500': {
+      const words = Math.max(1, units.words || units.wordCount || 1);
+      const units500 = Math.ceil(words / 500);
+      return units500 * rate.baseCreditCost;
+    }
     case 'words_1000': {
-      const words = Math.max(1, units.words || 100);
+      const words = Math.max(1, units.words || units.wordCount || 100);
       const units1k = Math.ceil(words / 1000);
       const engineMultiplier = Math.max(1, units.engines || 1);
       return units1k * rate.baseCreditCost * engineMultiplier;
@@ -405,6 +443,13 @@ export function isTrialEligibleOperation(featureSlug: string): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * Get rate configuration for a feature slug or alias.
+ */
+export function getFeatureRateConfig(featureSlug: string): FeatureRateInfo | undefined {
+  return RATE_TABLE[featureSlug];
 }
 
 /**

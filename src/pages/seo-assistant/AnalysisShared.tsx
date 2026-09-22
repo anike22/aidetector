@@ -63,7 +63,7 @@ export function Rec({ text }: { text: string }) {
   );
 }
 
-export function AnalysisModule({ title, score, children, defaultOpen = true }: ModuleProps) {
+export function AnalysisModule({ title, score, scoreLabel, children, defaultOpen = true }: ModuleProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className={`border rounded-lg overflow-hidden ${score !== undefined ? scoreBg(score) : 'border-border bg-card'}`}>
@@ -79,7 +79,7 @@ export function AnalysisModule({ title, score, children, defaultOpen = true }: M
               score >= 50 ? 'border-warning/40 text-warning bg-warning/10' :
               'border-destructive/40 text-destructive bg-destructive/10'
             }`}>
-              {score}
+              {scoreLabel || `${score}/100`}
             </Badge>
           )}
         </div>

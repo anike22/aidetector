@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { NotificationBell } from '@/components/lifecycle/NotificationBell';
-import { navStructure, directLinks, matchRoute, getFilteredNavStructure } from '@/components/layouts/navData';
+import { navStructure, directLinks, adminNavStructure, matchRoute, getFilteredNavStructure } from '@/components/layouts/navData';
 import { MobileNavDrawer } from '@/components/layouts/MobileNavDrawer';
 import { LiveUsagePanel } from '@/components/common/LiveUsagePanel';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
@@ -207,6 +207,87 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Admin Dropdown for Admin Users */}
+            {profile?.role === 'admin' && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={`flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-md transition-colors outline-none data-[state=open]:bg-muted/60 data-[state=open]:text-foreground ${
+                    location.pathname.startsWith('/admin')
+                      ? 'text-primary bg-primary/10 font-semibold'
+                      : 'text-primary/90 hover:text-primary hover:bg-primary/5 font-semibold'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5 mr-0.5 text-primary" />
+                  Admin <ChevronDown className="w-3.5 h-3.5 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  sideOffset={8}
+                  className="w-[680px] max-w-[calc(100vw-2rem)] p-4 rounded-2xl shadow-xl border-border/60 bg-background/95 backdrop-blur-md"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-foreground">Admin Portal & Governance</div>
+                          <div className="text-xs text-muted-foreground">Intelligence, Model Quality, Workflows & System Controls</div>
+                        </div>
+                      </div>
+                      <Link
+                        to="/admin"
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                      >
+                        Main Admin Panel <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {adminNavStructure.subcategories!.map((sub) => (
+                        <div key={sub.title} className="space-y-1">
+                          <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {sub.title}
+                          </div>
+                          <div className="space-y-0.5">
+                            {sub.items.map((link) => {
+                              const IconComponent = link.icon;
+                              const itemActive = isActive(link.href);
+                              return (
+                                <DropdownMenuItem key={link.href} asChild className="cursor-pointer focus:bg-muted/60 rounded-xl p-0">
+                                  <Link
+                                    to={link.href}
+                                    className={`flex items-start gap-3 p-2 rounded-xl transition-colors ${
+                                      itemActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
+                                      itemActive ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
+                                    }`}>
+                                      <IconComponent className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className={`font-semibold text-xs ${itemActive ? 'text-primary' : 'text-foreground'}`}>
+                                        {link.label}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                                        {link.desc}
+                                      </div>
+                                    </div>
+                                  </Link>
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
 
           {/* Actions & Dynamic Indicator */}
@@ -312,9 +393,47 @@ export default function Navbar() {
                   </DropdownMenuItem>
                   {profile?.role === 'admin' && (
                     <>
+                      <div className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary border-t border-border/50 mt-1">
+                        Admin & Intelligence
+                      </div>
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                        <Link to="/admin" className="flex items-center gap-2 text-primary focus:text-primary">
-                          <Shield className="w-4 h-4" /> Admin Panel
+                        <Link to="/admin" className="flex items-center gap-2 text-primary focus:text-primary font-medium">
+                          <Shield className="w-4 h-4" /> Admin Panel Overview
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/customer-intelligence" className="flex items-center gap-2 text-primary focus:text-primary font-medium">
+                          <Users className="w-4 h-4" /> Customer Intelligence
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/lifecycle" className="flex items-center gap-2 text-primary focus:text-primary font-medium">
+                          <Activity className="w-4 h-4" /> Customer Lifecycle
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/lead-capture" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <Target className="w-4 h-4" /> Lead Capture & CRM
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/detector-benchmark" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <BarChart2 className="w-4 h-4" /> Detector Benchmarks
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/detector-config" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <Bot className="w-4 h-4" /> Detector Configuration
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/detector-feedback" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <CheckCircle2 className="w-4 h-4" /> Detector Feedback
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/humanizer-quality" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <PenSquare className="w-4 h-4" /> Humanizer Quality
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
@@ -325,11 +444,6 @@ export default function Navbar() {
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
                         <Link to="/admin/email" className="flex items-center gap-2 text-primary focus:text-primary">
                           <Mail className="w-4 h-4" /> Email Settings
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                        <Link to="/admin/customer-intelligence" className="flex items-center gap-2 text-primary focus:text-primary">
-                          <Users className="w-4 h-4" /> Customer Intelligence
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
@@ -350,6 +464,16 @@ export default function Navbar() {
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
                         <Link to="/admin/personalization" className="flex items-center gap-2 text-primary focus:text-primary">
                           <Sparkles className="w-4 h-4" /> AI Personalization
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/feature-controls" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <Shield className="w-4 h-4" /> Feature Controls
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                        <Link to="/admin/api-health" className="flex items-center gap-2 text-primary focus:text-primary">
+                          <Activity className="w-4 h-4" /> API Health & Connections
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="rounded-lg cursor-pointer">

@@ -4,7 +4,7 @@ import {
   Crown, Home, Building2, FolderOpen, Bell, Activity, Shield, User as UserIcon, CreditCard,
   Gift, TrendingUp, Webhook, Terminal, FileCode, GraduationCap, ClipboardList, Video,
   Image as ImageIcon, CheckCircle2, ShieldCheck, HelpCircle, Newspaper, ArrowRight,
-  Layers, Lock
+  Layers, Lock, Mail
 } from 'lucide-react';
 import { isFeatureVisible } from '@/lib/featureFlags';
 
@@ -41,6 +41,7 @@ export const navStructure: NavGroup[] = [
         title: 'Writing & Text Detection',
         items: [
           { label: 'AI Detector', href: '/detector', icon: BarChart2, desc: 'Enterprise text detection engine' },
+          { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers', icon: Sparkles, desc: 'AI, SEO, readability & uniqueness check' },
           { label: 'Word Counter', href: '/word-counter', icon: FileText, desc: 'Count words & check for AI patterns' },
           { label: 'AI Summarizer', href: '/ai-summarizer', icon: Layers, desc: 'Summarize text, articles & documents' },
           { label: 'AI Humanizer', href: '/humanizer', icon: User, desc: 'Bypass detection seamlessly' },
@@ -69,6 +70,7 @@ export const navStructure: NavGroup[] = [
     ],
     items: [
       { label: 'AI Detector', href: '/detector', icon: BarChart2, desc: 'Enterprise text detection engine' },
+      { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers', icon: Sparkles, desc: 'AI, SEO & publishing analysis' },
       { label: 'AI Humanizer', href: '/humanizer', icon: User, desc: 'Bypass detection seamlessly' },
       { label: 'Plagiarism Checker', href: '/plagiarism-checker', icon: FileSearch, desc: 'Multi-source originality check' },
       { label: 'AI Image Detector', href: '/ai-image-detector', icon: ImageIcon, desc: 'Detect Midjourney, DALL-E & Flux' },
@@ -202,6 +204,65 @@ export const navStructure: NavGroup[] = [
     ],
   },
 ];
+
+export const adminNavStructure: NavGroup = {
+  id: 'admin',
+  title: 'Admin',
+  icon: Shield,
+  viewAllLink: { label: 'Admin Dashboard', href: '/admin' },
+  subcategories: [
+    {
+      title: 'Customer & Intelligence',
+      items: [
+        { label: 'Customer Intelligence', href: '/admin/customer-intelligence', icon: Users, desc: 'Behavioral analytics & 360 journey' },
+        { label: 'Customer Lifecycle', href: '/admin/lifecycle', icon: Activity, desc: 'Funnel stages, retention & cohorts' },
+        { label: 'Lead Capture & CRM', href: '/admin/lead-capture', icon: Target, desc: 'Lead capture forms & pipeline' },
+        { label: 'AI Personalization', href: '/admin/personalization', icon: Sparkles, desc: 'Personalization & recommendation engine' },
+      ],
+    },
+    {
+      title: 'Models & Detection Quality',
+      items: [
+        { label: 'Detector Benchmarks', href: '/admin/detector-benchmark', icon: BarChart2, desc: 'Empirical model accuracy tests' },
+        { label: 'Detector Configuration', href: '/admin/detector-config', icon: Bot, desc: 'Thresholds & weights management' },
+        { label: 'Detector Feedback', href: '/admin/detector-feedback', icon: ShieldCheck, desc: 'User report queue & false positives' },
+        { label: 'Humanizer Quality', href: '/admin/humanizer-quality', icon: PenSquare, desc: 'Humanizer score & perplexity benchmarks' },
+      ],
+    },
+    {
+      title: 'Automation & Growth',
+      items: [
+        { label: 'Automation Center', href: '/admin/automation', icon: Bot, desc: 'Workflows, triggers & actions' },
+        { label: 'Automation Logs', href: '/admin/automation/logs', icon: FileText, desc: 'Execution audit & error logs' },
+        { label: 'Automation Analytics', href: '/admin/automation/analytics', icon: TrendingUp, desc: 'Workflow performance & conversions' },
+        { label: 'Referrals & Affiliates', href: '/admin/referrals', icon: LinkIcon, desc: 'Referral tracking & commissions' },
+      ],
+    },
+    {
+      title: 'Governance & Infrastructure',
+      items: [
+        { label: 'Enterprise Admin', href: '/admin/enterprise', icon: Building2, desc: 'Workspaces & organization seats' },
+        { label: 'Security Center', href: '/admin/security', icon: Shield, desc: 'Threat logs & incident governance' },
+        { label: 'Compliance & Privacy', href: '/admin/compliance', icon: CheckCircle2, desc: 'GDPR/CCPA privacy requests' },
+        { label: 'API Health & Connections', href: '/admin/api-health', icon: Activity, desc: 'Live endpoint latency & health' },
+        { label: 'Feature Controls', href: '/admin/feature-controls', icon: Shield, desc: 'Global feature flags & kill-switches' },
+        { label: 'Email Management', href: '/admin/email', icon: Mail, desc: 'Email broadcasts & notification templates' },
+      ],
+    },
+  ],
+  items: [
+    { label: 'Customer Intelligence', href: '/admin/customer-intelligence', icon: Users, desc: 'Behavioral analytics & 360 journey' },
+    { label: 'Customer Lifecycle', href: '/admin/lifecycle', icon: Activity, desc: 'Funnel stages, retention & cohorts' },
+    { label: 'Lead Capture & CRM', href: '/admin/lead-capture', icon: Target, desc: 'Lead capture forms & pipeline' },
+    { label: 'Detector Benchmarks', href: '/admin/detector-benchmark', icon: BarChart2, desc: 'Empirical model accuracy tests' },
+    { label: 'Detector Configuration', href: '/admin/detector-config', icon: Bot, desc: 'Thresholds & weights management' },
+    { label: 'Automation Center', href: '/admin/automation', icon: Bot, desc: 'Workflows, triggers & actions' },
+    { label: 'Enterprise Admin', href: '/admin/enterprise', icon: Building2, desc: 'Workspaces & organization seats' },
+    { label: 'Security Center', href: '/admin/security', icon: Shield, desc: 'Threat logs & incident governance' },
+    { label: 'API Health & Connections', href: '/admin/api-health', icon: Activity, desc: 'Live endpoint latency & health' },
+    { label: 'Feature Controls', href: '/admin/feature-controls', icon: Shield, desc: 'Global feature flags & kill-switches' },
+  ],
+};
 
 export const directLinks = [
   { label: 'Pricing', href: '/pricing', icon: Crown },

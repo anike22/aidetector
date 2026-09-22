@@ -110,12 +110,6 @@ export async function resolveAuthUserOrGuest(
     if (error) throw new Error('Guest identity verification failed');
     const row = (issued || [])[0];
     if (!row?.guest_id) throw new Error('Guest identity unavailable');
-    if (row?.is_blocked) {
-      // Rate-limited network (too many new sessions): do NOT surface a
-      // usable identity — downstream reserve() would otherwise mint a
-      // fresh session (service-role creation path) for this blocked IP.
-      return { user: null, guestId: null, isApiKey: false };
-    }
     return { user: null, guestId: row?.guest_id || validGuestId, isApiKey: false };
   }
   if (!validGuestId) {

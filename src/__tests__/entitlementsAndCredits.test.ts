@@ -115,13 +115,15 @@ describe('Entitlements & Central Rate Table System', () => {
       expect(isTrialEligibleOperation('text_detect_balanced')).toBe(true);
       expect(isTrialEligibleOperation('humanizer_rewrite')).toBe(true);
       expect(isTrialEligibleOperation('plagiarism_check')).toBe(true);
-      expect(isTrialEligibleOperation('seo_assistant')).toBe(true);
       expect(isTrialEligibleOperation('image_detect_standard')).toBe(true);
       expect(isTrialEligibleOperation('video_detect_balanced')).toBe(true);
       expect(isTrialEligibleOperation('voice_analysis')).toBe(true);
     });
 
     it('flags advanced and paid-only tools as trial ineligible', () => {
+      expect(isTrialEligibleOperation('seo_assistant')).toBe(false);
+      expect(isTrialEligibleOperation('ai_checker_for_bloggers')).toBe(false);
+      expect(isTrialEligibleOperation('generate_article')).toBe(false);
       expect(isTrialEligibleOperation('text_detect_aggressive')).toBe(false);
       expect(isTrialEligibleOperation('image_detect_advanced')).toBe(false);
       expect(isTrialEligibleOperation('video_detect_forensic')).toBe(false);

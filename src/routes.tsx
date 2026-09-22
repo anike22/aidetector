@@ -5,6 +5,8 @@ import DetectorPage from './pages/DetectorPage';
 import ToolsPage from './pages/ToolsPage';
 import PlagiarismCheckerPage from './pages/PlagiarismCheckerPage';
 import ToolDetailPage from './pages/ToolDetailPage';
+import ToolComparePage from './pages/ToolComparePage';
+import ToolSubmitPage from './pages/ToolSubmitPage';
 import CommunityPage from './pages/CommunityPage';
 import CommunityDetailPage from './pages/CommunityDetailPage';
 import DashboardPage from './pages/DashboardPage';
@@ -49,6 +51,7 @@ import AIInsightsPage from './pages/AIInsightsPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
 import SEOAssistantPage from './pages/seo-assistant/SEOAssistantPage';
+import AICheckerForBloggersPage from './pages/AICheckerForBloggersPage';
 import WordCounter from './pages/WordCounter';
 import AiSummarizer from './pages/AiSummarizer';
 import AboutPage from './pages/company/AboutPage';
@@ -202,7 +205,7 @@ export const routes: RouteConfig[] = [
   {
     name: 'Essay Studio',
     path: '/essay-studio',
-    element: <MainLayout><EssayStudioHomePage /></MainLayout>,
+    element: <EssayStudioHomePage />,
     public: false,
   },
   {
@@ -385,9 +388,51 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
+    name: 'AI Tools Directory (Alias)',
+    path: '/ai-tools',
+    element: <FeatureGate featureSlug="tools"><ToolsPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Tool Comparison',
+    path: '/tools/compare',
+    element: <FeatureGate featureSlug="tools"><ToolComparePage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'AI Tool Comparison (Alias)',
+    path: '/ai-tools/compare',
+    element: <FeatureGate featureSlug="tools"><ToolComparePage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Pairwise Tool Comparison',
+    path: '/compare/:vsPair',
+    element: <FeatureGate featureSlug="tools"><ToolComparePage /></FeatureGate>,
+    public: true,
+  },
+  {
     name: 'Tool Detail',
     path: '/tools/:id',
     element: <FeatureGate featureSlug="tools"><ToolDetailPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Tool Detail (Alias)',
+    path: '/ai-tools/:id',
+    element: <FeatureGate featureSlug="tools"><ToolDetailPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Submit AI Tool',
+    path: '/tools/submit',
+    element: <FeatureGate featureSlug="tools"><ToolSubmitPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Submit AI Tool (Alias)',
+    path: '/ai-tools/submit',
+    element: <FeatureGate featureSlug="tools"><ToolSubmitPage /></FeatureGate>,
     public: true,
   },
   {
@@ -567,10 +612,24 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
+    name: 'Customer Intelligence (Alias)',
+    path: '/admin/customer-intelligence-analytics',
+    element: <CustomerIntelligencePage />,
+    public: true,
+    visible: false,
+  },
+  {
     name: 'Customer Lifecycle',
     path: '/admin/lifecycle',
     element: <LifecycleDashboardPage />,
     public: true,
+  },
+  {
+    name: 'Customer Lifecycle (Alias)',
+    path: '/admin/customer-lifecycle',
+    element: <LifecycleDashboardPage />,
+    public: true,
+    visible: false,
   },
   {
     name: 'AI Personalization Center',
@@ -663,6 +722,12 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
+    name: 'Register',
+    path: '/register',
+    element: <SignupPage />,
+    public: true,
+  },
+  {
     name: 'Reset Password',
     path: '/reset-password',
     element: <ResetPasswordPage />,
@@ -690,7 +755,13 @@ export const routes: RouteConfig[] = [
   {
     name: 'SEO Assistant',
     path: '/seo-assistant',
-    element: <FeatureGate featureSlug="seo-assistant"><MainLayout><SEOAssistantPage /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="seo-assistant"><SEOAssistantPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'AI Checker for Bloggers',
+    path: '/ai-checker-for-bloggers',
+    element: <AICheckerForBloggersPage />,
     public: true,
   },
   {
@@ -840,7 +911,7 @@ export const routes: RouteConfig[] = [
   {
     name: 'Document Workspace',
     path: '/document-workspace',
-    element: <MainLayout><DocumentWorkspacePage /></MainLayout>,
+    element: <DocumentWorkspacePage />,
     public: true,
   },
   {
@@ -926,13 +997,13 @@ export const routes: RouteConfig[] = [
   {
     name: 'Chrome Extension',
     path: '/chrome-extension',
-    element: <MainLayout><ChromeExtensionPage /></MainLayout>,
+    element: <ChromeExtensionPage />,
     public: true,
   },
   {
     name: 'WordPress Plugin',
     path: '/wordpress-plugin',
-    element: <MainLayout><WordPressPluginPage /></MainLayout>,
+    element: <WordPressPluginPage />,
     public: true,
   },
   {
@@ -944,49 +1015,49 @@ export const routes: RouteConfig[] = [
   {
     name: 'Website Development',
     path: '/services/website-development',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage /></FeatureGate>,
     public: true,
   },
   {
     name: 'Business Website Design',
     path: '/services/business-website-design',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage title="Business Website Design" seoKeyword="Business Website Design" /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage title="Business Website Design" seoKeyword="Business Website Design" /></FeatureGate>,
     public: true,
   },
   {
     name: 'SEO Website Design',
     path: '/services/seo-website-design',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage title="SEO Website Design" seoKeyword="SEO Website Design" /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage title="SEO Website Design" seoKeyword="SEO Website Design" /></FeatureGate>,
     public: true,
   },
   {
     name: 'Custom Website Development',
     path: '/services/custom-website-development',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage title="Custom Website Development" seoKeyword="Custom Website Development" /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage title="Custom Website Development" seoKeyword="Custom Website Development" /></FeatureGate>,
     public: true,
   },
   {
     name: 'E-commerce Website Development',
     path: '/services/ecommerce-website-development',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage title="E-commerce Website Development" seoKeyword="E-commerce Website Development" /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage title="E-commerce Website Development" seoKeyword="E-commerce Website Development" /></FeatureGate>,
     public: true,
   },
   {
     name: 'Landing Page Design',
     path: '/services/landing-page-design',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevelopmentPage title="Landing Page Design" seoKeyword="Landing Page Design" /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevelopmentPage title="Landing Page Design" seoKeyword="Landing Page Design" /></FeatureGate>,
     public: true,
   },
   {
     name: 'Website Dev Request',
     path: '/services/website-development/request',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><WebsiteDevRequestPage /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><WebsiteDevRequestPage /></FeatureGate>,
     public: true,
   },
   {
     name: 'Book a Meeting',
     path: '/services/website-development/book-meeting',
-    element: <FeatureGate featureSlug="website-development"><MainLayout><BookMeetingPage /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="website-development"><BookMeetingPage /></FeatureGate>,
     public: true,
   },
   {

@@ -14,7 +14,7 @@ const STATUSES: AffiliateApplicationStatus[] = ['Pending', 'Approved', 'Rejected
 const TIERS: AffiliateTier[] = ['Standard', 'Verified', 'Professional', 'Agency', 'Enterprise_Partner'];
 
 export default function AdminAffiliatesPage() {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading, isAdmin } = useAuth();
   const [apps, setApps] = useState<AffiliateApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,8 +30,8 @@ export default function AdminAffiliatesPage() {
   };
 
   useEffect(() => {
-    if (profile?.role === 'admin') load();
-  }, [profile]);
+    if (isAdmin) load();
+  }, [isAdmin]);
 
   const update = async (id: string, status: AffiliateApplicationStatus, tier?: AffiliateTier) => {
     try {
@@ -43,7 +43,8 @@ export default function AdminAffiliatesPage() {
     }
   };
 
-  if (profile?.role !== 'admin') return <p className="p-8 text-center">Admin access required.</p>;
+  if (authLoading) return <p className="p-8 text-center text-muted-foreground">Checking authorization...</p>;
+  if (!isAdmin) return <p className="p-8 text-center">Admin access required.</p>;
   if (loading) return <p className="p-8 text-center">Loading...</p>;
 
   return (

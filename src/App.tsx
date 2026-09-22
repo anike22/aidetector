@@ -8,6 +8,7 @@ import { LifecycleProvider, useLifecycle } from '@/contexts/LifecycleContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
 import { PersonalizationProvider } from '@/contexts/PersonalizationContext';
 import { TeamProvider } from '@/contexts/TeamContext';
+import { DirectoryCompareProvider } from '@/context/DirectoryCompareContext';
 import { LeadCaptureModal } from '@/components/lead-capture/LeadCaptureModal';
 import { VisitorTracker } from '@/components/lead-capture/VisitorTracker';
 import { SuccessCelebrationManager } from '@/components/lifecycle/SuccessCelebration';
@@ -38,33 +39,35 @@ const App = () => {
               <AutomationProvider>
                 <PersonalizationProvider>
                   <TeamProvider>
-                    <LifecycleUI />
-                  <IntersectObserver />
-                  <VisitorTracker />
-                  <SmartAssistant />
-                  <div className="flex flex-col min-h-screen">
-                    <main className="flex-grow">
-                      <Routes>
-                        {routes.map((route, index) => (
-                          <Route
-                            key={index}
-                            path={route.path}
-                            element={
-                              route.errorElement ? (
-                                <RouteErrorBoundary fallback={route.errorElement}>
-                                  {route.element}
-                                </RouteErrorBoundary>
-                              ) : (
-                                route.element
-                              )
-                            }
-                          />
-                        ))}
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </main>
-                  </div>
-                  <LeadCaptureModal />
+                    <DirectoryCompareProvider>
+                      <LifecycleUI />
+                      <IntersectObserver />
+                      <VisitorTracker />
+                      <SmartAssistant />
+                      <div className="flex flex-col min-h-screen">
+                        <main className="flex-grow">
+                          <Routes>
+                            {routes.map((route, index) => (
+                              <Route
+                                key={index}
+                                path={route.path}
+                                element={
+                                  route.errorElement ? (
+                                    <RouteErrorBoundary fallback={route.errorElement}>
+                                      {route.element}
+                                    </RouteErrorBoundary>
+                                  ) : (
+                                    route.element
+                                  )
+                                }
+                              />
+                            ))}
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                          </Routes>
+                        </main>
+                      </div>
+                      <LeadCaptureModal />
+                    </DirectoryCompareProvider>
                   </TeamProvider>
                   <Toaster />
                 </PersonalizationProvider>

@@ -2,6 +2,7 @@ import { AnalysisModule, CheckItem, MiniScoreBar, Rec, ScoreRing } from './Analy
 import { Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
 import type {
   OverallScores, KeywordUsageResult, SemanticKeywordsResult, SearchIntentResult,
   ReadabilityResult, SentenceAnalysisResult, ParagraphAnalysisResult,
@@ -10,14 +11,133 @@ import type {
 
 // ─── Module 1 + 2: Scores Overview ──────────────────────────────────────
 
-export function OverallScorePanel({ scores }: { scores: OverallScores }) {
+export interface OverallScorePanelProps {
+  scores: OverallScores;
+  isAnalyzed?: boolean;
+  isStale?: boolean;
+  isAnalyzing?: boolean;
+  operationCost?: number;
+  isGuest?: boolean;
+  isSubscriber?: boolean;
+  onRegister?: () => void;
+  onUpgrade?: () => void;
+  onAnalyze?: () => void;
+}
+
+export function OverallScorePanel({
+  scores,
+  isAnalyzed = true,
+  isStale = false,
+  isAnalyzing = false,
+  operationCost = 5,
+  isGuest = false,
+  isSubscriber = false,
+  onRegister,
+  onUpgrade,
+  onAnalyze,
+}: OverallScorePanelProps) {
+  // Gating CTA button component based on subscription tier
+  const renderActionButton = () => {
+    if (isGuest) {
+      return (
+        <Button
+          size="sm"
+          onClick={onRegister}
+          className="w-full h-8 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Register to View Full Analysis</span>
+        </Button>
+      );
+    }
+
+    if (!isSubscriber) {
+      return (
+        <Button
+          size="sm"
+          onClick={onUpgrade}
+          className="w-full h-8 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Upgrade to View Full Analysis</span>
+        </Button>
+      );
+    }
+
+    if (onAnalyze) {
+      return (
+        <Button
+          size="sm"
+          onClick={onAnalyze}
+          disabled={isAnalyzing}
+          className="w-full h-8 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
+        >
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Analyzing Article...</span>
+            </>
+          ) : isStale ? (
+            <>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Re-run Analysis ({operationCost} Credits)</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Analyze Article · {operationCost} Credits</span>
+            </>
+          )}
+        </Button>
+      );
+    }
+
+    return null;
+  };
+
+  if (!isAnalyzed && isSubscriber) {
+    return (
+      <div className="bg-card border border-dashed border-border rounded-lg p-5 flex flex-col items-center text-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+          <Sparkles className="w-6 h-6" />
+        </div>
+        <div>
+          <div className="text-sm font-bold text-foreground">Ready for SEO & AI Analysis</div>
+          <div className="text-xs text-muted-foreground mt-1 max-w-xs text-pretty">
+            Run the 20-module SEO audit, readability assessment, AI risk scoring, and publishing readiness check.
+          </div>
+        </div>
+        {renderActionButton()}
+      </div>
+    );
+  }
+
   const overallColor = scores.overall >= 80 ? 'text-success' : scores.overall >= 50 ? 'text-warning' : 'text-destructive';
   return (
     <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-3">
+      {isStale && isSubscriber && onAnalyze && (
+        <div className="bg-warning/10 border border-warning/30 rounded-md p-2 flex items-center justify-between gap-2">
+          <div className="text-[11px] text-warning font-medium leading-tight">
+            ⚠ Content modified. Re-run analysis to refresh scores.
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onAnalyze}
+            disabled={isAnalyzing}
+            className="h-6 text-[11px] px-2 border-warning/40 text-warning hover:bg-warning/10 font-semibold shrink-0"
+          >
+            {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Re-run'}
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <ScoreRing score={scores.overall} size={64} />
         <div className="flex-1 min-w-0">
-          <div className={`text-2xl font-bold ${overallColor}`}>{scores.overall}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
+          <div className={`text-2xl font-bold ${overallColor}`}>
+            {scores.overall}<span className="text-sm font-normal text-muted-foreground">/100</span>
+          </div>
           <div className="text-xs text-muted-foreground">Overall SEO Score</div>
           <div className={`text-xs font-semibold mt-0.5 ${scores.readyToPublish ? 'text-success' : 'text-warning'}`}>
             {scores.readyToPublish ? '✓ Ready to Publish' : '⚠ Needs Improvement'}
@@ -26,7 +146,9 @@ export function OverallScorePanel({ scores }: { scores: OverallScores }) {
       </div>
 
       <div className="pt-1 border-t border-border/50">
-        <div className="text-xs font-semibold text-navy mb-2">Publishing Readiness · <span className={scores.publishingScore >= 70 ? 'text-success' : 'text-warning'}>{scores.publishingScore}/100</span></div>
+        <div className="text-xs font-semibold text-foreground mb-2">
+          Publishing Readiness · <span className={scores.publishingScore >= 70 ? 'text-success' : 'text-warning'}>{scores.publishingScore}/100</span>
+        </div>
         <div className="flex flex-col gap-1.5">
           <MiniScoreBar score={scores.seo} label="SEO (25%)" />
           <MiniScoreBar score={scores.readability} label="Readability (20%)" />
@@ -36,6 +158,12 @@ export function OverallScorePanel({ scores }: { scores: OverallScores }) {
           <MiniScoreBar score={scores.engagement} label="Engagement (10%)" />
         </div>
       </div>
+
+      {(!isSubscriber || !isAnalyzed) && (
+        <div className="pt-2 border-t border-border/50">
+          {renderActionButton()}
+        </div>
+      )}
     </div>
   );
 }
@@ -170,8 +298,20 @@ export function ReadabilityPanel({ result }: { result: ReadabilityResult }) {
 
 // ─── Module 7: Sentence Analysis ─────────────────────────────────────────
 
-export function SentenceAnalysisPanel({ result }: { result: SentenceAnalysisResult }) {
+export function SentenceAnalysisPanel({ 
+  result,
+  onNavigateIssue
+}: { 
+  result: SentenceAnalysisResult;
+  onNavigateIssue?: (location: any) => void;
+}) {
+  const [showAllPassive, setShowAllPassive] = useState(false);
   const score = Math.max(0, 100 - result.longSentenceCount * 5 - (result.veryLongSentences?.length || 0) * 10 - result.passiveVoiceCount * 5);
+
+  const veryLongList = result.sentenceItems?.filter(s => s.type === 'very_long_sentence') || [];
+  const longList = result.sentenceItems?.filter(s => s.type === 'long_sentence') || [];
+  const passiveList = result.passiveItems || [];
+
   return (
     <AnalysisModule title="Sentence Analysis" score={score} defaultOpen={false}>
       <div className="grid grid-cols-4 gap-1.5 mb-2">
@@ -179,7 +319,7 @@ export function SentenceAnalysisPanel({ result }: { result: SentenceAnalysisResu
           { label: 'Total', val: result.totalSentences },
           { label: 'Long (21-25w)', val: result.longSentenceCount },
           { label: 'Too Long (26+w)', val: result.veryLongSentences?.length || 0, color: 'text-destructive' },
-          { label: 'Passive', val: result.passiveVoiceCount },
+          { label: 'Passive', val: result.passiveVoiceCount, color: result.passiveVoiceCount > 3 ? 'text-warning' : undefined },
         ].map((s) => (
           <div key={s.label} className="text-center p-2 bg-muted/30 rounded">
             <div className={`text-sm font-bold ${s.color || (s.val > 3 && s.label !== 'Total' ? 'text-warning' : 'text-navy')}`}>{s.val}</div>
@@ -187,6 +327,107 @@ export function SentenceAnalysisPanel({ result }: { result: SentenceAnalysisResu
           </div>
         ))}
       </div>
+
+      {/* Very long sentences actionable list */}
+      {veryLongList.length > 0 && (
+        <div className="mb-2 flex flex-col gap-1">
+          <div className="text-[10px] font-semibold text-destructive uppercase flex items-center justify-between">
+            <span>Sentences &gt; 25 words ({veryLongList.length})</span>
+            <span className="text-[9px] font-normal text-muted-foreground">Click to jump</span>
+          </div>
+          {veryLongList.slice(0, 4).map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNavigateIssue?.({
+                type: 'very_long_sentence',
+                text: item.text,
+                start: item.start,
+                end: item.end,
+                sentenceIndex: item.sentenceIndex,
+                severity: 'error'
+              })}
+              className="text-left text-xs p-1.5 rounded bg-destructive/10 border border-destructive/20 text-foreground hover:bg-destructive/20 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between text-[10px] text-destructive font-mono mb-0.5">
+                <span>Sentence #{item.sentenceIndex + 1}</span>
+                <span>{item.wordCount} words</span>
+              </div>
+              <span className="line-clamp-2 text-foreground/90 font-mono text-[11px]">"{item.text}"</span>
+              <span className="text-[10px] text-destructive group-hover:underline mt-0.5 block">Click to highlight in editor →</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Long sentences actionable list */}
+      {longList.length > 0 && (
+        <div className="mb-2 flex flex-col gap-1">
+          <div className="text-[10px] font-semibold text-warning uppercase flex items-center justify-between">
+            <span>Long sentences (21-25w) ({longList.length})</span>
+            <span className="text-[9px] font-normal text-muted-foreground">Click to jump</span>
+          </div>
+          {longList.slice(0, 3).map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNavigateIssue?.({
+                type: 'long_sentence',
+                text: item.text,
+                start: item.start,
+                end: item.end,
+                sentenceIndex: item.sentenceIndex,
+                severity: 'warning'
+              })}
+              className="text-left text-xs p-1.5 rounded bg-warning/10 border border-warning/20 text-foreground hover:bg-warning/20 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between text-[10px] text-warning font-mono mb-0.5">
+                <span>Sentence #{item.sentenceIndex + 1}</span>
+                <span>{item.wordCount} words</span>
+              </div>
+              <span className="line-clamp-2 text-foreground/90 font-mono text-[11px]">"{item.text}"</span>
+              <span className="text-[10px] text-warning group-hover:underline mt-0.5 block">Click to highlight in editor →</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Passive voice actionable breakdown */}
+      {passiveList.length > 0 && (
+        <div className="mb-2 flex flex-col gap-1">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            <span>Passive Voice Sentences ({passiveList.length})</span>
+            {passiveList.length > 2 && (
+              <button
+                type="button"
+                onClick={() => setShowAllPassive(!showAllPassive)}
+                className="text-[9px] text-primary hover:underline"
+              >
+                {showAllPassive ? 'Show less' : `Show all (${passiveList.length})`}
+              </button>
+            )}
+          </div>
+          {(showAllPassive ? passiveList : passiveList.slice(0, 2)).map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNavigateIssue?.({
+                type: 'passive_voice',
+                text: item.text,
+                start: item.start,
+                end: item.end,
+                sentenceIndex: item.sentenceIndex,
+                severity: 'warning'
+              })}
+              className="text-left text-xs p-1.5 rounded bg-muted/40 border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer group"
+            >
+              <span className="line-clamp-2 text-foreground/90 font-mono text-[11px]">"{item.text}"</span>
+              <span className="text-[10px] text-primary group-hover:underline mt-0.5 block">Click to highlight passive sentence →</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <ul className="flex flex-col gap-0.5">
         {result.recommendations.map((r, i) => <Rec key={i} text={r} />)}
       </ul>
@@ -196,8 +437,16 @@ export function SentenceAnalysisPanel({ result }: { result: SentenceAnalysisResu
 
 // ─── Module 8: Paragraph Analysis ────────────────────────────────────────
 
-export function ParagraphAnalysisPanel({ result }: { result: ParagraphAnalysisResult }) {
+export function ParagraphAnalysisPanel({ 
+  result,
+  onNavigateIssue
+}: { 
+  result: ParagraphAnalysisResult;
+  onNavigateIssue?: (location: any) => void;
+}) {
   const score = Math.max(0, 100 - result.longParagraphCount * 10 - (result.veryLongParagraphCount || 0) * 20);
+  const items = result.paragraphItems || [];
+
   return (
     <AnalysisModule title="Paragraph Length" score={score} defaultOpen={false}>
       <div className="grid grid-cols-3 gap-1.5 mb-2">
@@ -214,6 +463,35 @@ export function ParagraphAnalysisPanel({ result }: { result: ParagraphAnalysisRe
           <div className="text-[10px] text-muted-foreground">Too long (201+w)</div>
         </div>
       </div>
+
+      {items.length > 0 && (
+        <div className="mb-2 flex flex-col gap-1">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase">Long Paragraph Excerpts (click to jump)</div>
+          {items.slice(0, 3).map((p, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNavigateIssue?.({
+                type: p.type,
+                text: p.text.slice(0, 60),
+                start: p.start,
+                end: p.end,
+                paragraphIndex: p.paragraphIndex,
+                severity: p.type === 'very_long_paragraph' ? 'error' : 'warning'
+              })}
+              className="text-left text-xs p-1.5 rounded bg-muted/40 border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono mb-0.5">
+                <span>Paragraph #{p.paragraphIndex + 1}</span>
+                <span>{p.wordCount} words</span>
+              </div>
+              <span className="line-clamp-2 text-foreground/90 font-mono text-[11px]">"{p.text.slice(0, 100)}..."</span>
+              <span className="text-[10px] text-primary group-hover:underline mt-0.5 block">Click to highlight paragraph in editor →</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <ul className="flex flex-col gap-0.5">
         {result.recommendations.map((r, i) => <Rec key={i} text={r} />)}
       </ul>
@@ -268,14 +546,25 @@ export function TransitionWordsPanel({ result }: { result: TransitionWordsResult
 export function GrammarPanel({ 
   result, 
   onFix,
-  fixing
+  fixing,
+  onNavigateIssue
 }: { 
   result: GrammarResult; 
   onFix?: () => void;
   fixing?: boolean;
+  onNavigateIssue?: (location: any) => void;
 }) {
+  const [visibleCount, setVisibleCount] = useState(10);
+  const totalIssues = result.issues.length;
+  const spacingIssuesCount = result.issues.filter(i => i.type === 'Spacing').length;
+  const grammarIssuesCount = totalIssues - spacingIssuesCount;
+
   return (
-    <AnalysisModule title="Grammar & Spacing" score={result.score}>
+    <AnalysisModule 
+      title="Grammar & Spacing" 
+      score={result.score} 
+      scoreLabel={`Score: ${result.score}/100`}
+    >
       <div className="mb-2">
         <Button 
           variant="outline" 
@@ -289,22 +578,106 @@ export function GrammarPanel({
         </Button>
       </div>
 
-      {result.issues.length === 0 ? (
+      {/* Issues Breakdown Summary */}
+      <div className="grid grid-cols-3 gap-1.5 mb-2">
+        <div className="text-center p-1.5 bg-muted/30 rounded">
+          <div className="text-xs font-bold text-navy">{totalIssues}</div>
+          <div className="text-[9px] text-muted-foreground">Total Issues</div>
+        </div>
+        <div className="text-center p-1.5 bg-muted/30 rounded">
+          <div className={`text-xs font-bold ${spacingIssuesCount > 0 ? 'text-warning' : 'text-success'}`}>
+            {spacingIssuesCount}
+          </div>
+          <div className="text-[9px] text-muted-foreground">Spacing</div>
+        </div>
+        <div className="text-center p-1.5 bg-muted/30 rounded">
+          <div className={`text-xs font-bold ${grammarIssuesCount > 0 ? 'text-destructive' : 'text-success'}`}>
+            {grammarIssuesCount}
+          </div>
+          <div className="text-[9px] text-muted-foreground">Grammar</div>
+        </div>
+      </div>
+
+      {totalIssues === 0 ? (
         <p className="text-xs text-success">No grammar or spacing issues detected.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {result.issues.slice(0, 5).map((issue, i) => (
-            <div key={i} className="flex items-start gap-2 p-2 bg-warning/5 border border-warning/20 rounded">
-              <span className="text-[10px] font-semibold text-warning shrink-0 mt-0.5">{issue.type}</span>
-              <div className="min-w-0">
-                <div className="text-xs text-foreground/80 font-mono truncate">"{issue.text}"</div>
-                <div className="text-xs text-muted-foreground text-pretty">{issue.suggestion}</div>
+        <div className="flex flex-col gap-1.5">
+          {result.issues.slice(0, visibleCount).map((issue, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNavigateIssue?.({
+                type: issue.type,
+                text: issue.text,
+                contextSnippet: issue.contextSnippet,
+                start: issue.start,
+                end: issue.end,
+                severity: issue.type === 'Spacing' ? 'warning' : 'error'
+              })}
+              className="w-full text-left flex items-start gap-2 p-2 bg-warning/5 border border-warning/20 rounded hover:bg-warning/15 transition-colors cursor-pointer group"
+            >
+              <span className={`text-[10px] font-semibold shrink-0 mt-0.5 px-1.5 py-0.5 rounded ${
+                issue.type === 'Spacing' ? 'bg-warning/20 text-warning border border-warning/30' : 'bg-destructive/10 text-destructive border border-destructive/20'
+              }`}>
+                {issue.type}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs text-foreground/90 font-mono truncate">
+                    {issue.type === 'Spacing' && issue.contextSnippet 
+                      ? `"${issue.contextSnippet.replace(/\s{2,}/g, ' [␣␣] ')}"` 
+                      : `"${issue.text}"`}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">pos {issue.start}</span>
+                </div>
+                <div className="text-xs text-muted-foreground text-pretty mt-0.5">{issue.suggestion}</div>
+                <span className="text-[10px] text-primary group-hover:underline mt-1 block font-medium">
+                  Click to highlight exact occurrence →
+                </span>
+              </div>
+            </button>
+          ))}
+
+          {/* Progressive Expansion Controls */}
+          {totalIssues > visibleCount && (
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border mt-1">
+              <span className="text-[11px] text-muted-foreground">
+                Showing {visibleCount} of {totalIssues} issues
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount(prev => Math.min(totalIssues, prev + 20))}
+                  className="h-6 px-2 text-[10px] border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  +{Math.min(20, totalIssues - visibleCount)} More
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setVisibleCount(totalIssues)}
+                  className="h-6 px-2 text-[10px] text-foreground hover:bg-muted"
+                >
+                  Show All ({totalIssues})
+                </Button>
               </div>
             </div>
-          ))}
-          {result.issues.length > 5 && (
-            <div className="text-center text-xs text-muted-foreground pt-1 border-t border-border mt-1">
-              +{result.issues.length - 5} more issues detected
+          )}
+
+          {visibleCount > 10 && (
+            <div className="text-center pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setVisibleCount(10)}
+                className="h-5 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Collapse to first 10
+              </Button>
             </div>
           )}
         </div>

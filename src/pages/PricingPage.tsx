@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { RATE_TABLE, type PlanTier } from '@/lib/entitlements';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { TopUpModal, TOP_UP_PACKS } from '@/components/pricing/TopUpModal';
 
 interface DisplayPlan {
   id: string;
@@ -145,9 +146,11 @@ const DISPLAY_PLANS: DisplayPlan[] = [
 ];
 
 const RATE_ITEMS = [
+  { feature: 'AI Checker for Bloggers (SEO Analysis)', rate: '5 credits per started 500 words', unit: 'Per 500 words', trial: true },
   { feature: 'AI Text Detection (Balanced)', rate: '1 credit per 1,000 words per engine', unit: 'Per 1k words', trial: true },
   { feature: 'AI Text Detection (Aggressive)', rate: '1 credit per 1,000 words per engine', unit: 'Per 1k words', trial: false },
   { feature: 'Humanizer Rewrite Engine', rate: '3 credits per 1,000 input words', unit: 'Per 1k words', trial: true },
+  { feature: 'Generate Article / With AI', rate: '5 credits per article generation', unit: 'Per article', trial: true },
   { feature: 'Plagiarism Checker Deep Search', rate: '2 credits per 1,000 words', unit: 'Per 1k words', trial: true },
   { feature: 'SEO Assistant Full Report', rate: '3 credits per 1,000 words', unit: 'Per 1k words', trial: true },
   { feature: 'Standard Image Detection', rate: '2 credits per image', unit: 'Per image', trial: true },
@@ -164,6 +167,14 @@ const RATE_ITEMS = [
 ];
 
 const FAQS = [
+  {
+    q: 'How does the AI Checker for Bloggers word-based pricing work?',
+    a: 'SEO Analysis on /ai-checker-for-bloggers costs 5 credits per started 500 words (1–500 words = 5 credits, 501–1,000 words = 10 credits, 1,001–1,500 words = 15 credits, etc.). Trial users can analyze standard articles with introductory trial checks. Subfeatures like Humanizer and Generate Article maintain their own independent, separate pricing only when explicitly executed.',
+  },
+  {
+    q: 'Can I buy extra credits without changing my monthly subscription?',
+    a: 'Yes! You can purchase Top-Up credit packs anytime (500 to 5,000 credits). Top-up credits never expire on your monthly subscription renewal date, and your included monthly plan credits are automatically consumed first before dipping into top-up credits.',
+  },
   {
     q: 'How do the 5 free introductory trial checks work?',
     a: 'Every new user receives 5 one-time trial checks across eligible standard tools (Balanced text detection, Humanizer, Plagiarism, SEO Assistant, standard Image/Video/Voice detection). Guests can run 1 check; creating a free account unlocks the remaining 4 checks (5 total introductory allowance). Prior guest usage carries over into your account so you always receive your 5 total trial checks without duplicate grants or daily resets.',
@@ -197,9 +208,10 @@ const FAQS = [
 export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const { user, profile } = useAuth();
-  const { summary: billingSummary } = useEntitlement('ai_detector');
+  const { summary: billingSummary, refresh: refreshEntitlements } = useEntitlement('ai_detector');
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [topUpModalOpen, setTopUpModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     trackLifecycleEvent('pricing_page_visit');
@@ -442,6 +454,87 @@ export default function PricingPage() {
             </Button>
           </div>
         </Card>
+
+        {/* Top-Up Credit Packs Section */}
+        <div id="topup" className="mb-16">
+          <div className="text-center max-w-2xl mx-auto mb-8">
+            <Badge variant="outline" className="mb-2 text-primary border-primary/30 text-xs">
+              Instant Top-Up Credits
+            </Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-navy">
+              Need More Credits Before Your Next Refill?
+            </h2>
+            <p className="text-muted-foreground text-xs md:text-sm mt-1">
+              Top-up credits never expire on your monthly subscription renewal date. Your included monthly plan credits are consumed first.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {TOP_UP_PACKS.map((pack) => (
+              <Card
+                key={pack.id}
+                className={`relative border-2 flex flex-col justify-between transition-all hover:shadow-md ${
+                  pack.popular
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border bg-card'
+                }`}
+              >
+                {pack.popular && (
+                  <Badge className="absolute -top-2.5 right-4 bg-primary text-primary-foreground text-[10px] px-2 py-0">
+                    Most Popular
+                  </Badge>
+                )}
+                {pack.bestValue && (
+                  <Badge className="absolute -top-2.5 right-4 bg-emerald-600 text-white text-[10px] px-2 py-0">
+                    Best Value
+                  </Badge>
+                )}
+
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-bold text-foreground">{pack.name}</CardTitle>
+                    {pack.savings && (
+                      <span className="text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded">
+                        {pack.savings}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-1.5">
+                    <span className="text-3xl font-extrabold text-foreground">
+                      {pack.credits.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">credits</span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-0 space-y-3">
+                  <div className="flex items-center justify-between text-xs py-2 border-t border-border/50">
+                    <span className="text-muted-foreground">Price:</span>
+                    <span className="font-bold text-foreground text-sm">${pack.priceUsd} USD</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className={`w-full text-xs font-semibold gap-1.5 ${
+                      pack.popular
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
+                    }`}
+                    onClick={() => setTopUpModalOpen(true)}
+                  >
+                    <Coins className="h-3.5 w-3.5 text-primary" />
+                    Buy {pack.credits.toLocaleString()} Credits
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <TopUpModal
+          open={topUpModalOpen}
+          onOpenChange={setTopUpModalOpen}
+          onSuccess={() => refreshEntitlements()}
+        />
 
         {/* Central Rate Table Section */}
         <div className="mb-16">

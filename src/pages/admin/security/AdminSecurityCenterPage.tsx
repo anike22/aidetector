@@ -30,7 +30,7 @@ import {
 } from '@/lib/securityApi';
 
 export default function AdminSecurityCenterPage() {
-  const { profile } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
@@ -41,8 +41,8 @@ export default function AdminSecurityCenterPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isAdmin) loadData();
+  }, [isAdmin]);
 
   async function loadData() {
     setLoading(true);
@@ -82,7 +82,15 @@ export default function AdminSecurityCenterPage() {
   const openIncidents = incidents.filter((i) => i.status !== 'resolved' && i.status !== 'closed');
   const criticalEvents = events.filter((e) => e.severity === 'critical');
 
-  if (profile?.role !== 'admin') {
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center py-20 min-h-[50vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
     return (
       <div className="container py-8">
         <h1 className="text-2xl font-bold">Admin Access Required</h1>

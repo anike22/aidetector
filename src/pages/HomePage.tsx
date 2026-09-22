@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
 import HeroSection from '@/components/home/HeroSection';
+import HomeSEOAssistantCTA from '@/components/home/HomeSEOAssistantCTA';
 import PageMeta from '@/components/common/PageMeta';
 import { useAuth } from '@/contexts/AuthContext';
 import { PersonalizedHome } from '@/components/personalization/PersonalizedHome';
@@ -118,6 +119,9 @@ export default function HomePage() {
         {user && <PersonalizedHome />}
         {/* 1. First Section: Working Detector + Preserved Hero Introduction & Badges */}
         <HeroSection />
+
+        {/* Contextual CTA for SEO Assistant / AI Checker for Bloggers */}
+        <HomeSEOAssistantCTA />
 
         {/* 2. How Detection Works & Interpreting Existing Modes */}
         <LazySection><TwoPerspectivesSection /></LazySection>
