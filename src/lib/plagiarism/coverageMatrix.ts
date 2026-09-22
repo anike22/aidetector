@@ -78,7 +78,7 @@ export function buildSearchCoverageReport(
       case 'timeout': return 'Request Timeout';
       case 'authentication_error': return 'Authentication Error (API Key Restricted)';
       case 'quota_exceeded': return 'Daily Quota Exceeded';
-      case 'unavailable': return 'Temporarily Unavailable';
+      case 'unavailable': return 'Temporarily unavailable';
       case 'not_checked': return 'Not Checked';
       case 'not_configured': return 'Not Configured';
       default: return fallback;
@@ -159,7 +159,7 @@ export function buildSearchCoverageReport(
       verifiedSources: getVerified(ps.unpaywall),
     },
     {
-      id: 'google_web_search',
+      id: 'web_search',
       name: 'Google Custom Search (Web Index)',
       category: 'registry',
       status: isChecked(webState) ? 'checked' : isFailed(webState) ? 'unavailable' : webState === 'not_configured' ? 'not_applicable' : 'not_checked',
