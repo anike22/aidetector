@@ -28,7 +28,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE UNIQUE INDEX rates_slug ON credit_rate_table(feature_slug);
  CREATE UNIQUE INDEX reservations_key ON credit_reservations(idempotency_key) WHERE idempotency_key IS NOT NULL;
  CREATE UNIQUE INDEX teams_member ON team_credit_allocations(owner_id,member_email);`);
- for(const file of ['00142_billing_expiry_and_metering.sql','00143_verified_payment_grants.sql']) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',file),'utf8'));
+ for(const file of ['00142_billing_expiry_and_metering.sql','00143_verified_payment_grants.sql','00149_billing_consolidation_latest_medo.sql']) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',file),'utf8'));
  await db.exec(`CREATE TRIGGER profiles_billing_guard BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION protect_billing_columns();
  INSERT INTO profiles(id,email,subscription_plan,subscription_status,plan_start_date,plan_end_date,credits_balance,monthly_credit_allocation,trial_checks_remaining)
  VALUES('${user}','test@example.invalid','pro','active',now(),now()+interval '30 days',300,300,5),
@@ -64,6 +64,13 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
    const r=await reserve();assert.equal(r.allowed,true);assert.equal(r.is_trial_check,false);assert.equal(Number(r.credits_balance),299);
  });
  await test('word count is rounded up',async()=>{const r=await reserve('ai_detector',2500);assert.equal(Number(r.credits_reserved),3);});
+ await test('Blogger analysis costs 5 credits per started 500 words and requires Pro',async()=>{
+   const a=await reserve('ai_checker_for_bloggers',1,'blogger-1');assert.equal(a.allowed,true);assert.equal(Number(a.credits_reserved),5);
+   const b=await reserve('ai_checker_for_bloggers',501,'blogger-501');assert.equal(b.allowed,true);assert.equal(Number(b.credits_reserved),10);
+   await db.exec(`SELECT set_config('test.user_id','${freeUser}',false)`);
+   const blocked=await reserve('ai_checker_for_bloggers',500,'blogger-free');assert.equal(blocked.allowed,false);assert.equal(blocked.error_code,'UPGRADE_REQUIRED');
+   await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
+ });
  await test('metered requests without quantities fail closed',async()=>{await assert.rejects(()=>reserve('ai_detector',null),/word count required/);});
  await test('minimum plan enforced',async()=>{const r=await reserve('video_detect_forensic',30);assert.equal(r.allowed,false);});
  await test('unknown feature fails closed',async()=>{const r=await reserve('unregistered_cheap_alias');assert.equal(r.allowed,false);});
