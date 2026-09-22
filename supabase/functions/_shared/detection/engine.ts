@@ -89,7 +89,14 @@ function computeAdjustedAiRisk(
   // A consistent document with high mixed% is low-confidence, not mixed-authored:
   //   consistencyScore=0.8 → mixedContrib = 0.6 * (1 - 0.8*0.5) = 0.6 * 0.6 = 0.36
   //   consistencyScore=0.3 → mixedContrib = 0.6 * (1 - 0.3*0.5) = 0.6 * 0.85 = 0.51
-  const mixedContrib = MIXED_AI_CONTRIBUTION * (1 - documentConsistencyScore * 0.5);
+  // Balanced-mode false-positive guard: Mixed is uncertainty unless the
+  // document-consistency layer independently corroborates section-level shifts.
+  // Consistent single-author documents must not have ambiguous Mixed mass
+  // converted into strong AI evidence.
+  const hasStructuralMixedEvidence = documentConsistencyScore < 0.55;
+  const mixedContrib = hasStructuralMixedEvidence
+    ? MIXED_AI_CONTRIBUTION * (1 - documentConsistencyScore * 0.5)
+    : 0.10;
   let risk = ai + mixed * mixedContrib;
 
   // Sentence-level corroboration: if the majority of sentences are AI-like,
@@ -227,6 +234,18 @@ function classifyVerdict(
     return 'inconclusive';
   }
 
+  // Balanced-mode evidence floor: low-confidence results may not be promoted
+  // to an AI-side verdict solely because Mixed mass or sentence aggregation
+  // lifted adjustedAiRisk. Strong raw AI probability still passes through.
+  if (
+    confidenceScore < 50 &&
+    ai < thresholds.mostlyAi &&
+    adjustedAiRisk < thresholds.likelyAi &&
+    !genuineAmbiguity
+  ) {
+    return humanLeadsRaw ? 'mostly-human-ai-assisted' : 'inconclusive';
+  }
+
   // --- AI verdicts (driven by adjustedAiRisk) ---
 
   // Strong AI: adjusted risk above likelyAi threshold.
@@ -321,7 +340,9 @@ function inferContentType(text: string, manual: ContentType): ContentType {
   if (lower.includes('product') && lower.includes('buy')) return 'product';
   if (text.length < 150) return 'social';
   if (lower.includes('#') || lower.includes('follow')) return 'social';
-  return 'blog';
+  // Unknown long-form prose is not automatically a blog. Treating every
+  // unmatched document as blog injected a positive AI prior before evidence.
+  return 'auto';
 }
 
 function classifyLocalVerdict(
@@ -343,8 +364,14 @@ function classifyLocalVerdict(
   // Mixed threshold raised to 45 (from 30–35) and margin tightened to 10.
   // This prevents uncertainty from being classified as mixed authorship.
   if (mixed >= 45 && Math.abs(ai - human) < 10) return 'mixed';
-  if (max === ai) return 'likely-ai';
-  if (max === human) return 'likely-human';
+
+  // Do not manufacture certainty from a plurality. When neither AI nor Human
+  // reaches a calibrated threshold, a narrow lead is uncertainty, not evidence.
+  const sorted = [ai, human, mixed].sort((a, b) => b - a);
+  const margin = sorted[0] - sorted[1];
+  if (margin < thresholds.margin) return 'inconclusive';
+  if (max === ai && ai >= thresholds.mixed) return 'likely-ai';
+  if (max === human && human >= thresholds.mixed) return 'likely-human';
   return 'inconclusive';
 }
 
