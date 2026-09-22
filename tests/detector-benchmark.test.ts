@@ -133,8 +133,12 @@ describe('Detector benchmark suite', () => {
     console.log('Benchmark summary:', JSON.stringify(allResults, null, 2));
   });
 
-  it('benchmarks curated samples for nine additional languages', { timeout: 180000 }, async () => {
+  it('benchmarks curated samples for nine additional languages', { timeout: 180000 }, async (context) => {
     const extraPath = path.join(SPLITS_DIR, '..', 'benchmark_extra.jsonl');
+    if (!fs.existsSync(extraPath)) {
+      context.skip(`Optional benchmark dataset not available: ${extraPath}`);
+      return;
+    }
     const lines = fs.readFileSync(extraPath, 'utf-8').split('\n').filter(Boolean);
     const records = lines.map((l) => JSON.parse(l)) as Record[];
     const byLang: Record<string, Record[]> = {};
