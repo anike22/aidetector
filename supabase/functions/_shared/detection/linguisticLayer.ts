@@ -161,16 +161,29 @@ function repetitionScore(words: string[]): number {
 
 function transitionPredictability(text: string): number {
   const lower = text.toLowerCase();
+  const sentences = splitSentences(text);
+  const paragraphs = splitParagraphs(text);
+  const counts = new Map<string, number>();
   let matches = 0;
+  let ledSentences = 0;
+  let ledParagraphs = 0;
   for (const t of AI_TRANSITIONS) {
-    const re = new RegExp(`(?:^|[^\\p{L}])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[^\\p{L}]|$)`, 'gu');
-    const m = lower.match(re);
-    if (m) matches += m.length;
+    const escaped = t.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
+    const boundary = new RegExp('(?:^|[^\\p{L}])' + escaped + '(?=[^\\p{L}]|$)', 'gu');
+    const found = lower.match(boundary)?.length ?? 0;
+    if (found > 0) { counts.set(t, found); matches += found; }
+    const atStart = new RegExp('^' + escaped + '(?=[^\\p{L}]|$)', 'u');
+    ledSentences += sentences.filter((s) => atStart.test(s.toLowerCase())).length;
+    ledParagraphs += paragraphs.filter((p) => atStart.test(p.toLowerCase())).length;
   }
-  const words = tokenizeWords(text).length || 1;
-  return Math.min(1, matches / Math.sqrt(words));
+  if (matches < 2) return 0;
+  const repeated = [...counts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  const repetitionDensity = repeated / matches;
+  const transitionDensity = matches / Math.max(1, sentences.length);
+  const sentenceStartDensity = ledSentences / Math.max(1, sentences.length);
+  const paragraphStartDensity = ledParagraphs / Math.max(1, paragraphs.length);
+  return Math.min(1, transitionDensity * 0.15 + repetitionDensity * 0.35 + sentenceStartDensity * 0.25 + paragraphStartDensity * 0.25);
 }
-
 function syntacticRegularity(sentences: string[]): number {
   // Measure how often sentences start with the same grammatical pattern.
   if (sentences.length < 3) return 0;
@@ -529,14 +542,12 @@ function sentenceSignals(sentence: string, docProfile: LinguisticProfile): { aiS
     else if (z > 1.5) humanSignal += 0.06;
   }
 
-  // Transition words — cap at one hit per sentence (0.12 max).
-  // Previously was unbounded: a sentence with 3 transitions would add 0.45.
-  // Formal human writing uses transitions legitimately; cap prevents over-flagging.
-  let transitionHit = false;
-  for (const t of AI_TRANSITIONS) {
-    if (lower.includes(t)) { transitionHit = true; break; }
+  // Ordinary connectors are not authorship evidence by themselves. Add only
+  // weak local evidence when the document shows a repeated transition pattern.
+  if (docProfile.transitionPredictability >= 0.18) {
+    const localTransition = transitionPredictability(sentence);
+    aiSignal += Math.min(0.08, localTransition * 0.12);
   }
-  if (transitionHit) aiSignal += 0.12;
 
   // Formulaic starts within sentence
   for (const p of FORMULAIC_STARTS) {
