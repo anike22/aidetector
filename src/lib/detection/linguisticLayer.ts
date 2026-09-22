@@ -170,41 +170,38 @@ function transitionPredictability(text: string): number {
   let ledSentences = 0;
   let ledParagraphs = 0;
 
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   for (const t of AI_TRANSITIONS) {
-    const escaped = t.replace(/[.*+?^$()|[\]\\{}]/g, '\\function transitionPredictability(text: string): number {
-  const lower = text.toLowerCase();
-  let matches = 0;
-  for (const t of AI_TRANSITIONS) {
-    const re = new RegExp(`(?:^|[^\\p{L}])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[^\\p{L}]|$)`, 'gu');
-    const m = lower.match(re);
-    if (m) matches += m.length;
-  }
-  const words = tokenizeWords(text).length || 1;
-  return Math.min(1, matches / Math.sqrt(words));
-}
-');
+    const escaped = escapeRegExp(t);
     const boundary = new RegExp('(?:^|[^\\p{L}])' + escaped + '(?=[^\\p{L}]|$)', 'gu');
     const found = lower.match(boundary)?.length ?? 0;
-    if (found > 0) { counts.set(t, found); matches += found; }
+    if (found > 0) {
+      counts.set(t, found);
+      matches += found;
+    }
+
     const atStart = new RegExp('^' + escaped + '(?=[^\\p{L}]|$)', 'u');
     ledSentences += sentences.filter((s) => atStart.test(s.toLowerCase())).length;
     ledParagraphs += paragraphs.filter((p) => atStart.test(p.toLowerCase())).length;
   }
 
   if (matches < 2) return 0;
+
   const repeated = [...counts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
   const repetitionDensity = repeated / matches;
   const transitionDensity = matches / Math.max(1, sentences.length);
   const sentenceStartDensity = ledSentences / Math.max(1, sentences.length);
   const paragraphStartDensity = ledParagraphs / Math.max(1, paragraphs.length);
 
-  // Common connectors are normal prose. Strong evidence requires a repeated,
+  // Common connectors are ordinary prose. Strong evidence requires a repeated,
   // mechanically placed transition pattern rather than mere word presence.
-  return Math.min(1,
+  return Math.min(
+    1,
     transitionDensity * 0.15 +
-    repetitionDensity * 0.35 +
-    sentenceStartDensity * 0.25 +
-    paragraphStartDensity * 0.25
+      repetitionDensity * 0.35 +
+      sentenceStartDensity * 0.25 +
+      paragraphStartDensity * 0.25,
   );
 }
 function syntacticRegularity(sentences: string[]): number {
