@@ -422,7 +422,11 @@ export function runEnsemble(
     classifierChunkStdDev = Math.min(1, classifierInput.confidence);
     const baseWeight = CLASSIFIER_LANGUAGE_WEIGHT[languageCode] ?? 0;
     const shortTextFactor = wordCount < 40 ? 0.5 : wordCount < 80 ? 0.9 : 1;
-    const weight = baseWeight * shortTextFactor * reliability;
+    // classifierInput.confidence is chunk-score standard deviation (disagreement), not confidence.
+    // Reduce classifier influence when chunk predictions are unstable so one polarized
+    // character-ngram model cannot dominate otherwise contradictory document evidence.
+    const stabilityFactor = Math.max(0.35, 1 - classifierChunkStdDev);
+    const weight = baseWeight * shortTextFactor * reliability * stabilityFactor;
     calibratedAi = calibratedAi * (1 - weight) + classifierAiProbability * weight;
     calibratedAi = Math.min(1, Math.max(0, calibratedAi));
   }
