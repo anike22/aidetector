@@ -303,9 +303,19 @@ export async function classifyWithClassifier(text: string, languageCode: string)
   for (const chunk of chunks) {
     const classProbs = scoreClasses(chunk.text, model, vocabMap);
     const weight = chunk.text.length;
-    const binaryAiProb = binaryModel && binaryVocabMap
+    const multiclassAiProb =
+      (classProbs.ai || 0) +
+      (classProbs['translated-ai'] || 0) +
+      0.5 * (classProbs['human-edited-ai'] || 0) +
+      0.5 * (classProbs.mixed || 0);
+    const legacyBinaryAiProb = binaryModel && binaryVocabMap
       ? scoreBinaryChunk(chunk.text, binaryModel, binaryVocabMap)
-      : Object.values(classProbs).reduce((a, b) => a + b, 0) - (classProbs.human || 0);
+      : multiclassAiProb;
+
+    // v2 is the current five-class model and was trained on twice as many English
+    // samples as the legacy v1 binary model. Keep v1 as a secondary signal rather
+    // than allowing its saturated binary score to define the classifier output.
+    const binaryAiProb = Math.min(1, Math.max(0, multiclassAiProb * 0.75 + legacyBinaryAiProb * 0.25));
     weightedAiSum += binaryAiProb * weight;
     totalWeight += weight;
     for (const [cls, p] of Object.entries(classProbs)) {
