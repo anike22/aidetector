@@ -32,6 +32,15 @@ describe('Balanced detector human false-positive regression', () => {
     const classifier = await classifyWithClassifier(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, 'en');
     console.log('Balanced human regression overall:', JSON.stringify(result.overall));
     console.log('Balanced human regression diagnostics:', JSON.stringify(result.diagnostics));
+    const v2OnlyAi = classifier.classProbabilities
+      ? Math.round(100 * (
+          (classifier.classProbabilities.ai || 0) +
+          (classifier.classProbabilities['translated-ai'] || 0) +
+          0.5 * (classifier.classProbabilities['human-edited-ai'] || 0) +
+          0.5 * (classifier.classProbabilities.mixed || 0)
+        ))
+      : null;
+    console.log('Balanced human classifier v2-only aggregate AI:', v2OnlyAi);
     console.log('Balanced human classifier:', JSON.stringify({
       available: classifier.available,
       aiProbability: classifier.aiProbability,
