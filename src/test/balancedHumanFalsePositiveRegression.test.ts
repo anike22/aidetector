@@ -132,7 +132,21 @@ describe('Balanced detector human false-positive regression', () => {
         expect(result.overall.humanProbability).toBeGreaterThanOrEqual(result.overall.aiProbability);
         expect(['likely-human', 'mostly-human-ai-assisted', 'mixed', 'inconclusive']).toContain(result.overall.verdict);
       } else if (sample.expected === 'human-not-ai') {
-        expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
+        const diagnosticSummary = JSON.stringify({
+          overall: result.overall,
+          classifier: {
+            aiProbability: classifier.aiProbability,
+            confidence: classifier.confidence,
+            classProbabilities: classifier.classProbabilities,
+          },
+          linguistic: result.linguisticProfile,
+          statistical: result.statisticalProfile,
+          diagnostics: result.diagnostics,
+        });
+        expect(
+          ['likely-ai', 'mostly-ai-human-edited'],
+          `Formal-human false positive diagnostics: ${diagnosticSummary}`,
+        ).not.toContain(result.overall.verdict);
       } else if (sample.expected === 'not-pure-human') {
         expect(result.overall.verdict).not.toBe('likely-human');
       } else if (sample.expected === 'not-pure-ai') {
