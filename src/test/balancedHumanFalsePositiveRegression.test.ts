@@ -37,7 +37,7 @@ describe('Balanced detector human false-positive regression', () => {
       aiProbability: classifier.aiProbability,
       confidence: classifier.confidence,
       classProbabilities: classifier.classProbabilities,
-      chunks: classifier.chunkScores.map(({ aiProbability, textPreview }) => ({ aiProbability, textPreview })),
+      chunks: classifier.chunkScores.map(({ aiProbability, classProbabilities, textPreview }) => ({ aiProbability, classProbabilities, textPreview })),
     }));
     console.log('Balanced human linguistic profile:', JSON.stringify(result.linguisticProfile));
     console.log('Balanced human statistical profile:', JSON.stringify(result.statisticalProfile));
