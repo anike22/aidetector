@@ -322,7 +322,10 @@ export async function classifyWithClassifier(text: string, languageCode: string)
 
   for (const chunk of chunks) {
     const classProbs = scoreClasses(chunk.text, model, vocabMap);
-    const weight = chunk.text.length;
+    // Overlap windows are diagnostic smoothing samples, not independent document
+    // content. Weight by unique span length to avoid counting the same text twice.
+    const uniqueSpan = Math.max(1, chunk.end - chunk.start);
+    const weight = Math.min(chunk.text.length, uniqueSpan);
     const multiclassAiProb =
       (classProbs.ai || 0) +
       (classProbs['translated-ai'] || 0) +
