@@ -243,6 +243,13 @@ function classifyVerdict(
     adjustedAiRisk < thresholds.likelyAi &&
     !genuineAmbiguity
   ) {
+    // Low confidence alone must not erase a meaningful AI lead. After the
+    // ensemble's corroborated-human guard has already reduced known false
+    // positives, an AI-leading distribution with moderate adjusted risk is
+    // evidence-bearing rather than purely inconclusive.
+    if (ai >= human + thresholds.margin && adjustedAiRisk >= 45) {
+      return editingVerdict();
+    }
     return humanLeadsRaw ? 'mostly-human-ai-assisted' : 'inconclusive';
   }
 
