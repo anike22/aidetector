@@ -978,7 +978,7 @@ export async function analyzeAdvancedText(
     sentenceSignals,
     documentConsistency.consistencyScore,
     ensemble.humanization,
-    classifier?.aiProbability,
+    classifierResult.available ? classifierResult.aiProbability : undefined,
   );
   const confidenceLevelVal = confidenceLevel(ensemble.scores.confidence);
   const riskLevelVal = riskLevel(verdict, adjusted.ai);
