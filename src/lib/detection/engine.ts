@@ -199,6 +199,7 @@ function classifyVerdict(
   sentenceSignals: ReturnType<typeof aggregateSentenceSignals>,
   documentConsistencyScore: number,
   humanization: { detected: boolean; confidence: number },
+  classifierAiProbability?: number,
 ): Verdict {
   // Evidence required before claiming a text has been human-edited or is a mix
   // of human and AI authorship. Small mixed probability (likely noise) or
@@ -230,11 +231,15 @@ function classifyVerdict(
   const riskMargin = sorted[0] - sorted[1];
   const humanLeadsRaw = human >= ai - 3 && human > mixed;
   const genuineAmbiguity = documentConsistencyScore < 0.45 && mixed >= thresholds.mixed;
+  const classifierCorroboratesAi =
+    (classifierAiProbability ?? 0) >= 80 &&
+    ai >= human + 8 &&
+    adjustedAiRisk >= 45;
   if (riskMargin < thresholds.margin && confidenceScore < 50 && !humanLeadsRaw && !genuineAmbiguity) {
     // Preserve a meaningful AI lead even when adjusted risk and Human are close.
     // The ensemble has already applied classifier reliability / corroborated-human
     // safeguards, so this guard should only collapse truly weak evidence.
-    if (ai >= human + thresholds.margin && adjustedAiRisk >= 45) {
+    if (classifierCorroboratesAi || (ai >= human + thresholds.margin && adjustedAiRisk >= 45)) {
       return editingVerdict();
     }
     return 'inconclusive';
@@ -253,7 +258,7 @@ function classifyVerdict(
     // ensemble's corroborated-human guard has already reduced known false
     // positives, an AI-leading distribution with moderate adjusted risk is
     // evidence-bearing rather than purely inconclusive.
-    if (ai >= human + thresholds.margin && adjustedAiRisk >= 45) {
+    if (classifierCorroboratesAi || (ai >= human + thresholds.margin && adjustedAiRisk >= 45)) {
       return editingVerdict();
     }
     return humanLeadsRaw ? 'mostly-human-ai-assisted' : 'inconclusive';
@@ -973,6 +978,7 @@ export async function analyzeAdvancedText(
     sentenceSignals,
     documentConsistency.consistencyScore,
     ensemble.humanization,
+    classifier?.aiProbability,
   );
   const confidenceLevelVal = confidenceLevel(ensemble.scores.confidence);
   const riskLevelVal = riskLevel(verdict, adjusted.ai);
