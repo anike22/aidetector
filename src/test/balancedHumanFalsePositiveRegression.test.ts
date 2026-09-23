@@ -26,45 +26,51 @@ The last factor on the list, and certainly not the list is punctuation accuracy.
 In the grand scheme of things, I sincerely do believe that the use of AI technologies has been to maximize time and efficiency, and not to tussle about which is more superior to which. I am also of the firm believe that a judicious use of AI technologies would automatically drive tremendous success in work rates.
 `.trim();
 
+
+
+const AI_CONTROL_SAMPLE = `
+Artificial intelligence represents one of the most significant technological developments of the
+twenty-first century. The rapid advancement of machine learning algorithms has enabled unprecedented
+capabilities across numerous domains. It is important to understand that these developments carry
+both transformative potential and significant risks that must be carefully managed.
+
+In the realm of healthcare, AI-powered diagnostic tools have demonstrated remarkable accuracy in
+identifying conditions ranging from diabetic retinopathy to certain forms of cancer. Moreover, drug
+discovery pipelines have been substantially accelerated through the application of deep learning
+models capable of predicting molecular interactions with high precision.
+
+Furthermore, the financial sector has witnessed a fundamental transformation driven by algorithmic
+trading systems and AI-powered risk assessment frameworks. It is crucial to note that these systems,
+while highly efficient, require robust oversight mechanisms to prevent systemic risks. In addition,
+natural language processing applications have revolutionized customer service operations across
+industries.
+
+The educational landscape is also undergoing significant change as a result of AI integration.
+Personalized learning systems can now adapt to individual student needs in real time, providing
+targeted support where it is most needed. It is worth noting that this shift raises important
+questions about the role of human educators in an increasingly automated environment.
+
+In conclusion, the trajectory of artificial intelligence development suggests that its impact will
+continue to expand across virtually every sector of the economy. Organizations that proactively
+develop AI governance frameworks and invest in workforce adaptation will be best positioned to
+navigate this transformation successfully. The key is to balance innovation with responsibility,
+ensuring that the benefits of AI are broadly shared while its risks are carefully mitigated.
+`.trim();
+
 describe('Balanced detector human false-positive regression', () => {
   it('does not promote the supplied human-written long-form sample to an AI-side verdict', async () => {
     const result = await analyzeAdvancedText(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, { contentType: 'auto' });
     const classifier = await classifyWithClassifier(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, 'en');
-    console.log('Balanced human regression overall:', JSON.stringify(result.overall));
-    console.log('Balanced human regression diagnostics:', JSON.stringify(result.diagnostics));
-    const v2OnlyAi = classifier.classProbabilities
-      ? Math.round(100 * (
-          (classifier.classProbabilities.ai || 0) +
-          (classifier.classProbabilities['translated-ai'] || 0) +
-          0.5 * (classifier.classProbabilities['human-edited-ai'] || 0) +
-          0.5 * (classifier.classProbabilities.mixed || 0)
-        ))
-      : null;
-    console.log('Balanced human classifier v2-only aggregate AI:', v2OnlyAi);
-    console.log('Balanced human classifier:', JSON.stringify({
-      available: classifier.available,
-      aiProbability: classifier.aiProbability,
-      confidence: classifier.confidence,
-      classProbabilities: classifier.classProbabilities,
-      chunks: classifier.chunkScores.map(({ aiProbability, classProbabilities, textPreview }) => ({ aiProbability, classProbabilities, textPreview })),
-    }));
-    console.log('Balanced human linguistic profile:', JSON.stringify(result.linguisticProfile));
-    console.log('Balanced human statistical profile:', JSON.stringify(result.statisticalProfile));
-    const withoutClassifier = runEnsemble(
-      result.language.primary?.code || 'en',
-      result.contentType,
-      result.linguisticProfile,
-      result.statisticalProfile,
-      result.sentences.map(() => 0),
-      result.paragraphs.map(() => 0),
-      result.language.primary?.confidence ?? 0,
-      true,
-      result.textSufficiency.wordCount,
-      undefined,
-    );
-    console.log('Balanced human ensemble without classifier (zero local AI signals diagnostic):', JSON.stringify(withoutClassifier.scores));
 
     expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
     expect(result.overall.aiProbability).toBeLessThan(55);
+    expect(result.overall.humanProbability).toBeGreaterThan(result.overall.aiProbability);
+  });
+
+  it('preserves AI-side detection on a clear long-form AI control', async () => {
+    const result = await analyzeAdvancedText(AI_CONTROL_SAMPLE, { contentType: 'auto' });
+
+    expect(result.overall.aiProbability).toBeGreaterThanOrEqual(result.overall.humanProbability);
+    expect(['likely-ai', 'mostly-ai-human-edited', 'mixed']).toContain(result.overall.verdict);
   });
 });
