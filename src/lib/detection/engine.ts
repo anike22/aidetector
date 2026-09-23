@@ -1036,7 +1036,7 @@ export async function analyzeAdvancedText(
 
   // Dev-only diagnostics: included only when DETECTOR_DEV_MODE=true.
   // Never present in production responses. SEO Assistant does not use this.
-  const devMode = false;
+  const devMode = typeof process !== 'undefined' && process.env?.VITEST === 'true';
   const devDiagnostics: DevDiagnostics | undefined = devMode ? {
     rawEnsembleScores: {
       ai: ensemble.scores.ai,
@@ -1104,7 +1104,7 @@ export async function analyzeAdvancedText(
     limitations,
     metadata,
     scanDate: new Date().toISOString(),
-    ...(devDiagnostics ? { _dev: devDiagnostics } : {}),
+    ...(devDiagnostics ? { diagnostics: devDiagnostics } : {}),
   };
 }
 
