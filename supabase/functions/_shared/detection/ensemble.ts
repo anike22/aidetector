@@ -427,21 +427,22 @@ export function runEnsemble(
     // character-ngram model cannot dominate otherwise contradictory document evidence.
     const stabilityFactor = Math.max(0.35, 1 - classifierChunkStdDev);
 
-    // Cross-layer contradiction gate. The character-ngram classifier can become
-    // overconfident on topical/formal prose, so it must not dominate when independent
-    // linguistic/statistical evidence strongly and coherently points the other way.
-    // This is symmetric: the same rule also limits a falsely-human classifier when
-    // the independent evidence is strongly AI-like.
-    const heuristicAiProbability = calibratedAi;
-    const classifierGap = Math.abs(classifierAiProbability - heuristicAiProbability);
-    const heuristicDirection = heuristicAiProbability >= 0.5 ? 1 : -1;
-    const classifierDirection = classifierAiProbability >= 0.5 ? 1 : -1;
-    const strongHeuristicEvidence = Math.abs(heuristicAiProbability - 0.5) >= 0.20;
-    const strongContradiction =
-      strongHeuristicEvidence &&
-      heuristicDirection !== classifierDirection &&
-      classifierGap >= 0.35;
-    const contradictionFactor = strongContradiction ? 0.35 : 1;
+    // Cross-layer false-positive guard. A low heuristic AI score alone is not
+    // enough to suppress the classifier: some genuine AI prose is lexically diverse.
+    // Require several independent human-style signals before reducing an AI-heavy
+    // character-ngram prediction.
+    const strongHumanSignalCount = [
+      statistical.burstiness >= 0.68,
+      statistical.ngramUniqueness >= 0.90,
+      linguistic.stylisticVariationScore >= 0.75,
+      linguistic.transitionPredictability <= 0.08,
+      linguistic.sentenceLengthVariance >= 60,
+    ].filter(Boolean).length;
+    const classifierHumanContradiction =
+      classifierAiProbability >= 0.70 &&
+      calibratedAi <= 0.35 &&
+      strongHumanSignalCount >= 4;
+    const contradictionFactor = classifierHumanContradiction ? 0.35 : 1;
 
     const weight = baseWeight * shortTextFactor * reliability * stabilityFactor * contradictionFactor;
     calibratedAi = calibratedAi * (1 - weight) + classifierAiProbability * weight;
