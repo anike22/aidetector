@@ -231,6 +231,12 @@ function classifyVerdict(
   const humanLeadsRaw = human >= ai - 3 && human > mixed;
   const genuineAmbiguity = documentConsistencyScore < 0.45 && mixed >= thresholds.mixed;
   if (riskMargin < thresholds.margin && confidenceScore < 50 && !humanLeadsRaw && !genuineAmbiguity) {
+    // Preserve a meaningful AI lead even when adjusted risk and Human are close.
+    // The ensemble has already applied classifier reliability / corroborated-human
+    // safeguards, so this guard should only collapse truly weak evidence.
+    if (ai >= human + thresholds.margin && adjustedAiRisk >= 45) {
+      return editingVerdict();
+    }
     return 'inconclusive';
   }
 
