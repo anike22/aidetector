@@ -47,11 +47,20 @@ function ngramUniqueness(words: string[], n = 3): number {
 }
 
 function repetitionDensity(words: string[]): number {
-  if (words.length === 0) return 0;
+  if (words.length < 2) return 0;
+
+  // Measure repeated lexical excess rather than counting every occurrence of any
+  // word that happens to repeat. The previous metric was dominated by ordinary
+  // function words ("the", "and", "of", etc.) in long-form prose and could
+  // report very high repetition even when phrase/ngram reuse was low.
   const counts: Record<string, number> = {};
   for (const w of words) counts[w] = (counts[w] || 0) + 1;
-  const repeats = Object.values(counts).filter((c) => c > 1).reduce((sum, c) => sum + c, 0);
-  return repeats / words.length;
+
+  const repeatedExcess = Object.values(counts)
+    .filter((count) => count > 1)
+    .reduce((sum, count) => sum + (count - 1), 0);
+
+  return Math.min(1, repeatedExcess / words.length);
 }
 
 function vocabularyCompression(words: string[]): number {
