@@ -335,7 +335,24 @@ export function runEnsemble(
     // Reduce classifier influence when chunk predictions are unstable so one polarized
     // character-ngram model cannot dominate otherwise contradictory document evidence.
     const stabilityFactor = Math.max(0.35, 1 - classifierChunkStdDev);
-    const weight = baseWeight * shortTextFactor * reliability * stabilityFactor;
+
+    // Cross-layer contradiction gate. The character-ngram classifier can become
+    // overconfident on topical/formal prose, so it must not dominate when independent
+    // linguistic/statistical evidence strongly and coherently points the other way.
+    // This is symmetric: the same rule also limits a falsely-human classifier when
+    // the independent evidence is strongly AI-like.
+    const heuristicAiProbability = calibratedAi;
+    const classifierGap = Math.abs(classifierAiProbability - heuristicAiProbability);
+    const heuristicDirection = heuristicAiProbability >= 0.5 ? 1 : -1;
+    const classifierDirection = classifierAiProbability >= 0.5 ? 1 : -1;
+    const strongHeuristicEvidence = Math.abs(heuristicAiProbability - 0.5) >= 0.20;
+    const strongContradiction =
+      strongHeuristicEvidence &&
+      heuristicDirection !== classifierDirection &&
+      classifierGap >= 0.35;
+    const contradictionFactor = strongContradiction ? 0.35 : 1;
+
+    const weight = baseWeight * shortTextFactor * reliability * stabilityFactor * contradictionFactor;
     calibratedAi = calibratedAi * (1 - weight) + classifierAiProbability * weight;
     calibratedAi = Math.min(1, Math.max(0, calibratedAi));
   }
