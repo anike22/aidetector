@@ -69,6 +69,18 @@ describe('Balanced detector human false-positive regression', () => {
 
   it('preserves AI-side detection on a clear long-form AI control', async () => {
     const result = await analyzeAdvancedText(AI_CONTROL_SAMPLE, { contentType: 'auto' });
+    const classifier = await classifyWithClassifier(AI_CONTROL_SAMPLE, 'en');
+    console.log('Balanced AI control:', JSON.stringify({
+      overall: result.overall,
+      diagnostics: result.diagnostics,
+      classifier: {
+        aiProbability: classifier.aiProbability,
+        confidence: classifier.confidence,
+        classProbabilities: classifier.classProbabilities,
+      },
+      linguistic: result.linguisticProfile,
+      statistical: result.statisticalProfile,
+    }));
 
     expect(result.overall.aiProbability).toBeGreaterThanOrEqual(result.overall.humanProbability);
     expect(['likely-ai', 'mostly-ai-human-edited', 'mixed']).toContain(result.overall.verdict);
