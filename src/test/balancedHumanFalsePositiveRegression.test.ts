@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAdvancedText } from '../lib/detection/engine';
 import { classifyWithClassifier } from '../lib/detection/classifier';
+import { runEnsemble } from '../lib/detection/ensemble';
 
 const HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE = `
 What does an AI Detector actually mean?
@@ -40,6 +41,19 @@ describe('Balanced detector human false-positive regression', () => {
     }));
     console.log('Balanced human linguistic profile:', JSON.stringify(result.linguisticProfile));
     console.log('Balanced human statistical profile:', JSON.stringify(result.statisticalProfile));
+    const withoutClassifier = runEnsemble(
+      result.language.primary?.code || 'en',
+      result.contentType,
+      result.linguisticProfile,
+      result.statisticalProfile,
+      result.sentences.map(() => 0),
+      result.paragraphs.map(() => 0),
+      result.language.primary?.confidence ?? 0,
+      true,
+      result.textSufficiency.wordCount,
+      undefined,
+    );
+    console.log('Balanced human ensemble without classifier (zero local AI signals diagnostic):', JSON.stringify(withoutClassifier.scores));
 
     expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
     expect(result.overall.aiProbability).toBeLessThan(55);
