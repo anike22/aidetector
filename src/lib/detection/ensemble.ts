@@ -351,7 +351,24 @@ export function runEnsemble(
       classifierAiProbability >= 0.70 &&
       calibratedAi <= 0.35 &&
       strongHumanSignalCount >= 4;
-    const contradictionFactor = classifierHumanContradiction ? 0.35 : 1;
+
+    // Formal prose can look highly regular to the character-ngram classifier even
+    // when the document lacks independent generative-AI markers. Treat this as a
+    // classifier conflict only when several absence-of-AI signals agree. Clear
+    // formulaic AI remains unaffected because it carries transition/boilerplate/
+    // balanced-phrasing evidence.
+    const formalProseClassifierConflict =
+      classifierAiProbability >= 0.85 &&
+      linguistic.lexicalDiversity >= 0.75 &&
+      statistical.ngramUniqueness >= 0.95 &&
+      linguistic.transitionPredictability <= 0.05 &&
+      linguistic.aiBoilerplateScore <= 0.10 &&
+      linguistic.formulaicStartScore + linguistic.formulaicEndScore <= 0.10 &&
+      linguistic.balancedPhrasingScore <= 0.10 &&
+      linguistic.phraseReuseScore <= 0.10;
+
+    const contradictionFactor =
+      classifierHumanContradiction || formalProseClassifierConflict ? 0.35 : 1;
 
     const weight = baseWeight * shortTextFactor * reliability * stabilityFactor * contradictionFactor;
     calibratedAi = calibratedAi * (1 - weight) + classifierAiProbability * weight;
