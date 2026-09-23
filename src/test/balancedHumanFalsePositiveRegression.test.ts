@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAdvancedText } from '../lib/detection/engine';
 import { classifyWithClassifier } from '../lib/detection/classifier';
-import { runEnsemble } from '../lib/detection/ensemble';
 
 const HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE = `
 What does an AI Detector actually mean?
@@ -57,11 +56,47 @@ navigate this transformation successfully. The key is to balance innovation with
 ensuring that the benefits of AI are broadly shared while its risks are carefully mitigated.
 `.trim();
 
+const BROAD_CONTROLS = [
+  {
+    name: 'clear formulaic AI',
+    expected: 'ai',
+    text: `Artificial intelligence is transforming the modern workplace in profound and far-reaching ways. From automating repetitive tasks to enabling advanced data analysis, AI is reshaping how organizations operate. It is important to note that this transformation brings both opportunities and challenges. In conclusion, organizations that embrace AI-driven strategies will be well-positioned to thrive in the digital economy. Furthermore, leveraging cutting-edge technology allows businesses to achieve unprecedented levels of efficiency. It is crucial to understand that implementing AI requires careful consideration of ethical implications. As a result, companies must develop comprehensive governance frameworks to ensure responsible deployment of these powerful systems.`,
+  },
+  {
+    name: 'natural personal human',
+    expected: 'human',
+    text: `I spent last Saturday fixing my old bicycle — the chain had been slipping for weeks and I'd been putting it off. Turns out the rear derailleur cable was frayed, which I only found out after an hour of confused tinkering. My neighbor Tom wandered over, took one look, and went "oh yeah, that's your cable." Embarrassing, honestly. We had tea after. He told me about his trip to Portugal where he apparently ate so much pastéis de nata that he had to buy new trousers. Classic Tom. Anyway, bike is fixed now. I celebrated with a very mediocre frozen pizza and some bad TV.`,
+  },
+  {
+    name: 'formal academic human',
+    expected: 'human-not-ai',
+    text: `The relationship between synaptic plasticity and long-term memory consolidation has been a subject of sustained empirical investigation since the mid-twentieth century. Hebb's postulate, formalized in 1949, proposed that repeated co-activation of pre- and post-synaptic neurons strengthens their connection — a principle now supported by extensive electrophysiological evidence. Subsequent work by Bliss and Lømo in 1973 demonstrated long-term potentiation in the hippocampus, establishing a cellular correlate for learning. The question of whether LTP necessarily underlies all forms of declarative memory remains contested, with competing models emphasizing different molecular cascades and temporal dynamics.`,
+  },
+  {
+    name: 'pre-AI-era style human',
+    expected: 'human-not-ai',
+    text: `The coffee machine in the office had been broken for three days, which, by Tuesday morning, had reduced the accounts department to a state best described as "barely functional." Karen from payroll had started bringing her own instant coffee in a thermos, which she kept locked in her desk drawer. This was discussed at length in the kitchen. Dave from IT fixed it eventually — apparently it just needed descaling, something that had apparently been on the maintenance list since 2017. The collective relief was palpable. Someone brought biscuits.`,
+  },
+  {
+    name: 'AI lightly edited by human',
+    expected: 'not-pure-human',
+    text: `Artificial intelligence has emerged as a transformative force in education, raising important questions about academic integrity. Students now have access to powerful language models that can generate convincing essays in seconds — honestly, I've seen it firsthand in my own classroom. It is essential that institutions develop clear policies addressing AI use in assessments. Moreover, educators must adapt their teaching strategies to focus on critical thinking and original analysis. These changes will ensure that learning remains meaningful. But honestly, half the battle is just convincing students the skills still matter when AI can do it for them.`,
+  },
+  {
+    name: 'human with AI polish',
+    expected: 'not-pure-ai',
+    text: `My grandmother kept a garden that defied all logic — rocky soil, partial shade, and the most stubborn clay this side of the county. She'd be out there every morning, muttering at the tomatoes like they might respond. They usually did, eventually. We used to sit on the back step eating warm cherry tomatoes straight off the vine, still dusty with garden soil. That taste is something I can't quite recreate, no matter how good the supermarket variety is. In conclusion, the significance of intergenerational knowledge transfer in horticultural practices cannot be overstated. Furthermore, the preservation of traditional gardening methods represents an important cultural heritage that deserves recognition and documentation.`,
+  },
+  {
+    name: 'true mixed authorship',
+    expected: 'not-pure',
+    text: `Last week I tried making sourdough bread for the first time. Total disaster. The starter smelled wrong, the dough wouldn't hold its shape, and what came out of the oven could have been used as a doorstop. My flatmate said it tasted "interesting" which we both knew meant inedible. Sourdough bread represents a significant intersection of traditional fermentation techniques and modern culinary science. The biochemical processes involved in lactic acid fermentation contribute to both the distinctive flavor profile and the improved nutritional characteristics of the final product. It is important to note that consistent temperature control is essential for successful fermentation. Furthermore, the hydration ratio of the dough plays a crucial role in determining crumb structure and crust development.`,
+  },
+] as const;
+
 describe('Balanced detector human false-positive regression', () => {
   it('does not promote the supplied human-written long-form sample to an AI-side verdict', async () => {
     const result = await analyzeAdvancedText(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, { contentType: 'auto' });
-    const classifier = await classifyWithClassifier(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, 'en');
-
     expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
     expect(result.overall.aiProbability).toBeLessThan(55);
     expect(result.overall.humanProbability).toBeGreaterThan(result.overall.aiProbability);
@@ -70,19 +105,30 @@ describe('Balanced detector human false-positive regression', () => {
   it('preserves AI-side detection on a clear long-form AI control', async () => {
     const result = await analyzeAdvancedText(AI_CONTROL_SAMPLE, { contentType: 'auto' });
     const classifier = await classifyWithClassifier(AI_CONTROL_SAMPLE, 'en');
-    console.log('Balanced AI control:', JSON.stringify({
-      overall: result.overall,
-      diagnostics: result.diagnostics,
-      classifier: {
-        aiProbability: classifier.aiProbability,
-        confidence: classifier.confidence,
-        classProbabilities: classifier.classProbabilities,
-      },
-      linguistic: result.linguisticProfile,
-      statistical: result.statisticalProfile,
-    }));
-
     expect(result.overall.aiProbability).toBeGreaterThanOrEqual(result.overall.humanProbability);
     expect(['likely-ai', 'mostly-ai-human-edited', 'mixed']).toContain(result.overall.verdict);
   });
+
+  for (const sample of BROAD_CONTROLS) {
+    it(`broad regression: ${sample.name}`, async () => {
+      const result = await analyzeAdvancedText(sample.text, { contentType: 'auto' });
+      console.log('Balanced broad control:', sample.name, JSON.stringify(result.overall));
+
+      if (sample.expected === 'ai') {
+        expect(result.overall.aiProbability).toBeGreaterThanOrEqual(result.overall.humanProbability);
+        expect(['likely-ai', 'mostly-ai-human-edited', 'mixed']).toContain(result.overall.verdict);
+      } else if (sample.expected === 'human') {
+        expect(result.overall.humanProbability).toBeGreaterThanOrEqual(result.overall.aiProbability);
+        expect(['likely-human', 'mostly-human-ai-assisted', 'mixed', 'inconclusive']).toContain(result.overall.verdict);
+      } else if (sample.expected === 'human-not-ai') {
+        expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
+      } else if (sample.expected === 'not-pure-human') {
+        expect(result.overall.verdict).not.toBe('likely-human');
+      } else if (sample.expected === 'not-pure-ai') {
+        expect(result.overall.verdict).not.toBe('likely-ai');
+      } else {
+        expect(['likely-ai', 'likely-human']).not.toContain(result.overall.verdict);
+      }
+    });
+  }
 });
