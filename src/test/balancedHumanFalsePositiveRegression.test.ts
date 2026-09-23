@@ -112,7 +112,18 @@ describe('Balanced detector human false-positive regression', () => {
   for (const sample of BROAD_CONTROLS) {
     it(`broad regression: ${sample.name}`, async () => {
       const result = await analyzeAdvancedText(sample.text, { contentType: 'auto' });
-      console.log('Balanced broad control:', sample.name, JSON.stringify(result.overall));
+      const classifier = await classifyWithClassifier(sample.text, 'en');
+      console.log('Balanced broad control:', sample.name, JSON.stringify({
+        overall: result.overall,
+        classifier: {
+          aiProbability: classifier.aiProbability,
+          confidence: classifier.confidence,
+          classProbabilities: classifier.classProbabilities,
+        },
+        linguistic: result.linguisticProfile,
+        statistical: result.statisticalProfile,
+        diagnostics: result.diagnostics,
+      }));
 
       if (sample.expected === 'ai') {
         expect(result.overall.aiProbability).toBeGreaterThanOrEqual(result.overall.humanProbability);
