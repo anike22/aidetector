@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAdvancedText } from '../lib/detection/engine';
+import { classifyWithClassifier } from '../lib/detection/classifier';
 
 const HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE = `
 What does an AI Detector actually mean?
@@ -27,7 +28,18 @@ In the grand scheme of things, I sincerely do believe that the use of AI technol
 describe('Balanced detector human false-positive regression', () => {
   it('does not promote the supplied human-written long-form sample to an AI-side verdict', async () => {
     const result = await analyzeAdvancedText(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, { contentType: 'auto' });
+    const classifier = await classifyWithClassifier(HUMAN_WRITTEN_FALSE_POSITIVE_SAMPLE, 'en');
     console.log('Balanced human regression overall:', JSON.stringify(result.overall));
+    console.log('Balanced human regression diagnostics:', JSON.stringify(result.diagnostics));
+    console.log('Balanced human classifier:', JSON.stringify({
+      available: classifier.available,
+      aiProbability: classifier.aiProbability,
+      confidence: classifier.confidence,
+      classProbabilities: classifier.classProbabilities,
+      chunks: classifier.chunkScores.map(({ aiProbability, textPreview }) => ({ aiProbability, textPreview })),
+    }));
+    console.log('Balanced human linguistic profile:', JSON.stringify(result.linguisticProfile));
+    console.log('Balanced human statistical profile:', JSON.stringify(result.statisticalProfile));
 
     expect(['likely-ai', 'mostly-ai-human-edited']).not.toContain(result.overall.verdict);
     expect(result.overall.aiProbability).toBeLessThan(55);
