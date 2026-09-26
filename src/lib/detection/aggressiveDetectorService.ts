@@ -99,12 +99,13 @@ export async function runAggressiveDetector(
     (balanced &&
       (verdict === 'likely-human' ||
         verdict === 'mostly-human' ||
-        (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15))) ||
-    (raw.aiScore < 30 &&
+        (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15)) &&
+      classifierAi < 25) ||
+    (!balanced &&
+      raw.aiScore < 30 &&
       raw.recommendations.some((r) =>
         r.includes('align with natural human writing')
-      ) &&
-      verdict !== 'likely-ai');
+      ));
 
   // High-Sensitivity Strict Mode:
   // Designed as an aggressive screen to decisively detect and score AI text high.
@@ -152,11 +153,12 @@ export async function runAggressiveDetector(
     );
     strictAi = Math.min(84, Math.max(52, candidate));
   } else {
-    // Verified or consistent human writing with low balanced AI remains low
-    strictAi = Math.min(
-      26,
-      Math.max(raw.aiScore, Math.round(baseAi * 0.5 + mixedSignal * 0.3))
-    );
+    // Authentic human writing evaluates dynamically to its true empirical score without artificial floors or clamps
+    const confRatio = Math.max(0.2, Math.min(1.0, confidence / 100));
+    const baseWeight = 0.55 * confRatio;
+    strictAi = isHighConfidence
+      ? Math.max(raw.aiScore, Math.round(baseAi * 0.7))
+      : Math.round(raw.aiScore * (1 - baseWeight) + baseAi * baseWeight);
   }
 
   // Ensure invariant: strict AI can never be lower than verified balanced AI
@@ -170,8 +172,14 @@ export async function runAggressiveDetector(
     strictAi >= 65 ? 'High' : strictAi >= 35 ? 'Medium' : 'Low';
 
   const recommendations = [...raw.recommendations];
-  if (mixedSignal > 10 && !recommendations.some((r) => r.includes('mixed') || r.includes('Hybrid'))) {
-    recommendations.unshift('Hybrid AI-assisted phrasing detected across sentences; strict screen flagged weaker AI traces.');
+  if (
+    strictAi >= 35 &&
+    mixedSignal > 10 &&
+    !recommendations.some((r) => r.includes('mixed') || r.includes('Hybrid'))
+  ) {
+    recommendations.unshift(
+      'Hybrid AI-assisted phrasing detected across sentences; strict screen flagged weaker AI traces.'
+    );
   }
 
   return {

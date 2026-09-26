@@ -175,8 +175,44 @@ Engineers and urban planners designed ventilation shafts, subterranean drainage 
 Despite these engineering triumphs, transit expansion was never socially neutral. The placement of elevated tracks often depressed adjacent property values and subjected working-class neighborhoods to persistent noise and soot. Decades later, urban highway construction would repeat and amplify these patterns of displacement. Nevertheless, early rapid transit systems remain the backbone of modern metropolitan economies, carrying millions of daily passengers and providing an alternative to automobile congestion.`;
 
     const strictResult = await runAggressiveDetector(longHumanArticle);
-    expect(strictResult.ai).toBeLessThanOrEqual(35);
-    expect(strictResult.human).toBeGreaterThanOrEqual(65);
-    expect(strictResult.risk).not.toBe('High');
+    expect(strictResult.ai).toBeLessThanOrEqual(30);
+    expect(strictResult.human).toBeGreaterThanOrEqual(70);
+    expect(strictResult.risk).toBe('Low');
+  });
+
+  it('proves that authentic human non-fiction evaluates naturally in single digits without artificial 26% floor', async () => {
+    const historicalPaper = `The construction of the Erie Canal between 1817 and 1825 transformed the economic geography of the United States. Before its completion, transporting bulk agricultural commodities across the Appalachian Mountains cost nearly one hundred dollars per ton and took several weeks. By connecting the Hudson River at Albany with Lake Erie at Buffalo, the 363-mile waterway cut shipping costs to less than ten dollars per ton and reduced travel time to six days.
+
+Governor DeWitt Clinton faced fierce political opposition when proposing the project, with critics dubbing it 'Clinton's Folly' or 'the Big Ditch.' However, the state legislature authorized financing through state-backed bonds that attracted eager European investors, particularly in London. Without any formal civil engineering schools in North America at the time, self-taught surveyors like Benjamin Wright and James Geddes designed the lock mechanisms, aqueducts, and towpaths through untamed wilderness.
+
+The canal's commercial success was immediate and profound. Within its first year of full operation in 1826, thousands of canal boats carried wheat, lumber, and manufactured goods between New York City and the burgeoning settlements of the Midwest. Towns along the canal route—including Rochester, Syracuse, and Utica—experienced unprecedented industrial booms, while New York City eclipsed Philadelphia and Boston as the premier commercial port in the Western Hemisphere.`;
+
+    const balancedForHistorical: any = {
+      ai: 6,
+      human: 92,
+      mixed: 2,
+      verdict: 'likely-human',
+      risk: 'Low',
+      confidence: 82,
+      confidenceLevel: 'High',
+      language: 'English',
+      full: {
+        metadata: {
+          classProbabilities: {
+            ai: 0.04,
+            human: 0.94,
+            mixed: 0.01,
+            'translated-ai': 0.005,
+            'human-edited-ai': 0.005,
+          },
+        },
+      },
+    };
+
+    const strictResult = await runAggressiveDetector(historicalPaper, balancedForHistorical);
+    // Verified human writing evaluates naturally to its true low score (< 15%) without being artificially clamped at 26%
+    expect(strictResult.ai).toBeLessThanOrEqual(12);
+    expect(strictResult.human).toBeGreaterThanOrEqual(88);
+    expect(strictResult.risk).toBe('Low');
   });
 });
