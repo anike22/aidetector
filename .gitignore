@@ -34,3 +34,8 @@ history/*.json
 .vite_cache
 .native-wind-cache
 .vite
+
+# Local environment secrets
+.env
+.env.*
+!.env.example
