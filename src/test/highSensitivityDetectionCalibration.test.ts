@@ -102,4 +102,19 @@ Ultimately, developing balanced governance frameworks will be essential for ensu
     expect(result.aiScore).toBeGreaterThanOrEqual(50);
     expect(result.riskLevel).not.toBe('Low');
   });
+
+  it('completely detects clear ChatGPT text and scores it decisively high (>= 85%) in aggressive mode', async () => {
+    const chatGptSample = `Artificial intelligence is rapidly transforming modern industries. Machine learning models process vast amounts of data to uncover actionable insights. Businesses leverage these predictive tools to automate repetitive tasks and improve operational efficiency. Cloud computing infrastructure provides the scalable resources necessary to train complex deep learning architectures. As adoption expands across sectors, organizations must address key challenges around data governance, algorithm bias, and privacy compliance. Developing clear ethical guidelines and robust validation frameworks ensures technology creates lasting value for society.`;
+
+    // 1. Underlying analyzeAIRisk heuristic engine should catch collocations & pacing
+    const riskResult = analyzeAIRisk(chatGptSample);
+    expect(riskResult.aiScore).toBeGreaterThanOrEqual(70);
+    expect(riskResult.riskLevel).toBe('High');
+
+    // 2. High-Sensitivity Analysis — Strict detector (standalone or with balanced) must score decisively high (>= 85%)
+    const strictResult = await runAggressiveDetector(chatGptSample);
+    expect(strictResult.ai).toBeGreaterThanOrEqual(85);
+    expect(strictResult.human).toBeLessThanOrEqual(15);
+    expect(strictResult.risk).toBe('High');
+  });
 });

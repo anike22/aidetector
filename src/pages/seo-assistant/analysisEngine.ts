@@ -834,6 +834,26 @@ const AI_MARKER_PATTERNS = [
   /\bin\s+the\s+realm\s+of\b/i,
   /\ba\s+plethora\s+of\b/i,
   /\bcornerstone\s+of\b/i,
+  /\b(?:rapidly|continually)\s+(?:transforming|evolving|advancing)\b/i,
+  /\bvast\s+amounts?\s+of\b/i,
+  /\bactionable\s+insights?\b/i,
+  /\boperational\s+efficiency\b/i,
+  /\bleverag(?:e|es|ed|ing)\b/i,
+  /\bscalable\s+resources?\b/i,
+  /\bkey\s+challenges?\b/i,
+  /\brobust\s+(?:validation|frameworks?|mechanisms?|solutions?)\b/i,
+  /\bcreates?\s+lasting\s+value\b/i,
+  /\bpav(?:e|es|ed|ing)\s+the\s+way\b/i,
+  /\bdouble-edged\s+sword\b/i,
+  /\bparadigm\s+shift\b/i,
+  /\bcatalyst\s+for\b/i,
+  /\bparamount\s+importance\b/i,
+  /\bdriving\s+force\b/i,
+  /\bpoised\s+to\b/i,
+  /\btransformative\s+power\b/i,
+  /\bcomprehensive\s+overview\b/i,
+  /\bindispensable\b/i,
+  /\bfostering\s+(?:innovation|growth|collaboration)\b/i,
 ];
 
 export function analyzeAIRisk(text: string): AIRiskResult {
@@ -899,6 +919,10 @@ export function analyzeAIRisk(text: string): AIRiskResult {
     /^\s*(?:Furthermore|Moreover|Additionally|In addition|Consequently|Ultimately|Notably|Importantly|In essence|Specifically|To begin with|In conclusion|Overall),/i.test(s)
   ).length;
 
+  // Formulaic concluding sentence (classic LLM closing with gerund + abstract societal benefit)
+  const lastSentence = sentences[sentences.length - 1] || '';
+  const hasFormulaicConclusion = /(?:ensur(?:es|ing)|pav(?:es|ing)\s+the\s+way|creat(?:es|ing)\s+(?:lasting|meaningful)|foster(?:s|ing)\s+(?:sustainable|responsible)|shap(?:es|ing)\s+a)\s+(?:value|growth|future|transformation|society|progress)/i.test(lastSentence);
+
   // Calibrated High-Sensitivity Risk Scoring (stricter screen while respecting genuine human prose)
   let score = 32; // Baseline neutral anchor for strict analysis
 
@@ -916,6 +940,11 @@ export function analyzeAIRisk(text: string): AIRiskResult {
 
     if (lengths.length >= 3 && avgConsecutiveDelta < 2.0 && lengths.length >= 4) {
       score += 12; // Repetitive pacing
+    }
+
+    // Uniform pacing across consecutive sentences (classic LLM trait)
+    if (lengths.length >= 4 && avgConsecutiveDelta < 3.2 && cv < 0.32) {
+      score += 14;
     }
   }
 
@@ -947,10 +976,13 @@ export function analyzeAIRisk(text: string): AIRiskResult {
 
   // AI transition markers and formulaic openers penalty
   if (aiMarkerHits > 0) {
-    score += Math.min(54, aiMarkerHits * 16);
+    score += Math.min(56, aiMarkerHits * 16);
   }
   if (formulaicOpeners > 0) {
     score += Math.min(24, formulaicOpeners * 12);
+  }
+  if (hasFormulaicConclusion) {
+    score += 18;
   }
 
   const aiScore = Math.max(6, Math.min(96, Math.round(score)));
