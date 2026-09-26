@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.link_guest_to_registered_user(text, uuid);

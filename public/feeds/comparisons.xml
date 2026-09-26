@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>AIDetector.cx Comparisons</title>
+  <link>https://aidetector.cx/comparisons</link>
+  <description>Latest comparisons from AIDetector.cx</description>
+  <language>en</language>
+  <lastBuildDate>Mon, 01 Aug 2026 00:00:00 +0000</lastBuildDate>
+  <atom:link href="https://aidetector.cx/comparisons.xml" rel="self" type="application/rss+xml" />
+  <item>
+    <title>Turnitin vs AIDetector.cx: 2026 Comparison</title>
+    <link>https://aidetector.cx/comparisons/turnitin-vs-aidetector-cx</link>
+    <guid isPermaLink="true">https://aidetector.cx/comparisons/turnitin-vs-aidetector-cx</guid>
+    <description>A detailed comparison of Turnitin and AIDetector.cx for universities, publishers, SEO agencies, and recruiters. Accuracy, pricing, workflows, and final verdicts by audience.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>ChatGPT Detector Comparison: GPT-4 vs GPT-5.5</title>
+    <link>https://aidetector.cx/comparisons/chatgpt-detector-comparison</link>
+    <guid isPermaLink="true">https://aidetector.cx/comparisons/chatgpt-detector-comparison</guid>
+    <description>Compare how top AI detectors handle raw and edited ChatGPT outputs from GPT-4, GPT-4o, and GPT-5.5 across academic, SEO, and marketing use cases.</description>
+    <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
+  </item>
+</channel>
+</rss>
