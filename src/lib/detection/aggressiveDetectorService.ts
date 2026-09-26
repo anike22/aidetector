@@ -60,48 +60,92 @@ export async function runAggressiveDetector(
   const mixedSignal = balanced?.mixed ?? 0;
   const verdict = balanced?.verdict ?? '';
   const confidence = balanced?.confidence ?? 50;
-  const isHighConfidence = balanced?.confidenceLevel !== 'Low' && confidence >= 35;
+
+  // Extract multi-layer machine learning classifier probabilities if present
+  const fullResult = balanced?.full;
+  const classProbs =
+    fullResult?.metadata?.classProbabilities ||
+    (fullResult as any)?.classProbabilities;
+  const classifierAi = classProbs
+    ? Math.round(
+        ((classProbs.ai ?? 0) +
+          (classProbs['translated-ai'] ?? 0) +
+          (classProbs['human-edited-ai'] ?? 0)) *
+          100
+      )
+    : 0;
+
+  // Sentence-level AI verification
+  const sentences = fullResult?.sentences || [];
+  const aiSentenceCount = sentences.filter(
+    (s) => s.verdict && (s.verdict.includes('ai') || s.verdict === 'mixed')
+  ).length;
+  const sentenceAiRatio =
+    sentences.length > 0 ? (aiSentenceCount / sentences.length) * 100 : 0;
+
+  // Combined AI & assisted signals
+  const combinedAiSignal = baseAi + mixedSignal * 0.75;
+  const hasVerifiableAiAssistance =
+    verdict.includes('ai') ||
+    verdict.includes('mixed') ||
+    verdict === 'mostly-ai-human-edited' ||
+    verdict === 'mostly-human-ai-assisted';
+
+  const isHighConfidence =
+    balanced?.confidenceLevel !== 'Low' && confidence >= 40;
 
   // High-Sensitivity Strict Mode:
-  // Designed as an aggressive screen to completely detect and score AI text high.
-  let strictAi = raw.aiScore;
-
-  const isClearAi =
-    raw.aiScore >= 65 ||
-    (isHighConfidence && baseAi >= 50) ||
-    verdict === 'likely-ai' ||
-    (baseAi >= 35 && raw.aiScore >= 45);
+  // Designed as an aggressive screen to decisively detect and score AI text high.
+  // Flags clear AI, AI-assisted, and hybrid synthetic patterns.
+  const isStrictAi =
+    raw.aiScore >= 60 ||
+    (isHighConfidence &&
+      (classifierAi >= 35 ||
+        baseAi >= 22 ||
+        combinedAiSignal >= 24 ||
+        (hasVerifiableAiAssistance &&
+          (baseAi >= 16 || classifierAi >= 25 || mixedSignal >= 8)) ||
+        sentenceAiRatio >= 20 ||
+        verdict === 'likely-ai' ||
+        verdict === 'mostly-ai-human-edited'));
 
   const isModerateAi =
-    raw.aiScore >= 40 ||
-    (isHighConfidence && (baseAi >= 28 || mixedSignal >= 15)) ||
-    (baseAi >= 25 && raw.aiScore >= 35);
+    raw.aiScore >= 35 ||
+    (isHighConfidence &&
+      (classifierAi >= 18 ||
+        baseAi >= 15 ||
+        combinedAiSignal >= 18 ||
+        mixedSignal >= 12 ||
+        sentenceAiRatio >= 10));
 
-  if (isClearAi) {
-    // Clear AI text is aggressively detected and scored high (85%–98% AI, High Risk)
-    strictAi = Math.max(
+  let strictAi: number;
+
+  if (isStrictAi) {
+    // Clear AI or assisted text is aggressively detected and scored high (86%–98% AI, High Risk)
+    const candidate = Math.max(
       raw.aiScore,
-      Math.round(baseAi * 1.35 + mixedSignal * 0.85 + 16)
+      classifierAi > 0 ? Math.round(classifierAi * 1.15 + 10) : 0,
+      Math.round(baseAi * 1.5 + mixedSignal * 0.9 + 20)
     );
-    strictAi = Math.min(98, Math.max(85, strictAi));
+    strictAi = Math.min(98, Math.max(86, candidate));
   } else if (isModerateAi) {
     // Moderate/hybrid AI signals are strictly elevated to 52%–84%
-    strictAi = Math.max(
+    const candidate = Math.max(
       raw.aiScore,
+      classifierAi > 0 ? Math.round(classifierAi * 1.1) : 0,
       Math.round(baseAi * 1.25 + mixedSignal * 0.75 + 10)
     );
-    strictAi = Math.min(84, Math.max(52, strictAi));
+    strictAi = Math.min(84, Math.max(52, candidate));
   } else {
-    // Pure human writing with low balanced AI and human markers remains low
-    strictAi = Math.max(
-      raw.aiScore,
-      Math.round(baseAi * 0.6 + mixedSignal * 0.5)
+    // Pure verified human writing with low balanced AI and human markers remains low
+    strictAi = Math.min(
+      26,
+      Math.max(raw.aiScore, Math.round(baseAi * 0.5 + mixedSignal * 0.3))
     );
-    strictAi = Math.min(32, strictAi);
   }
 
   // Ensure invariant: strict AI can never be lower than verified balanced AI
-  if (balancedResult || isHighConfidence) {
+  if (balancedResult) {
     strictAi = Math.max(strictAi, baseAi);
   }
   strictAi = Math.min(98, Math.max(4, strictAi));

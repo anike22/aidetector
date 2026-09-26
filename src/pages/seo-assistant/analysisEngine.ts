@@ -853,7 +853,22 @@ const AI_MARKER_PATTERNS = [
   /\btransformative\s+power\b/i,
   /\bcomprehensive\s+overview\b/i,
   /\bindispensable\b/i,
-  /\bfostering\s+(?:innovation|growth|collaboration)\b/i,
+  /\bfostering\s+(?:innovation|growth|collaboration|sustainability)\b/i,
+  /\bdelv(?:e|es|ed|ing)\s+into\b/i,
+  /\btestament\s+to\b/i,
+  /\bcrucial\s+role\b/i,
+  /\bmultifaceted\s+(?:landscape|nature|approach)\b/i,
+  /\bever-evolving\s+(?:landscape|world|digital)\b/i,
+  /\bholistic\s+approach\b/i,
+  /\bnavigat(?:e|es|ed|ing)\s+the\s+complexities\b/i,
+  /\brich\s+tapestry\b/i,
+  /\binterplay\s+between\b/i,
+  /\bserves?\s+as\s+a\s+(?:reminder|testament|cornerstone|beacon)\b/i,
+  /\bin\s+today's\s+(?:fast-paced|digital|interconnected|modern)\s+world\b/i,
+  /\bharness(?:ing|es|ed)?\s+the\s+power\s+of\b/i,
+  /\bseamless(?:ly)?\s+integrat(?:e|es|ed|ing)\b/i,
+  /\bunprecedented\s+(?:levels?|advancements?|efficiency|scale)\b/i,
+  /\bvital\s+(?:role|component|element)\b/i,
 ];
 
 export function analyzeAIRisk(text: string): AIRiskResult {
@@ -976,13 +991,20 @@ export function analyzeAIRisk(text: string): AIRiskResult {
 
   // AI transition markers and formulaic openers penalty
   if (aiMarkerHits > 0) {
-    score += Math.min(56, aiMarkerHits * 16);
+    score += Math.min(64, aiMarkerHits * 18);
   }
   if (formulaicOpeners > 0) {
-    score += Math.min(24, formulaicOpeners * 12);
+    score += Math.min(30, formulaicOpeners * 14);
   }
   if (hasFormulaicConclusion) {
-    score += 18;
+    score += 20;
+  }
+
+  // If text exhibits explicit formulaic AI markers or concluding hallmarks, ensure it clears High Risk threshold
+  if (aiMarkerHits >= 2 || (aiMarkerHits >= 1 && (formulaicOpeners >= 1 || hasFormulaicConclusion))) {
+    score = Math.max(score, 72);
+  } else if (aiMarkerHits >= 1) {
+    score = Math.max(score, 65);
   }
 
   const aiScore = Math.max(6, Math.min(96, Math.round(score)));

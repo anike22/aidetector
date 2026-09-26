@@ -62,33 +62,80 @@ Scientists still study how these fragile creatures orient themselves using the a
 
   it('guarantees High-Sensitivity strict detector never drops below balanced AI and reflects weaker AI patterns', async () => {
     // User scenario: balanced detector gave 28% AI, 13% Mixed, 59% Human.
-    // High-Sensitivity Strict mode must NEVER drop to 4% AI!
+    // High-Sensitivity Strict mode must NEVER drop to 4% AI or cap at 32%!
     const mockBalancedResult: any = {
       ai: 28,
       human: 59,
       mixed: 13,
-      verdict: 'Mostly Human, AI-Assisted',
+      verdict: 'mostly-human-ai-assisted',
       risk: 'Medium',
       confidence: 44,
       confidenceLevel: 'Medium',
       language: 'English',
-      engineVersion: '2.5.0',
-      modelVersion: '1.4.0',
-      calibrationVersion: 'cal-2.5',
-      languagePipelineVersion: '1.2.0',
+      engineVersion: '2.5.1',
+      modelVersion: 'ensemble-v4-classifier-v2',
+      calibrationVersion: 'cal-v3-five-class',
+      languagePipelineVersion: 'lang-v3',
       requestId: 'test_req',
       analyzedAt: new Date().toISOString(),
-      full: {} as any,
+      full: {
+        metadata: {
+          classProbabilities: {
+            ai: 0.634,
+            human: 0.319,
+            mixed: 0.001,
+            'translated-ai': 0.027,
+            'human-edited-ai': 0.019,
+          },
+        },
+      } as any,
     };
 
     const text = 'Artificial intelligence provides key capabilities across various industries. Organizations adopt machine learning to optimize workflows.';
     const strictResult = await runAggressiveDetector(text, mockBalancedResult);
 
-    // Strict score must be at least as sensitive as balanced (>= 28%) and absorb the 13% mixed signal
-    expect(strictResult.ai).toBeGreaterThanOrEqual(28);
-    expect(strictResult.ai).toBeGreaterThanOrEqual(40);
-    expect(strictResult.human).toBe(100 - strictResult.ai);
-    expect(strictResult.risk).toMatch(/Medium|High/);
+    // Strict score must decisively detect AI patterns and NOT cap at 32%
+    expect(strictResult.ai).toBeGreaterThanOrEqual(85);
+    expect(strictResult.human).toBeLessThanOrEqual(15);
+    expect(strictResult.risk).toBe('High');
+  });
+
+  it('guarantees user AI text previously scoring 32% now scores decisively as AI (High Risk)', async () => {
+    // Exact user telemetry reproduction from detector_results ID 792d817d-8f87-4a64-8ad1-db3ed11823e0
+    const userTelemetryBalanced: any = {
+      ai: 28,
+      human: 59,
+      mixed: 13,
+      verdict: 'mostly-human-ai-assisted',
+      risk: 'Medium',
+      confidence: 44,
+      confidenceLevel: 'Medium',
+      language: 'English',
+      engineVersion: '2.5.1',
+      modelVersion: 'ensemble-v4-classifier-v2',
+      calibrationVersion: 'cal-v3-five-class',
+      languagePipelineVersion: 'lang-v3',
+      requestId: 'det-1790421427023-7zay',
+      analyzedAt: '2026-09-26T11:17:07.023Z',
+      full: {
+        metadata: {
+          classProbabilities: {
+            ai: 0.634,
+            human: 0.319,
+            mixed: 0.001,
+            'translated-ai': 0.027,
+            'human-edited-ai': 0.019,
+          },
+        },
+      } as any,
+    };
+
+    const userText = 'Artificial intelligence models leverage extensive datasets to optimize predictive efficiency and operational performance across enterprise systems.';
+    const result = await runAggressiveDetector(userText, userTelemetryBalanced);
+
+    expect(result.ai).toBeGreaterThanOrEqual(85);
+    expect(result.risk).toBe('High');
+    expect(result.human).toBeLessThanOrEqual(15);
   });
 
   it('correctly flags modern AI text with connectors without dropping to floor 4%', () => {
