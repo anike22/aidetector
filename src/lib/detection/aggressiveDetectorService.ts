@@ -94,29 +94,44 @@ export async function runAggressiveDetector(
   const isHighConfidence =
     balanced?.confidenceLevel !== 'Low' && confidence >= 40;
 
+  // Check if balanced detector or linguistic engine verified natural human writing
+  const isVerifiedHuman =
+    (balanced &&
+      (verdict === 'likely-human' ||
+        verdict === 'mostly-human' ||
+        (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15))) ||
+    (raw.aiScore < 30 &&
+      raw.recommendations.some((r) =>
+        r.includes('align with natural human writing')
+      ) &&
+      verdict !== 'likely-ai');
+
   // High-Sensitivity Strict Mode:
   // Designed as an aggressive screen to decisively detect and score AI text high.
   // Flags clear AI, AI-assisted, and hybrid synthetic patterns.
+  // Preserves genuine human prose when verified natural human writing is detected.
   const isStrictAi =
-    raw.aiScore >= 60 ||
-    (isHighConfidence &&
-      (classifierAi >= 35 ||
-        baseAi >= 22 ||
-        combinedAiSignal >= 24 ||
-        (hasVerifiableAiAssistance &&
-          (baseAi >= 16 || classifierAi >= 25 || mixedSignal >= 8)) ||
-        sentenceAiRatio >= 20 ||
-        verdict === 'likely-ai' ||
-        verdict === 'mostly-ai-human-edited'));
+    !isVerifiedHuman &&
+    (raw.aiScore >= 65 ||
+      (isHighConfidence &&
+        (classifierAi >= 35 ||
+          baseAi >= 22 ||
+          combinedAiSignal >= 24 ||
+          (hasVerifiableAiAssistance &&
+            (baseAi >= 16 || classifierAi >= 25 || mixedSignal >= 8)) ||
+          sentenceAiRatio >= 20 ||
+          verdict === 'likely-ai' ||
+          verdict === 'mostly-ai-human-edited')));
 
   const isModerateAi =
-    raw.aiScore >= 35 ||
-    (isHighConfidence &&
-      (classifierAi >= 18 ||
-        baseAi >= 15 ||
-        combinedAiSignal >= 18 ||
-        mixedSignal >= 12 ||
-        sentenceAiRatio >= 10));
+    !isVerifiedHuman &&
+    (raw.aiScore >= 38 ||
+      (isHighConfidence &&
+        (classifierAi >= 18 ||
+          baseAi >= 15 ||
+          combinedAiSignal >= 18 ||
+          mixedSignal >= 12 ||
+          sentenceAiRatio >= 10)));
 
   let strictAi: number;
 
@@ -137,7 +152,7 @@ export async function runAggressiveDetector(
     );
     strictAi = Math.min(84, Math.max(52, candidate));
   } else {
-    // Pure verified human writing with low balanced AI and human markers remains low
+    // Verified or consistent human writing with low balanced AI remains low
     strictAi = Math.min(
       26,
       Math.max(raw.aiScore, Math.round(baseAi * 0.5 + mixedSignal * 0.3))

@@ -836,27 +836,15 @@ const AI_MARKER_PATTERNS = [
   /\bcornerstone\s+of\b/i,
   /\b(?:rapidly|continually)\s+(?:transforming|evolving|advancing)\b/i,
   /\bvast\s+amounts?\s+of\b/i,
-  /\bactionable\s+insights?\b/i,
-  /\boperational\s+efficiency\b/i,
-  /\bleverag(?:e|es|ed|ing)\b/i,
-  /\bscalable\s+resources?\b/i,
-  /\bkey\s+challenges?\b/i,
   /\brobust\s+(?:validation|frameworks?|mechanisms?|solutions?)\b/i,
   /\bcreates?\s+lasting\s+value\b/i,
   /\bpav(?:e|es|ed|ing)\s+the\s+way\b/i,
   /\bdouble-edged\s+sword\b/i,
   /\bparadigm\s+shift\b/i,
   /\bcatalyst\s+for\b/i,
-  /\bparamount\s+importance\b/i,
-  /\bdriving\s+force\b/i,
-  /\bpoised\s+to\b/i,
-  /\btransformative\s+power\b/i,
-  /\bcomprehensive\s+overview\b/i,
-  /\bindispensable\b/i,
   /\bfostering\s+(?:innovation|growth|collaboration|sustainability)\b/i,
   /\bdelv(?:e|es|ed|ing)\s+into\b/i,
   /\btestament\s+to\b/i,
-  /\bcrucial\s+role\b/i,
   /\bmultifaceted\s+(?:landscape|nature|approach)\b/i,
   /\bever-evolving\s+(?:landscape|world|digital)\b/i,
   /\bholistic\s+approach\b/i,
@@ -868,7 +856,6 @@ const AI_MARKER_PATTERNS = [
   /\bharness(?:ing|es|ed)?\s+the\s+power\s+of\b/i,
   /\bseamless(?:ly)?\s+integrat(?:e|es|ed|ing)\b/i,
   /\bunprecedented\s+(?:levels?|advancements?|efficiency|scale)\b/i,
-  /\bvital\s+(?:role|component|element)\b/i,
 ];
 
 export function analyzeAIRisk(text: string): AIRiskResult {
@@ -991,20 +978,20 @@ export function analyzeAIRisk(text: string): AIRiskResult {
 
   // AI transition markers and formulaic openers penalty
   if (aiMarkerHits > 0) {
-    score += Math.min(64, aiMarkerHits * 18);
+    score += Math.min(48, aiMarkerHits * 14);
   }
   if (formulaicOpeners > 0) {
-    score += Math.min(30, formulaicOpeners * 14);
+    score += Math.min(26, formulaicOpeners * 12);
   }
   if (hasFormulaicConclusion) {
-    score += 20;
+    score += 18;
   }
 
-  // If text exhibits explicit formulaic AI markers or concluding hallmarks, ensure it clears High Risk threshold
-  if (aiMarkerHits >= 2 || (aiMarkerHits >= 1 && (formulaicOpeners >= 1 || hasFormulaicConclusion))) {
+  // If text exhibits multiple formulaic AI markers combined with formulaic opener, conclusion, or robotic pacing:
+  if (aiMarkerHits >= 2 && (formulaicOpeners >= 1 || hasFormulaicConclusion || (cv < 0.25 && lengths.length >= 3))) {
     score = Math.max(score, 72);
-  } else if (aiMarkerHits >= 1) {
-    score = Math.max(score, 65);
+  } else if (aiMarkerHits >= 3) {
+    score = Math.max(score, 68);
   }
 
   const aiScore = Math.max(6, Math.min(96, Math.round(score)));

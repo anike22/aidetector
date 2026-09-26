@@ -164,4 +164,19 @@ Ultimately, developing balanced governance frameworks will be essential for ensu
     expect(strictResult.human).toBeLessThanOrEqual(15);
     expect(strictResult.risk).toBe('High');
   });
+
+  it('verifies that long formal human articles do not falsely return 98% in High-Sensitivity Strict mode', async () => {
+    const longHumanArticle = `The development of urban transit infrastructure in twentieth-century metropolitan areas fundamentally altered residential patterns and economic mobility across North America. Prior to the widespread adoption of electric streetcars and grade-separated rapid transit, cities were characterized by dense pedestrian corridors centered around waterfront docks and rail terminals. As transit networks expanded into peripheral farmland, new residential suburbs emerged, creating the modern commuter landscape.
+
+Municipal governments faced substantial logistical challenges during this rapid transition. Financing capital-intensive tunneling projects required innovative municipal bonding mechanisms and public-private partnerships. In cities like Boston and New York, private transit corporations initially operated competing subway and elevated lines before municipal consolidation became necessary to maintain uniform fares and coordinated transfer hubs. The physical construction itself demanded extensive cut-and-cover excavation through heavily populated commercial districts, disrupting surface traffic for years at a time.
+
+Engineers and urban planners designed ventilation shafts, subterranean drainage networks, and electrical substations capable of powering multi-car trainsets. The introduction of third-rail power distribution systems resolved many earlier safety concerns associated with overhead wires in underground tunnels. At the same time, signal systems evolved from basic manual block signaling to automated electro-pneumatic interlocking, drastically reducing headway times and preventing catastrophic rear-end collisions on high-frequency trunk lines.
+
+Despite these engineering triumphs, transit expansion was never socially neutral. The placement of elevated tracks often depressed adjacent property values and subjected working-class neighborhoods to persistent noise and soot. Decades later, urban highway construction would repeat and amplify these patterns of displacement. Nevertheless, early rapid transit systems remain the backbone of modern metropolitan economies, carrying millions of daily passengers and providing an alternative to automobile congestion.`;
+
+    const strictResult = await runAggressiveDetector(longHumanArticle);
+    expect(strictResult.ai).toBeLessThanOrEqual(35);
+    expect(strictResult.human).toBeGreaterThanOrEqual(65);
+    expect(strictResult.risk).not.toBe('High');
+  });
 });
