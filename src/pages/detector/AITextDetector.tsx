@@ -207,7 +207,7 @@ function DetectorDiagnosticsPanel({ result }: { result: BalancedDetectorResult }
 
 export default function AITextDetector() {
   const navigate = useNavigate();
-  const { trackToolUsage } = useCustomerDataPlatform();
+  const { trackToolUsage, trackEvent } = useCustomerDataPlatform();
   const { user, profile, refreshProfile } = useAuth();
   const { entitlement, refresh: refreshEntitlement } = useEntitlement(FEATURE_SLUG);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
