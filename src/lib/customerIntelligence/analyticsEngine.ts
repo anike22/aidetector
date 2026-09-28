@@ -128,51 +128,25 @@ export function computeOverviewMetrics(
     };
   }
 
-  // Baseline for direct test or offline invocations without live database
-  const multiplier = dateRange === 'today' ? 0.08 : dateRange === 'yesterday' ? 0.07 : dateRange === '7d' ? 0.35 : dateRange === '90d' ? 2.8 : 1.0;
-  const uniqueVisitors = Math.round(14820 * multiplier);
-  const newVisitors = Math.round(9640 * multiplier);
-  const returningVisitors = Math.round(5180 * multiplier);
-  const registeredUsers = Math.round(1840 * multiplier);
-  const paidUsers = Math.round(392 * multiplier);
-  const totalRevenue = Math.round(9604 * multiplier);
-  const totalToolUses = Math.round(48620 * multiplier);
-
+  // No telemetry loaded: return an explicit zero state. Never render synthetic data.
   return {
-    uniqueVisitors,
-    uniqueVisitorsDeltaPct: 14.8,
-    newVisitors,
-    newVisitorsDeltaPct: 11.2,
-    returningVisitors,
-    returningVisitorsDeltaPct: 21.6,
-    registeredUsers,
-    registeredUsersDeltaPct: 18.4,
-    paidUsers,
-    paidUsersDeltaPct: 24.3,
-    visitorToRegistrationRate: 12.4,
-    visitorToRegistrationRateDeltaPct: 4.2,
-    pricingPageVisitors: Math.round(2420 * multiplier),
-    pricingPageVisitorsDeltaPct: 16.5,
-    checkoutStarts: Math.round(680 * multiplier),
-    checkoutStartsDeltaPct: 22.1,
-    checkoutAbandonmentRate: 42.3,
-    checkoutAbandonmentRateDeltaPct: -8.4,
-    paidConversions: paidUsers,
-    paidConversionsDeltaPct: 24.3,
-    registrationToPaidRate: 21.3,
-    registrationToPaidRateDeltaPct: 7.9,
-    visitorToPaidRate: 2.65,
-    visitorToPaidRateDeltaPct: 11.2,
-    avgSessionDurationSeconds: 248,
-    avgSessionDurationDeltaPct: 15.3,
-    engagedSessions: Math.round(8940 * multiplier),
-    engagedSessionsDeltaPct: 19.4,
-    totalToolUses,
-    totalToolUsesDeltaPct: 28.1,
-    totalRevenue,
-    totalRevenueDeltaPct: 29.4,
-    revenuePerVisitor: Number((totalRevenue / Math.max(1, uniqueVisitors)).toFixed(2)),
-    revenuePerVisitorDeltaPct: 12.7,
+    uniqueVisitors: 0, uniqueVisitorsDeltaPct: 0,
+    newVisitors: 0, newVisitorsDeltaPct: 0,
+    returningVisitors: 0, returningVisitorsDeltaPct: 0,
+    registeredUsers: 0, registeredUsersDeltaPct: 0,
+    paidUsers: 0, paidUsersDeltaPct: 0,
+    visitorToRegistrationRate: 0, visitorToRegistrationRateDeltaPct: 0,
+    pricingPageVisitors: 0, pricingPageVisitorsDeltaPct: 0,
+    checkoutStarts: 0, checkoutStartsDeltaPct: 0,
+    checkoutAbandonmentRate: 0, checkoutAbandonmentRateDeltaPct: 0,
+    paidConversions: 0, paidConversionsDeltaPct: 0,
+    registrationToPaidRate: 0, registrationToPaidRateDeltaPct: 0,
+    visitorToPaidRate: 0, visitorToPaidRateDeltaPct: 0,
+    avgSessionDurationSeconds: 0, avgSessionDurationDeltaPct: 0,
+    engagedSessions: 0, engagedSessionsDeltaPct: 0,
+    totalToolUses: 0, totalToolUsesDeltaPct: 0,
+    totalRevenue: 0, totalRevenueDeltaPct: 0,
+    revenuePerVisitor: 0, revenuePerVisitorDeltaPct: 0,
   };
 }
 
