@@ -7,7 +7,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { upsertVisitor, mergeVisitorToUser, trackEvent } from '@/lib/leadApi';
+import { upsertVisitor, mergeVisitorToUser, trackEvent, captureVerifiedCountry } from '@/lib/leadApi';
 
 function getDeviceType(): string {
   const ua = navigator.userAgent;
@@ -68,6 +68,8 @@ export function VisitorTracker() {
       os:          getOS(),
       language:    navigator.language,
     });
+
+    if (isFirstVisit) void captureVerifiedCountry();
 
     void trackEvent({
       event_type: 'page_view',
