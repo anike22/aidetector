@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   CustomerProfile,
@@ -106,6 +106,7 @@ export function CustomerIntelligencePage() {
   // Modals & Drawers
   const [selected360Customer, setSelected360Customer] = useState<Customer360Profile | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const customer360RequestRef = useRef(0);
 
   // Segment & Tag dialogs
   const [segmentDialogOpen, setSegmentDialogOpen] = useState(false);
@@ -322,6 +323,11 @@ export function CustomerIntelligencePage() {
   }, [liveData.profiles]);
 
   const openCustomer360 = async (customer: CustomerProfile) => {
+    const requestId = ++customer360RequestRef.current;
+    // Clear the previous customer immediately so stale identity/journey data can never flash.
+    setModalOpen(false);
+    setSelected360Customer(null);
+
     // Fetch live events for this customer
     let timelineEvents: Array<{ id: string; visitorId: string; sessionId: string; eventType: string; toolName?: string; pageUrl?: string; timestamp: string }> = [];
     try {
@@ -338,14 +344,6 @@ export function CustomerIntelligencePage() {
       }
     } catch {
       /* fallback to basic events */
-    }
-
-    if (timelineEvents.length === 0) {
-      timelineEvents = [
-        { id: 'e1', visitorId: customer.visitor_id || '', sessionId: 's1', eventType: 'page_view', pageUrl: customer.first_landing_page || '/', timestamp: customer.created_at },
-        { id: 'e2', visitorId: customer.visitor_id || '', sessionId: 's1', eventType: 'scan_started', toolName: 'AI Detector', timestamp: customer.created_at },
-        { id: 'e3', visitorId: customer.visitor_id || '', sessionId: 's1', eventType: 'result_viewed', toolName: 'AI Detector', timestamp: customer.created_at },
-      ];
     }
 
     const resolvedGeo = resolveLocationFromProfile(customer);
@@ -413,6 +411,8 @@ export function CustomerIntelligencePage() {
       tags: [],
     };
 
+    // Ignore an older request if the admin selected another customer while this fetch was in flight.
+    if (requestId !== customer360RequestRef.current) return;
     setSelected360Customer(c360);
     setModalOpen(true);
   };
@@ -945,7 +945,13 @@ export function CustomerIntelligencePage() {
       <Customer360Modal
         customer={selected360Customer}
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={(nextOpen) => {
+          setModalOpen(nextOpen);
+          if (!nextOpen) {
+            customer360RequestRef.current += 1;
+            setSelected360Customer(null);
+          }
+        }}
       />
 
       {/* Segment Dialog */}
