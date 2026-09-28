@@ -345,6 +345,16 @@ export default function AITextDetector() {
           ai_probability: bResult.ai,
           word_count: textToAnalyze.split(/\s+/).length,
         });
+        trackEvent({
+          event_type: 'custom',
+          metadata: {
+            event_name: 'result_viewed',
+            tool: 'detector',
+            engine: 'balanced',
+            ai_probability: bResult.ai,
+            word_count: textToAnalyze.split(/\s+/).length,
+          },
+        });
         trackLifecycleEvent('first_scan', {
           ai_probability: bResult.ai,
           word_count: textToAnalyze.split(/\s+/).length,
