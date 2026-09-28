@@ -677,7 +677,7 @@ export function CustomerIntelligencePage() {
 
           {/* 6. GEOGRAPHIC INTELLIGENCE */}
           <TabsContent value="geo" className="space-y-6">
-            <GeographicIntelligenceTab profiles={liveData.profiles} />
+            <GeographicIntelligenceTab profiles={liveData.profiles} events={liveData.events} />
           </TabsContent>
 
           {/* 7. CUSTOMERS 360 WITH SEARCH & FILTERS */}
