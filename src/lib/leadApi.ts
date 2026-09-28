@@ -66,6 +66,16 @@ export async function upsertVisitor(data: {
   if (error) console.error('[leadApi] upsertVisitor', error);
 }
 
+export async function captureVerifiedCountry(): Promise<void> {
+  const visitor_id = getVisitorId();
+  const { error } = await supabase.functions.invoke('capture-visitor-geo', {
+    body: { visitor_id },
+  });
+  // Geography is enrichment only. If the Edge Function is not deployed or no
+  // trusted gateway country is available, leave location unknown.
+  if (error) console.debug('[leadApi] verified country unavailable');
+}
+
 export async function mergeVisitorToUser(userId: string): Promise<void> {
   const visitor_id = getVisitorId();
   await supabase
