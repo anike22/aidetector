@@ -194,97 +194,82 @@ export function computeConversionFunnel(
   }
 
   if (filters.trafficSource && filters.trafficSource !== 'all') {
-    filteredProfiles = filteredProfiles.filter((p) =>
-      p.first_channel?.toLowerCase().includes(filters.trafficSource!) ||
-      p.last_channel?.toLowerCase().includes(filters.trafficSource!)
+    const allowed = new Set(
+      filteredProfiles
+        .filter((p) =>
+          p.first_channel?.toLowerCase().includes(filters.trafficSource!) ||
+          p.last_channel?.toLowerCase().includes(filters.trafficSource!)
+        )
+        .map((p) => p.visitor_id)
+        .filter(Boolean)
     );
+    filteredProfiles = filteredProfiles.filter((p) => !p.visitor_id || allowed.has(p.visitor_id));
+    filteredEvents = filteredEvents.filter((e) => !e.visitor_id || allowed.has(e.visitor_id));
   }
+
+  const uniqueEventVisitors = (predicate: (event: LeadEvent) => boolean) =>
+    new Set(filteredEvents.filter(predicate).map((e) => e.visitor_id).filter(Boolean)).size;
 
   const profileVisitorIds = new Set(filteredProfiles.map((p) => p.visitor_id).filter(Boolean));
   const eventVisitorIds = new Set(filteredEvents.map((e) => e.visitor_id).filter(Boolean));
-  const totalVisitorsCount = Math.max(new Set([...profileVisitorIds, ...eventVisitorIds]).size, filteredProfiles.length);
+  const stage1_visitors = new Set([...profileVisitorIds, ...eventVisitorIds]).size;
 
-  // 1. Visitors
-  const stage1_visitors = totalVisitorsCount;
-
-  // 2. Tool Started
-  const toolVisitorIds = new Set(
-    filteredEvents
-      .filter((e) => ['tool_used', 'scan_started', 'custom', 'controls_applied'].includes(e.event_type))
-      .map((e) => e.visitor_id)
-  );
-  const profilesWithToolUsage = filteredProfiles.filter((p) => (p.tools_used_count || 0) > 0);
-  const stage2_toolStarted = Math.min(
-    stage1_visitors,
-    Math.max(toolVisitorIds.size, profilesWithToolUsage.length, Math.round(stage1_visitors * 0.76))
+  const stage2_toolStarted = uniqueEventVisitors((e) =>
+    ['tool_used', 'scan_started'].includes(e.event_type)
   );
 
-  // 3. Result Viewed
-  const stage3_resultViewed = Math.min(
-    stage2_toolStarted,
-    Math.max(
-      filteredEvents.filter((e) => e.event_type === 'result_viewed' || e.page?.includes('/detector')).length,
-      Math.round(stage2_toolStarted * 0.88)
-    )
+  const stage3_resultViewed = uniqueEventVisitors((e) =>
+    e.event_type === 'result_viewed' ||
+    (e.event_type === 'custom' && e.metadata?.event_name === 'result_viewed')
   );
 
-  // 4. Registration Started
-  const regStartedVisitors = new Set(
-    filteredEvents
-      .filter((e) => ['signup', 'registration_started'].includes(e.event_type) || e.page?.includes('/signup'))
-      .map((e) => e.visitor_id)
-  );
-  const stage4_regStarted = Math.min(
-    stage3_resultViewed,
-    Math.max(regStartedVisitors.size, Math.round(stage3_resultViewed * 0.28))
+  const stage4_regStarted = uniqueEventVisitors((e) =>
+    ['signup', 'registration_started'].includes(e.event_type)
   );
 
-  // 5. Registered
-  const registeredCount = filteredProfiles.filter((p) => !!p.user_id || !!p.email).length;
-  const stage5_registered = Math.min(stage4_regStarted, Math.max(registeredCount, Math.round(stage4_regStarted * 0.72)));
-
-  // 6. Pricing Viewed
-  const pricingVisitors = new Set(
-    filteredEvents
-      .filter((e) => e.page?.includes('/pricing') || e.event_type === 'pricing_viewed')
-      .map((e) => e.visitor_id)
-  );
-  const stage6_pricingViewed = Math.min(stage5_registered, Math.max(pricingVisitors.size, Math.round(stage5_registered * 0.65)));
-
-  // 7. Checkout Started
-  const checkoutVisitors = new Set(
-    filteredEvents.filter((e) => e.event_type === 'checkout_started').map((e) => e.visitor_id)
-  );
-  const stage7_checkoutStarted = Math.min(
-    stage6_pricingViewed,
-    Math.max(checkoutVisitors.size, Math.round(stage6_pricingViewed * 0.29))
+  const stage5_registered = uniqueEventVisitors((e) =>
+    e.event_type === 'registration_completed'
   );
 
-  // 8. Paid
-  const paidCount = filteredProfiles.filter(
+  const stage6_pricingViewed = uniqueEventVisitors((e) =>
+    e.event_type === 'pricing_viewed' ||
+    e.event_type === 'pricing_page_visit' ||
+    e.page === '/pricing'
+  );
+
+  const stage7_checkoutStarted = uniqueEventVisitors((e) =>
+    e.event_type === 'checkout_started' ||
+    (e.event_type === 'custom' && e.metadata?.event_name === 'checkout_started')
+  );
+
+  const paidEventVisitors = uniqueEventVisitors((e) =>
+    e.event_type === 'subscription_upgraded' ||
+    (e.event_type === 'custom' && ['payment_completed', 'subscription_activated'].includes(String(e.metadata?.event_name || '')))
+  );
+  const activePaidProfiles = filteredProfiles.filter(
     (p) =>
       p.subscription_plan &&
       p.subscription_plan.toLowerCase() !== 'free' &&
       p.subscription_status?.toLowerCase() === 'active'
   ).length;
-  const stage8_paid = Math.min(stage7_checkoutStarted, Math.max(paidCount, Math.round(stage7_checkoutStarted * 0.68)));
+  const stage8_paid = Math.max(paidEventVisitors, activePaidProfiles);
 
   const rawStages = [
-    { id: 'visitors', label: '1. Visitors', count: stage1_visitors, deltaPct: 14.8 },
-    { id: 'tool_started', label: '2. Tool Started', count: stage2_toolStarted, deltaPct: 16.2 },
-    { id: 'result_viewed', label: '3. Result Viewed', count: stage3_resultViewed, deltaPct: 15.0 },
-    { id: 'reg_started', label: '4. Registration Started', count: stage4_regStarted, deltaPct: 19.4 },
-    { id: 'registered', label: '5. Registered', count: stage5_registered, deltaPct: 18.4 },
-    { id: 'pricing_viewed', label: '6. Pricing Viewed', count: stage6_pricingViewed, deltaPct: 16.5 },
-    { id: 'checkout_started', label: '7. Checkout Started', count: stage7_checkoutStarted, deltaPct: 19.8 },
-    { id: 'paid', label: '8. Paid', count: stage8_paid, deltaPct: 24.3 },
+    { id: 'visitors', label: '1. Visitors', count: stage1_visitors },
+    { id: 'tool_started', label: '2. Tool Started', count: stage2_toolStarted },
+    { id: 'result_viewed', label: '3. Result Viewed', count: stage3_resultViewed },
+    { id: 'reg_started', label: '4. Registration Started', count: stage4_regStarted },
+    { id: 'registered', label: '5. Registered', count: stage5_registered },
+    { id: 'pricing_viewed', label: '6. Pricing Viewed', count: stage6_pricingViewed },
+    { id: 'checkout_started', label: '7. Checkout Started', count: stage7_checkoutStarted },
+    { id: 'paid', label: '8. Paid', count: stage8_paid },
   ];
 
   return rawStages.map((stage, idx) => {
     const prevCount = idx === 0 ? stage.count : rawStages[idx - 1].count;
-    const conversionRate = prevCount > 0 ? (stage.count / prevCount) * 100 : 100;
-    const overallConversionRate = stage1_visitors > 0 ? (stage.count / stage1_visitors) * 100 : 100;
-    const dropoffRate = idx === 0 ? 0 : 100 - conversionRate;
+    const conversionRate = idx === 0 ? 100 : prevCount > 0 ? (stage.count / prevCount) * 100 : 0;
+    const overallConversionRate = stage1_visitors > 0 ? (stage.count / stage1_visitors) * 100 : 0;
+    const dropoffRate = idx === 0 || prevCount === 0 ? 0 : Math.max(0, 100 - conversionRate);
 
     return {
       stageId: stage.id,
@@ -292,8 +277,8 @@ export function computeConversionFunnel(
       count: stage.count,
       conversionRate: Number(conversionRate.toFixed(1)),
       overallConversionRate: Number(overallConversionRate.toFixed(1)),
-      dropoffRate: Number(Math.max(0, dropoffRate).toFixed(1)),
-      deltaPct: stage.deltaPct,
+      dropoffRate: Number(dropoffRate.toFixed(1)),
+      deltaPct: 0,
     };
   });
 }
