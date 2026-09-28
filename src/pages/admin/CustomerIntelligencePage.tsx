@@ -294,7 +294,7 @@ export function CustomerIntelligencePage() {
           },
           conversion: {
             registrationStatus: p.email ? 'verified' : 'anonymous',
-            pricingPageViews: timelineEvents.filter((e) => e.eventType === 'page_view' && e.pageUrl === '/pricing').length,
+            pricingPageViews: 0,
             checkoutAttempts: 0,
             selectedPlan: p.subscription_plan || 'free',
             subscriptionStatus: p.subscription_status || 'none',
