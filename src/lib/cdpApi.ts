@@ -117,10 +117,23 @@ export async function getCustomerEvents(
   profileId: string,
   options: { limit?: number; eventType?: string } = {}
 ): Promise<LeadEvent[]> {
+  // Primary identity is customer_profile_id. For legacy events created before
+  // profile linkage was reliable, also recover events by this profile's
+  // visitor_id/user_id so genuine historical page views are not hidden.
+  const { data: profile } = await supabase
+    .from('customer_profiles')
+    .select('visitor_id,user_id')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  const identityFilters = [`customer_profile_id.eq.${profileId}`];
+  if (profile?.visitor_id) identityFilters.push(`visitor_id.eq.${profile.visitor_id}`);
+  if (profile?.user_id) identityFilters.push(`user_id.eq.${profile.user_id}`);
+
   let q = supabase
     .from('lead_events')
     .select('*')
-    .eq('customer_profile_id', profileId)
+    .or(identityFilters.join(','))
     .order('created_at', { ascending: false });
   if (options.limit) q = q.limit(options.limit);
   if (options.eventType) q = q.eq('event_type', options.eventType);
