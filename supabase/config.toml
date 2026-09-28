@@ -24,3 +24,8 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/plagiarism-checker/index.ts"
 
+
+[functions.capture-visitor-geo]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/capture-visitor-geo/index.ts"
