@@ -332,7 +332,7 @@ export function CustomerIntelligencePage() {
     let timelineEvents: Array<{ id: string; visitorId: string; sessionId: string; eventType: string; toolName?: string; pageUrl?: string; timestamp: string }> = [];
     try {
       if (customer.visitor_id) {
-        const evs = await getCustomerEvents(customer.visitor_id, { limit: 20 });
+        const evs = await getCustomerEvents(customer.id, { limit: 100 });
         timelineEvents = evs.map((e) => ({
           id: e.id,
           visitorId: e.visitor_id || '',
