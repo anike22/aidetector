@@ -37,6 +37,16 @@ Deno.serve(async (req) => {
     const { error: profileError } = await admin.from('customer_profiles').update({ country, updated_at: new Date().toISOString() }).eq('visitor_id', visitorId);
     if (profileError) throw profileError;
 
+    // Record provenance separately from the legacy country column. Geographic
+    // Intelligence only trusts countries backed by this server-generated event.
+    const { error: provenanceError } = await admin.from('lead_events').insert({
+      visitor_id: visitorId,
+      event_type: 'geo_verified',
+      page: null,
+      metadata: { country, country_code: countryCode, source: 'supabase_gateway_cf_ipcountry' },
+    });
+    if (provenanceError) throw provenanceError;
+
     return new Response(JSON.stringify({ success: true, verified: true, country, countryCode }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     console.error('[capture-visitor-geo]', error instanceof Error ? error.message : String(error));
