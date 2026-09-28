@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { computeGeographicIntelligence } from '@/lib/customerIntelligence/geographicIntelligence';
 import { GeographicIntelligenceItem } from '@/types/customerIntelligence';
-import { CustomerProfile } from '@/types/cdp';
+import { CustomerProfile, LeadEvent } from '@/types/cdp';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +11,13 @@ import { Globe, MapPin, AlertCircle, TrendingUp, Users, DollarSign } from 'lucid
 
 interface GeographicIntelligenceTabProps {
   profiles?: CustomerProfile[];
+  events?: LeadEvent[];
 }
 
-export function GeographicIntelligenceTab({ profiles = [] }: GeographicIntelligenceTabProps) {
+export function GeographicIntelligenceTab({ profiles = [], events = [] }: GeographicIntelligenceTabProps) {
   const { countries, regions, cities } = useMemo(() => {
-    return computeGeographicIntelligence(profiles);
-  }, [profiles]);
+    return computeGeographicIntelligence(profiles, events);
+  }, [profiles, events]);
 
   const [geoTab, setGeoTab] = useState<'country' | 'region' | 'city'>('country');
 
@@ -32,7 +33,7 @@ export function GeographicIntelligenceTab({ profiles = [] }: GeographicIntellige
             Geographic Telemetry &amp; Regional Yield
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Geographic distribution of global traffic, tool consumption, registrations, and subscription revenue.
+            Country-level distribution based only on server-verified gateway geography, with registrations, product usage, and subscription revenue.
           </p>
         </div>
 
@@ -49,7 +50,7 @@ export function GeographicIntelligenceTab({ profiles = [] }: GeographicIntellige
       <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
-          <strong className="font-semibold">Privacy &amp; Precision Notice:</strong> Geolocation coordinates are derived at country, state/region, and metro-city level for macro traffic analytics and fraud protection. IP data is never treated as exact physical location or used for invasive surveillance.
+          <strong className="font-semibold">Privacy &amp; Precision Notice:</strong> Only country values verified server-side by the Supabase gateway are included. Legacy or inferred country values are excluded. Region and city remain unavailable until equally authoritative telemetry is implemented.
         </div>
       </div>
 
