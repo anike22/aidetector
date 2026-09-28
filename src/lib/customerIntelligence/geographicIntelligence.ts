@@ -1,5 +1,5 @@
 import { GeographicIntelligenceItem } from '@/types/customerIntelligence';
-import { CustomerProfile } from '@/types/cdp';
+import { CustomerProfile, LeadEvent } from '@/types/cdp';
 
 export interface ResolvedLocation {
   country: string;
@@ -36,16 +36,29 @@ export function resolveLocationFromProfile(p: Partial<CustomerProfile>): Resolve
  * Geographic intelligence computed only from persisted production telemetry.
  * No synthetic country shares, regions, cities, conversion rates or revenue are generated.
  */
-export function computeGeographicIntelligence(profiles: CustomerProfile[] = []): {
+export function computeGeographicIntelligence(profiles: CustomerProfile[] = [], events: LeadEvent[] = []): {
   countries: GeographicIntelligenceItem[];
   regions: GeographicIntelligenceItem[];
   cities: GeographicIntelligenceItem[];
 } {
   const countryMap = new Map<string, { visitors: number; registered: number; paid: number; toolUses: number; revenue: number }>();
 
+  const verifiedCountryByVisitor = new Map<string, string>();
+  events.forEach((event) => {
+    if (event.event_type !== 'geo_verified' || !event.visitor_id) return;
+    const metadata = (event.metadata || {}) as Record<string, unknown>;
+    const country = typeof metadata.country === 'string' ? metadata.country.trim() : '';
+    const source = metadata.source;
+    if (country && source === 'supabase_gateway_cf_ipcountry' && !verifiedCountryByVisitor.has(event.visitor_id)) {
+      verifiedCountryByVisitor.set(event.visitor_id, country);
+    }
+  });
+
   profiles.forEach((p) => {
-    const country = p.country?.trim();
-    if (!country || country === 'Global' || country === 'Unknown') return;
+    // Do not trust the legacy profile.country column by itself. Only aggregate
+    // profiles with a server-generated verification event.
+    const country = p.visitor_id ? verifiedCountryByVisitor.get(p.visitor_id) : undefined;
+    if (!country) return;
 
     const item = countryMap.get(country) || { visitors: 0, registered: 0, paid: 0, toolUses: 0, revenue: 0 };
     item.visitors += 1;
