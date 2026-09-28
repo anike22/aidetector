@@ -635,11 +635,18 @@ export function CustomerIntelligencePage() {
 
           {/* 1. EXECUTIVE OVERVIEW */}
           <TabsContent value="overview" className="space-y-6">
-            <EnhancedOverviewTab
-              metrics={overviewMetrics}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
+            {liveLoading && liveData.profiles.length === 0 && liveData.events.length === 0 ? (
+              <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading live production telemetry…</p>
+              </div>
+            ) : (
+              <EnhancedOverviewTab
+                metrics={overviewMetrics}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            )}
           </TabsContent>
 
           {/* 2. CONVERSION FUNNEL */}
