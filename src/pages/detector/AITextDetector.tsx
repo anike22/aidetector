@@ -207,7 +207,7 @@ function DetectorDiagnosticsPanel({ result }: { result: BalancedDetectorResult }
 
 export default function AITextDetector() {
   const navigate = useNavigate();
-  const { trackToolUsage } = useCustomerDataPlatform();
+  const { trackToolUsage, trackEvent } = useCustomerDataPlatform();
   const { user, profile, refreshProfile } = useAuth();
   const { entitlement, refresh: refreshEntitlement } = useEntitlement(FEATURE_SLUG);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
@@ -344,6 +344,16 @@ export default function AITextDetector() {
           model: bResult.full.modelFamilies[0]?.family,
           ai_probability: bResult.ai,
           word_count: textToAnalyze.split(/\s+/).length,
+        });
+        trackEvent({
+          event_type: 'custom',
+          metadata: {
+            event_name: 'result_viewed',
+            tool: 'detector',
+            engine: 'balanced',
+            ai_probability: bResult.ai,
+            word_count: textToAnalyze.split(/\s+/).length,
+          },
         });
         trackLifecycleEvent('first_scan', {
           ai_probability: bResult.ai,

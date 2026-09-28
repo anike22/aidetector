@@ -194,97 +194,82 @@ export function computeConversionFunnel(
   }
 
   if (filters.trafficSource && filters.trafficSource !== 'all') {
-    filteredProfiles = filteredProfiles.filter((p) =>
-      p.first_channel?.toLowerCase().includes(filters.trafficSource!) ||
-      p.last_channel?.toLowerCase().includes(filters.trafficSource!)
+    const allowed = new Set(
+      filteredProfiles
+        .filter((p) =>
+          p.first_channel?.toLowerCase().includes(filters.trafficSource!) ||
+          p.last_channel?.toLowerCase().includes(filters.trafficSource!)
+        )
+        .map((p) => p.visitor_id)
+        .filter(Boolean)
     );
+    filteredProfiles = filteredProfiles.filter((p) => !p.visitor_id || allowed.has(p.visitor_id));
+    filteredEvents = filteredEvents.filter((e) => !e.visitor_id || allowed.has(e.visitor_id));
   }
+
+  const uniqueEventVisitors = (predicate: (event: LeadEvent) => boolean) =>
+    new Set(filteredEvents.filter(predicate).map((e) => e.visitor_id).filter(Boolean)).size;
 
   const profileVisitorIds = new Set(filteredProfiles.map((p) => p.visitor_id).filter(Boolean));
   const eventVisitorIds = new Set(filteredEvents.map((e) => e.visitor_id).filter(Boolean));
-  const totalVisitorsCount = Math.max(new Set([...profileVisitorIds, ...eventVisitorIds]).size, filteredProfiles.length);
+  const stage1_visitors = new Set([...profileVisitorIds, ...eventVisitorIds]).size;
 
-  // 1. Visitors
-  const stage1_visitors = totalVisitorsCount;
-
-  // 2. Tool Started
-  const toolVisitorIds = new Set(
-    filteredEvents
-      .filter((e) => ['tool_used', 'scan_started', 'custom', 'controls_applied'].includes(e.event_type))
-      .map((e) => e.visitor_id)
-  );
-  const profilesWithToolUsage = filteredProfiles.filter((p) => (p.tools_used_count || 0) > 0);
-  const stage2_toolStarted = Math.min(
-    stage1_visitors,
-    Math.max(toolVisitorIds.size, profilesWithToolUsage.length, Math.round(stage1_visitors * 0.76))
+  const stage2_toolStarted = uniqueEventVisitors((e) =>
+    ['tool_used', 'scan_started'].includes(e.event_type)
   );
 
-  // 3. Result Viewed
-  const stage3_resultViewed = Math.min(
-    stage2_toolStarted,
-    Math.max(
-      filteredEvents.filter((e) => e.event_type === 'result_viewed' || e.page?.includes('/detector')).length,
-      Math.round(stage2_toolStarted * 0.88)
-    )
+  const stage3_resultViewed = uniqueEventVisitors((e) =>
+    e.event_type === 'result_viewed' ||
+    (e.event_type === 'custom' && e.metadata?.event_name === 'result_viewed')
   );
 
-  // 4. Registration Started
-  const regStartedVisitors = new Set(
-    filteredEvents
-      .filter((e) => ['signup', 'registration_started'].includes(e.event_type) || e.page?.includes('/signup'))
-      .map((e) => e.visitor_id)
-  );
-  const stage4_regStarted = Math.min(
-    stage3_resultViewed,
-    Math.max(regStartedVisitors.size, Math.round(stage3_resultViewed * 0.28))
+  const stage4_regStarted = uniqueEventVisitors((e) =>
+    ['signup', 'registration_started'].includes(e.event_type)
   );
 
-  // 5. Registered
-  const registeredCount = filteredProfiles.filter((p) => !!p.user_id || !!p.email).length;
-  const stage5_registered = Math.min(stage4_regStarted, Math.max(registeredCount, Math.round(stage4_regStarted * 0.72)));
-
-  // 6. Pricing Viewed
-  const pricingVisitors = new Set(
-    filteredEvents
-      .filter((e) => e.page?.includes('/pricing') || e.event_type === 'pricing_viewed')
-      .map((e) => e.visitor_id)
-  );
-  const stage6_pricingViewed = Math.min(stage5_registered, Math.max(pricingVisitors.size, Math.round(stage5_registered * 0.65)));
-
-  // 7. Checkout Started
-  const checkoutVisitors = new Set(
-    filteredEvents.filter((e) => e.event_type === 'checkout_started').map((e) => e.visitor_id)
-  );
-  const stage7_checkoutStarted = Math.min(
-    stage6_pricingViewed,
-    Math.max(checkoutVisitors.size, Math.round(stage6_pricingViewed * 0.29))
+  const stage5_registered = uniqueEventVisitors((e) =>
+    e.event_type === 'registration_completed'
   );
 
-  // 8. Paid
-  const paidCount = filteredProfiles.filter(
+  const stage6_pricingViewed = uniqueEventVisitors((e) =>
+    e.event_type === 'pricing_viewed' ||
+    e.event_type === 'pricing_page_visit' ||
+    e.page === '/pricing'
+  );
+
+  const stage7_checkoutStarted = uniqueEventVisitors((e) =>
+    e.event_type === 'checkout_started' ||
+    (e.event_type === 'custom' && e.metadata?.event_name === 'checkout_started')
+  );
+
+  const paidEventVisitors = uniqueEventVisitors((e) =>
+    e.event_type === 'subscription_upgraded' ||
+    (e.event_type === 'custom' && ['payment_completed', 'subscription_activated'].includes(String(e.metadata?.event_name || '')))
+  );
+  const activePaidProfiles = filteredProfiles.filter(
     (p) =>
       p.subscription_plan &&
       p.subscription_plan.toLowerCase() !== 'free' &&
       p.subscription_status?.toLowerCase() === 'active'
   ).length;
-  const stage8_paid = Math.min(stage7_checkoutStarted, Math.max(paidCount, Math.round(stage7_checkoutStarted * 0.68)));
+  const stage8_paid = Math.max(paidEventVisitors, activePaidProfiles);
 
   const rawStages = [
-    { id: 'visitors', label: '1. Visitors', count: stage1_visitors, deltaPct: 14.8 },
-    { id: 'tool_started', label: '2. Tool Started', count: stage2_toolStarted, deltaPct: 16.2 },
-    { id: 'result_viewed', label: '3. Result Viewed', count: stage3_resultViewed, deltaPct: 15.0 },
-    { id: 'reg_started', label: '4. Registration Started', count: stage4_regStarted, deltaPct: 19.4 },
-    { id: 'registered', label: '5. Registered', count: stage5_registered, deltaPct: 18.4 },
-    { id: 'pricing_viewed', label: '6. Pricing Viewed', count: stage6_pricingViewed, deltaPct: 16.5 },
-    { id: 'checkout_started', label: '7. Checkout Started', count: stage7_checkoutStarted, deltaPct: 19.8 },
-    { id: 'paid', label: '8. Paid', count: stage8_paid, deltaPct: 24.3 },
+    { id: 'visitors', label: '1. Visitors', count: stage1_visitors },
+    { id: 'tool_started', label: '2. Tool Started', count: stage2_toolStarted },
+    { id: 'result_viewed', label: '3. Result Viewed', count: stage3_resultViewed },
+    { id: 'reg_started', label: '4. Registration Started', count: stage4_regStarted },
+    { id: 'registered', label: '5. Registered', count: stage5_registered },
+    { id: 'pricing_viewed', label: '6. Pricing Viewed', count: stage6_pricingViewed },
+    { id: 'checkout_started', label: '7. Checkout Started', count: stage7_checkoutStarted },
+    { id: 'paid', label: '8. Paid', count: stage8_paid },
   ];
 
   return rawStages.map((stage, idx) => {
     const prevCount = idx === 0 ? stage.count : rawStages[idx - 1].count;
-    const conversionRate = prevCount > 0 ? (stage.count / prevCount) * 100 : 100;
-    const overallConversionRate = stage1_visitors > 0 ? (stage.count / stage1_visitors) * 100 : 100;
-    const dropoffRate = idx === 0 ? 0 : 100 - conversionRate;
+    const conversionRate = idx === 0 ? 100 : prevCount > 0 ? (stage.count / prevCount) * 100 : 0;
+    const overallConversionRate = stage1_visitors > 0 ? (stage.count / stage1_visitors) * 100 : 0;
+    const dropoffRate = idx === 0 || prevCount === 0 ? 0 : Math.max(0, 100 - conversionRate);
 
     return {
       stageId: stage.id,
@@ -292,8 +277,8 @@ export function computeConversionFunnel(
       count: stage.count,
       conversionRate: Number(conversionRate.toFixed(1)),
       overallConversionRate: Number(overallConversionRate.toFixed(1)),
-      dropoffRate: Number(Math.max(0, dropoffRate).toFixed(1)),
-      deltaPct: stage.deltaPct,
+      dropoffRate: Number(dropoffRate.toFixed(1)),
+      deltaPct: 0,
     };
   });
 }
@@ -352,38 +337,12 @@ export function computePageAnalytics(events: LeadEvent[] = []): {
       const pageViews = data.views;
       const uniqueVisitors = data.visitors.size || (pageViews > 0 ? Math.round(pageViews * 0.75) : 0);
       
-      // Calculate realistic metrics
-      let avgTime = 180;
-      let bounceRate = 28.5;
-      let scrollDepth = 82;
-      let conversionRate = 4.8;
-      
-      if (path === '/' || path === '/detector' || path === '/ai-detector') {
-        avgTime = 194;
-        bounceRate = 28.4;
-        scrollDepth = 82;
-        conversionRate = 4.8;
-      } else if (path === '/humanizer') {
-        avgTime = 278;
-        bounceRate = 24.6;
-        scrollDepth = 84;
-        conversionRate = 6.4;
-      } else if (path === '/plagiarism-checker') {
-        avgTime = 232;
-        bounceRate = 31.2;
-        scrollDepth = 78;
-        conversionRate = 5.2;
-      } else if (path === '/pricing') {
-        avgTime = 142;
-        bounceRate = 18.2;
-        scrollDepth = 91;
-        conversionRate = 18.6;
-      } else if (path === '/seo-assistant') {
-        avgTime = 340;
-        bounceRate = 21.0;
-        scrollDepth = 88;
-        conversionRate = 7.8;
-      }
+      // Engagement metrics require dedicated duration/scroll/exit events.
+      // Never estimate them when those events are unavailable.
+      const avgTime = 0;
+      const bounceRate = 0;
+      const scrollDepth = 0;
+      const conversionRate = 0;
 
       const exitCount = Math.round(pageViews * (bounceRate / 200));
       const exitRatePct = pageViews > 0 ? Number(((exitCount / pageViews) * 100).toFixed(1)) : 0;
@@ -398,22 +357,14 @@ export function computePageAnalytics(events: LeadEvent[] = []): {
         exitCount,
         exitRatePct,
         scrollDepthAvgPct: scrollDepth,
-        ctaClicks: Math.max(data.ctaClicks, Math.round(pageViews * 0.25)),
+        ctaClicks: data.ctaClicks,
         conversionRatePct: conversionRate,
       };
     })
     .sort((a, b) => b.pageViews - a.pageViews)
     .slice(0, 15);
 
-  const paths: NavigationPathItem[] = [
-    { fromPath: 'Google Organic', toPath: '/detector', frequency: 2270, conversionRatePct: 4.9 },
-    { fromPath: '/detector', toPath: '/pricing', frequency: 546, conversionRatePct: 18.4 },
-    { fromPath: '/detector', toPath: '/plagiarism-checker', frequency: 214, conversionRatePct: 6.8 },
-    { fromPath: '/humanizer', toPath: '/signup', frequency: 191, conversionRatePct: 33.9 },
-    { fromPath: '/ai-checker-for-bloggers', toPath: '/seo-assistant', frequency: 130, conversionRatePct: 14.5 },
-    { fromPath: '/pricing', toPath: 'Checkout Completed (Paid)', frequency: 84, conversionRatePct: 100.0 },
-    { fromPath: '/pricing', toPath: 'Exit (Abandonment)', frequency: 18, conversionRatePct: 0.0 },
-  ];
+  const paths: NavigationPathItem[] = [];
 
   return { pages, paths };
 }
@@ -426,45 +377,32 @@ export function computeToolIntelligence(
   events: LeadEvent[] = [],
   detectorResultsCount: number = 0
 ): ToolIntelligenceItem[] {
-  const detectorScans = Math.max(
-    detectorResultsCount,
-    events.filter((e) => e.page === '/detector' || e.page === '/' || e.event_type === 'tool_used').length,
-    546
-  );
+  const detectorScans = Math.max(detectorResultsCount, events.filter((e) => e.page === '/detector' || e.page === '/' || e.event_type === 'tool_used').length);
 
-  const humanizerScans = Math.max(
-    events.filter((e) => e.page === '/humanizer' || e.event_type === 'humanizer_used').length,
-    214
-  );
+  const humanizerScans = events.filter((e) => e.page === '/humanizer' || e.event_type === 'humanizer_used').length;
 
-  const plagiarismScans = Math.max(
-    events.filter((e) => e.page === '/plagiarism-checker').length,
-    116
-  );
+  const plagiarismScans = events.filter((e) => e.page === '/plagiarism-checker').length;
 
-  const seoScans = Math.max(
-    events.filter((e) => e.page === '/seo-assistant' || e.page === '/ai-checker-for-bloggers').length,
-    130
-  );
+  const seoScans = events.filter((e) => e.page === '/seo-assistant' || e.page === '/ai-checker-for-bloggers').length;
 
-  const totalRegistered = profiles.filter((p) => !!p.user_id || !!p.email).length || 46;
-  const totalPaid = profiles.filter((p) => p.subscription_plan && p.subscription_plan !== 'free').length || 3;
+  const totalRegistered = profiles.filter((p) => !!p.user_id || !!p.email).length;
+  const totalPaid = profiles.filter((p) => p.subscription_plan && p.subscription_plan !== 'free').length;
 
   return [
     {
       toolId: 'ai_detector',
       name: 'AI Text Detector',
       icon: 'ShieldCheck',
-      uniqueUsers: Math.max(744, profiles.length),
+      uniqueUsers: profiles.length,
       totalUses: detectorScans,
       successfulCompletions: Math.round(detectorScans * 0.985),
       failedOperations: Math.round(detectorScans * 0.015),
       anonymousUsers: Math.max(0, profiles.length - totalRegistered),
       registeredUsers: totalRegistered,
       paidUsers: totalPaid,
-      avgUsagePerUser: 2.9,
-      registrationConversionRate: 28.8,
-      paidConversionRate: 5.9,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'humanizer',
@@ -477,9 +415,9 @@ export function computeToolIntelligence(
       anonymousUsers: Math.round(humanizerScans * 0.5),
       registeredUsers: Math.round(humanizerScans * 0.35),
       paidUsers: Math.round(totalPaid * 0.6),
-      avgUsagePerUser: 2.3,
-      registrationConversionRate: 33.9,
-      paidConversionRate: 8.4,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'plagiarism_checker',
@@ -492,9 +430,9 @@ export function computeToolIntelligence(
       anonymousUsers: Math.round(plagiarismScans * 0.55),
       registeredUsers: Math.round(plagiarismScans * 0.3),
       paidUsers: Math.round(totalPaid * 0.4),
-      avgUsagePerUser: 2.5,
-      registrationConversionRate: 32.0,
-      paidConversionRate: 7.2,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'seo_assistant',
@@ -507,54 +445,54 @@ export function computeToolIntelligence(
       anonymousUsers: Math.round(seoScans * 0.3),
       registeredUsers: Math.round(seoScans * 0.5),
       paidUsers: totalPaid,
-      avgUsagePerUser: 2.8,
-      registrationConversionRate: 48.6,
-      paidConversionRate: 12.0,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'image_detector',
       name: 'AI Image Detector',
       icon: 'Image',
-      uniqueUsers: 48,
-      totalUses: 96,
-      successfulCompletions: 94,
-      failedOperations: 2,
-      anonymousUsers: 36,
-      registeredUsers: 12,
-      paidUsers: 2,
-      avgUsagePerUser: 2.0,
-      registrationConversionRate: 27.0,
-      paidConversionRate: 7.4,
+      uniqueUsers: 0,
+      totalUses: 0,
+      successfulCompletions: 0,
+      failedOperations: 0,
+      anonymousUsers: 0,
+      registeredUsers: 0,
+      paidUsers: 0,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'video_detector',
       name: 'AI Video Detector',
       icon: 'Video',
-      uniqueUsers: 32,
-      totalUses: 54,
-      successfulCompletions: 52,
-      failedOperations: 2,
-      anonymousUsers: 24,
-      registeredUsers: 8,
-      paidUsers: 1,
-      avgUsagePerUser: 1.7,
-      registrationConversionRate: 27.2,
-      paidConversionRate: 9.6,
+      uniqueUsers: 0,
+      totalUses: 0,
+      successfulCompletions: 0,
+      failedOperations: 0,
+      anonymousUsers: 0,
+      registeredUsers: 0,
+      paidUsers: 0,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
     {
       toolId: 'summarizer',
       name: 'AI Summarizer',
       icon: 'FileText',
-      uniqueUsers: 64,
-      totalUses: 112,
-      successfulCompletions: 110,
-      failedOperations: 2,
-      anonymousUsers: 44,
-      registeredUsers: 18,
-      paidUsers: 2,
-      avgUsagePerUser: 1.8,
-      registrationConversionRate: 28.1,
-      paidConversionRate: 6.2,
+      uniqueUsers: 0,
+      totalUses: 0,
+      successfulCompletions: 0,
+      failedOperations: 0,
+      anonymousUsers: 0,
+      registeredUsers: 0,
+      paidUsers: 0,
+      avgUsagePerUser: 0,
+      registrationConversionRate: 0,
+      paidConversionRate: 0,
     },
   ];
 }

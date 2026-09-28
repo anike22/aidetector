@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCustomerDataPlatform } from '@/contexts/CustomerDataPlatformContext';
 import { supabase } from '@/db/supabase';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -206,6 +207,7 @@ const FAQS = [
 export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const { user, profile } = useAuth();
+  const { trackEvent } = useCustomerDataPlatform();
   const { summary: billingSummary, refresh: refreshEntitlements } = useEntitlement('ai_detector');
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -213,7 +215,8 @@ export default function PricingPage() {
 
   useEffect(() => {
     trackLifecycleEvent('pricing_page_visit');
-  }, []);
+    trackEvent({ event_type: 'custom', metadata: { event_name: 'pricing_viewed' } });
+  }, [trackEvent]);
 
   const handleAction = async (planId: string) => {
     if (!user) {
@@ -238,6 +241,7 @@ export default function PricingPage() {
 
       const { data: { session } } = await supabase.auth.getSession();
       trackLifecycleEvent('upgrade_to_pro', { plan: planId, billing, amount });
+      trackEvent({ event_type: 'custom', metadata: { event_name: 'checkout_started', plan: planId, billing, amount } });
 
       const res = await supabase.functions.invoke('paystack-checkout', {
         body: {
