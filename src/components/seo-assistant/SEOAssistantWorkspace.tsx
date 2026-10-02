@@ -801,6 +801,80 @@ export function SEOAssistantWorkspace({
     }
   };
 
+  // Open History. Backfill the currently active Blogger analysis first so
+  // sessions completed before history persistence was introduced are not lost.
+  const handleOpenHistory = useCallback(() => {
+    if (
+      isBloggerMode &&
+      isBloggerCreditsCharged &&
+      content.trim() &&
+      content !== DEFAULT_PLACEHOLDER
+    ) {
+      try {
+        const analysisData = executeAnalysisComputation(
+          content,
+          keyword,
+          aiLinksActive,
+          aiGrammarActive,
+          bloggerTitle
+        );
+        if (analysisData) {
+          const historyItem: SEOAnalysisHistoryItem = {
+            id: `seo_current_${generateContentHash(content, keyword)}`,
+            title: bloggerTitle.trim() || extractArticleTitle(content, keyword),
+            keyword: keyword.trim(),
+            wordCount,
+            creditCost: 30,
+            content,
+            scores: analysisData.computed,
+            snapshot: {
+              kwResult: analysisData.kwr,
+              semanticResult: analysisData.sem,
+              intentResult: analysisData.intent,
+              readabilityResult: analysisData.read,
+              sentenceResult: analysisData.sent,
+              paraResult: analysisData.para,
+              transitionResult: analysisData.trans,
+              grammarResult: analysisData.gram,
+              headingResult: analysisData.head,
+              eeatResult: analysisData.eeat,
+              engagementResult: analysisData.eng,
+              snippetResult: analysisData.snip,
+              aiRiskResult: analysisData.risk,
+              uniquenessResult: analysisData.uniq,
+              metaResult: analysisData.meta,
+              balancedResult,
+              plagiarismResult,
+              authorshipResult,
+            },
+            createdAt: Date.now(),
+            contentHash: generateContentHash(content, keyword),
+            bloggerSession: {
+              primaryKeyword: keyword,
+              relatedKeywords: [...bloggerRelatedKeywords],
+              title: bloggerTitle,
+              step: bloggerStep,
+              isKeywordsLocked,
+              isTitleLocked,
+              isCreditsCharged: true,
+              metrics: bloggerMetrics || undefined,
+            },
+          };
+          saveSEOAssistantHistoryItem(historyItem);
+          setHistoryCount(getSEOAssistantHistory().length);
+        }
+      } catch (err) {
+        console.error('Failed to backfill current Blogger analysis into History:', err);
+      }
+    }
+    setHistoryOpen(true);
+  }, [
+    isBloggerMode, isBloggerCreditsCharged, content, keyword, aiLinksActive,
+    aiGrammarActive, bloggerTitle, wordCount, bloggerRelatedKeywords, bloggerStep,
+    isKeywordsLocked, isTitleLocked, bloggerMetrics, balancedResult,
+    plagiarismResult, authorshipResult, executeAnalysisComputation
+  ]);
+
   // Restore analysis from History (100% free, 0 credits)
   const handleRestoreFromHistory = useCallback((item: SEOAnalysisHistoryItem) => {
     setContent(item.content);
@@ -1880,7 +1954,7 @@ Return ONLY valid JSON:
               size="sm"
               variant="outline"
               className="h-8 text-xs border-border gap-1 text-muted-foreground hover:text-foreground"
-              onClick={() => setHistoryOpen(true)}
+              onClick={handleOpenHistory}
               title="Open past analyses (free)"
             >
               <History className="w-3.5 h-3.5" />
