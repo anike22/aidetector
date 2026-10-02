@@ -87,8 +87,17 @@ export default function AdminContentSection() {
     }
   };
 
-  const handleSavePost = async (e: React.FormEvent) => {
+  const handleSavePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Only the explicit Save/Update Post button may submit this parent form.
+    // Rich-text dialogs (link/image), file pickers, and mobile keyboard actions
+    // must never close the editor by accidentally submitting the post.
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    if (!submitter?.hasAttribute('data-post-save')) {
+      return;
+    }
+
     if (isEditorUploading) {
       toast.error('Please wait for inline image uploads to complete before saving.');
       return;
@@ -332,7 +341,7 @@ export default function AdminContentSection() {
                           Image upload in progress...
                         </span>
                       )}
-                      <Button type="submit" disabled={saving || isEditorUploading}>
+                      <Button type="submit" data-post-save disabled={saving || isEditorUploading}>
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         {editingPost.id && !editingPost.id.toString().startsWith('hc-') ? 'Update Post' : 'Save Post'}
                       </Button>
