@@ -412,7 +412,56 @@ export function SEOAssistantWorkspace({
 
       setIsAnalyzed(true);
       setIsStale(false);
-      executeAnalysisComputation(effectiveContent, keyword, aiLinksActive, false, cleanTitle);
+      const analysisData = executeAnalysisComputation(effectiveContent, keyword, aiLinksActive, false, cleanTitle);
+
+      // A Blogger analysis is already paid for and executed when the title is locked.
+      // Persist it immediately so History reflects the completed analysis without
+      // requiring a second billable action or forcing the user to press Start New.
+      if (analysisData) {
+        const historyItem: SEOAnalysisHistoryItem = {
+          id: `seo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          title: cleanTitle,
+          keyword: keyword.trim(),
+          wordCount: effectiveContent.split(/\s+/).filter(Boolean).length,
+          creditCost: res.isTrialCheck ? 0 : cost,
+          content: effectiveContent,
+          scores: analysisData.computed,
+          snapshot: {
+            kwResult: analysisData.kwr,
+            semanticResult: analysisData.sem,
+            intentResult: analysisData.intent,
+            readabilityResult: analysisData.read,
+            sentenceResult: analysisData.sent,
+            paraResult: analysisData.para,
+            transitionResult: analysisData.trans,
+            grammarResult: analysisData.gram,
+            headingResult: analysisData.head,
+            eeatResult: analysisData.eeat,
+            engagementResult: analysisData.eng,
+            snippetResult: analysisData.snip,
+            aiRiskResult: analysisData.risk,
+            uniquenessResult: analysisData.uniq,
+            metaResult: analysisData.meta,
+            balancedResult,
+            plagiarismResult,
+            authorshipResult,
+          },
+          createdAt: Date.now(),
+          contentHash: generateContentHash(effectiveContent, keyword),
+          bloggerSession: {
+            primaryKeyword: keyword,
+            relatedKeywords: [...bloggerRelatedKeywords],
+            title: cleanTitle,
+            step: 3,
+            isKeywordsLocked: true,
+            isTitleLocked: true,
+            isCreditsCharged: true,
+            metrics: bloggerMetrics || undefined,
+          },
+        };
+        saveSEOAssistantHistoryItem(historyItem);
+        setHistoryCount(getSEOAssistantHistory().length);
+      }
 
       saveBloggerSession({
         step: 3,
