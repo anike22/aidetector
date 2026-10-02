@@ -1,6 +1,6 @@
-import { HelmetProvider, Helmet } from "react-helmet-async";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ReactNode } from "react";
+import { Helmet, HelmetProvider } from "react-helmet-async";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface PageMetaProps {
   title: string;
@@ -35,7 +35,7 @@ const PageMeta = ({
       <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     )}
     
-    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl.replace("https://aidetector.cx", "https://www.aidetector.cx")} />}
     
     {/* OpenGraph */}
     <meta property="og:site_name" content="AIDetector.cx" />
@@ -43,7 +43,7 @@ const PageMeta = ({
     <meta property="og:description" content={ogDescription || description} />
     <meta property="og:type" content={ogType} />
     <meta property="og:image" content={ogImage} />
-    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl.replace("https://aidetector.cx", "https://www.aidetector.cx")} />}
     
     {/* Twitter */}
     <meta name="twitter:card" content="summary_large_image" />

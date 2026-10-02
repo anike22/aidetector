@@ -1,23 +1,24 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import IntersectObserver from '@/components/common/IntersectObserver';
-import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { LeadCaptureProvider } from '@/contexts/LeadCaptureContext';
-import { CustomerDataPlatformProvider } from '@/contexts/CustomerDataPlatformContext';
-import { LifecycleProvider, useLifecycle } from '@/contexts/LifecycleContext';
-import { AutomationProvider } from '@/contexts/AutomationContext';
-import { PersonalizationProvider } from '@/contexts/PersonalizationContext';
-import { TeamProvider } from '@/contexts/TeamContext';
-import { DirectoryCompareProvider } from '@/context/DirectoryCompareContext';
+import RouteIndexing from '@/components/common/RouteIndexing';
+import RouteMeta from '@/components/common/RouteMeta';
 import { LeadCaptureModal } from '@/components/lead-capture/LeadCaptureModal';
 import { VisitorTracker } from '@/components/lead-capture/VisitorTracker';
-import { SuccessCelebrationManager } from '@/components/lifecycle/SuccessCelebration';
 import { NotificationBell } from '@/components/lifecycle/NotificationBell';
 import { ProductTourManager } from '@/components/lifecycle/ProductTour';
+import { SuccessCelebrationManager } from '@/components/lifecycle/SuccessCelebration';
 import { SmartAssistant } from '@/components/personalization/SmartAssistant';
-
-import { routes } from './routes';
 import RouteErrorBoundary from '@/components/RouteErrorBoundary';
+import { Toaster } from '@/components/ui/sonner';
+import { DirectoryCompareProvider } from '@/context/DirectoryCompareContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { AutomationProvider } from '@/contexts/AutomationContext';
+import { CustomerDataPlatformProvider } from '@/contexts/CustomerDataPlatformContext';
+import { LeadCaptureProvider } from '@/contexts/LeadCaptureContext';
+import { LifecycleProvider, useLifecycle } from '@/contexts/LifecycleContext';
+import { PersonalizationProvider } from '@/contexts/PersonalizationContext';
+import { TeamProvider } from '@/contexts/TeamContext';
+import { routes } from './routes';
 
 function LifecycleUI() {
   const { celebrations, clearCelebration } = useLifecycle();
@@ -52,13 +53,16 @@ const App = () => {
                                 key={index}
                                 path={route.path}
                                 element={
-                                  route.errorElement ? (
+                                  <>
+                                    <RouteMeta name={route.name} />
+                                    {route.errorElement ? (
                                     <RouteErrorBoundary fallback={route.errorElement}>
                                       {route.element}
                                     </RouteErrorBoundary>
                                   ) : (
                                     route.element
-                                  )
+                                    )}
+                                  </>
                                 }
                               />
                             ))}
@@ -66,6 +70,7 @@ const App = () => {
                           </Routes>
                         </main>
                       </div>
+                      <RouteIndexing />
                       <LeadCaptureModal />
                     </DirectoryCompareProvider>
                   </TeamProvider>

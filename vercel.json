@@ -1,5 +1,394 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/",
+      "destination": "/prerender/home/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/prerender/about/index.html"
+    },
+    {
+      "source": "/affiliate-hub",
+      "destination": "/prerender/affiliate-hub/index.html"
+    },
+    {
+      "source": "/ai-checker-for-bloggers",
+      "destination": "/prerender/ai-checker-for-bloggers/index.html"
+    },
+    {
+      "source": "/ai-image-detector",
+      "destination": "/prerender/ai-image-detector/index.html"
+    },
+    {
+      "source": "/ai-summarizer",
+      "destination": "/prerender/ai-summarizer/index.html"
+    },
+    {
+      "source": "/ai-video-detector",
+      "destination": "/prerender/ai-video-detector/index.html"
+    },
+    {
+      "source": "/api",
+      "destination": "/prerender/api/index.html"
+    },
+    {
+      "source": "/api/docs",
+      "destination": "/prerender/api/docs/index.html"
+    },
+    {
+      "source": "/authorship",
+      "destination": "/prerender/authorship/index.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/prerender/blog/index.html"
+    },
+    {
+      "source": "/blog/chatgpt-5-claude-3-5-gemini-ai-detection",
+      "destination": "/prerender/blog/chatgpt-5-claude-3-5-gemini-ai-detection/index.html"
+    },
+    {
+      "source": "/blog/how-our-ai-detector-works",
+      "destination": "/prerender/blog/how-our-ai-detector-works/index.html"
+    },
+    {
+      "source": "/blog/perplexity-ai-detection-predictable-next-word-choices",
+      "destination": "/prerender/blog/perplexity-ai-detection-predictable-next-word-choices/index.html"
+    },
+    {
+      "source": "/blog/simply-humanizer-undetectable-ai-trick-scanners",
+      "destination": "/prerender/blog/simply-humanizer-undetectable-ai-trick-scanners/index.html"
+    },
+    {
+      "source": "/blog/what-percentage-of-ai-detection-is-allowed-in-college",
+      "destination": "/prerender/blog/what-percentage-of-ai-detection-is-allowed-in-college/index.html"
+    },
+    {
+      "source": "/chrome-extension",
+      "destination": "/prerender/chrome-extension/index.html"
+    },
+    {
+      "source": "/comparisons",
+      "destination": "/prerender/comparisons/index.html"
+    },
+    {
+      "source": "/comparisons/chatgpt-detector-comparison",
+      "destination": "/prerender/comparisons/chatgpt-detector-comparison/index.html"
+    },
+    {
+      "source": "/comparisons/turnitin-vs-aidetector-cx",
+      "destination": "/prerender/comparisons/turnitin-vs-aidetector-cx/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/prerender/contact/index.html"
+    },
+    {
+      "source": "/cookies",
+      "destination": "/prerender/cookies/index.html"
+    },
+    {
+      "source": "/detector",
+      "destination": "/prerender/detector/index.html"
+    },
+    {
+      "source": "/guides",
+      "destination": "/prerender/guides/index.html"
+    },
+    {
+      "source": "/guides/best-ai-detector",
+      "destination": "/prerender/guides/best-ai-detector/index.html"
+    },
+    {
+      "source": "/guides/can-universities-detect-chatgpt",
+      "destination": "/prerender/guides/can-universities-detect-chatgpt/index.html"
+    },
+    {
+      "source": "/guides/how-ai-detection-works",
+      "destination": "/prerender/guides/how-ai-detection-works/index.html"
+    },
+    {
+      "source": "/guides/why-was-my-essay-flagged-as-ai",
+      "destination": "/prerender/guides/why-was-my-essay-flagged-as-ai/index.html"
+    },
+    {
+      "source": "/guides/words-that-trigger-ai-detection",
+      "destination": "/prerender/guides/words-that-trigger-ai-detection/index.html"
+    },
+    {
+      "source": "/humanizer",
+      "destination": "/prerender/humanizer/index.html"
+    },
+    {
+      "source": "/plagiarism-checker",
+      "destination": "/prerender/plagiarism-checker/index.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/prerender/pricing/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/prerender/privacy/index.html"
+    },
+    {
+      "source": "/research",
+      "destination": "/prerender/research/index.html"
+    },
+    {
+      "source": "/research/ai-detection-accuracy-tests",
+      "destination": "/prerender/research/ai-detection-accuracy-tests/index.html"
+    },
+    {
+      "source": "/research/avoid-false-positives-institutional-ai-detectors",
+      "destination": "/prerender/research/avoid-false-positives-institutional-ai-detectors/index.html"
+    },
+    {
+      "source": "/research/gpt-5-vs-gemini-detection",
+      "destination": "/prerender/research/gpt-5-vs-gemini-detection/index.html"
+    },
+    {
+      "source": "/seo-assistant",
+      "destination": "/prerender/seo-assistant/index.html"
+    },
+    {
+      "source": "/studies/authentic-video-false-positives",
+      "destination": "/prerender/studies/authentic-video-false-positives/index.html"
+    },
+    {
+      "source": "/studies/whatsapp-compression-ai-video",
+      "destination": "/prerender/studies/whatsapp-compression-ai-video/index.html"
+    },
+    {
+      "source": "/studies/why-tiktok-flagged-my-real-video",
+      "destination": "/prerender/studies/why-tiktok-flagged-my-real-video/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/prerender/terms/index.html"
+    },
+    {
+      "source": "/tools",
+      "destination": "/prerender/tools/index.html"
+    },
+    {
+      "source": "/word-counter",
+      "destination": "/prerender/word-counter/index.html"
+    },
+    {
+      "source": "/wordpress-plugin",
+      "destination": "/prerender/wordpress-plugin/index.html"
+    },
+    {
+      "source": "/((?!assets/|.*\\.[^/]+$).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "buildCommand": "npm run build:production",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/image-detector",
+      "destination": "/ai-image-detector",
+      "permanent": true
+    },
+    {
+      "source": "/video-detector",
+      "destination": "/ai-video-detector",
+      "permanent": true
+    },
+    {
+      "source": "/api-platform",
+      "destination": "/api",
+      "permanent": true
+    },
+    {
+      "source": "/guides/understanding-ai-detection-scores",
+      "destination": "/guides/how-ai-detection-works",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/admin/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/dashboard/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/account/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/settings/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/essay-studio/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/content-studio/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/organizations/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/workspaces/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/reports/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/prospecting/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/api/dashboard/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/authorship/dashboard/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/humanizer/history/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/login/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/signup/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/register/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/reset-password/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/payment-success/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/payment-cancel/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    }
   ]
 }

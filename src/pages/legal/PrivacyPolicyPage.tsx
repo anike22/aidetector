@@ -1,6 +1,6 @@
+import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'react-router-dom';
 
 const sections = [
   {
@@ -17,7 +17,7 @@ const sections = [
       },
       {
         subtitle: 'Payment Information',
-        text: 'Billing is processed by Stripe. We store only your plan tier and billing period. We never see or store full card numbers, CVVs, or bank details.',
+        text: 'Billing is processed by Paystack. We store only your plan tier and billing period. We never see or store full card numbers, CVVs, or bank details.',
       },
       {
         subtitle: 'Device & Technical Data',
@@ -53,7 +53,7 @@ const sections = [
       },
       {
         subtitle: 'Service Providers',
-        text: 'We share data with trusted vendors who help operate our platform: Supabase (database), Stripe (payments), Resend (email), Sentry (error monitoring), and Cloudflare (infrastructure). Each is bound by data processing agreements.',
+        text: 'We share data with trusted vendors who help operate our platform: Supabase (database), Paystack (payments), Resend (email), Sentry (error monitoring), and Cloudflare (infrastructure). Each is bound by data processing agreements.',
       },
       {
         subtitle: 'Legal Requirements',
@@ -112,6 +112,20 @@ const sections = [
     ],
   },
   {
+    id: 'advertising',
+    title: 'Advertising & Google AdSense',
+    content: [
+      {
+        subtitle: 'Advertising technologies',
+        text: 'If Google AdSense ads are enabled on this website, Google and other third-party advertising vendors may use cookies, web beacons, IP addresses and other identifiers to collect and use information for ad serving, measurement and fraud prevention. Third parties may place and read cookies in your browser as a result of ad serving.',
+      },
+      {
+        subtitle: 'Personalized advertising and your choices',
+        text: 'Google advertising cookies enable Google and its partners to serve ads based on visits to this website and other websites. You can manage personalized advertising at https://www.google.com/settings/ads and learn about third-party opt-outs at https://www.aboutads.info/choices/. Learn how Google uses information at https://policies.google.com/technologies/partner-sites. Where required, advertising technologies must only be enabled after the applicable consent requirements have been met.',
+      },
+    ],
+  },
+  {
     id: 'security',
     title: '7. Security',
     content: [
@@ -155,7 +169,7 @@ export default function PrivacyPolicyPage() {
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           <Badge className="bg-primary/20 text-primary border-primary/30 mb-5">Legal</Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-3 text-balance">Privacy Policy</h1>
-          <p className="text-white/60 text-sm">Last Updated: June 1, 2026 · Effective: June 1, 2026</p>
+          <p className="text-white/60 text-sm">Last Updated: October 2, 2026 · Effective: October 2, 2026</p>
         </div>
       </section>
 
