@@ -8,6 +8,7 @@ import type {
 import type { BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
 import type { PlagiarismAnalysisResult } from '@/pages/detector/detectionEngine';
 import type { RegisterResult } from '@/lib/verifiedAuthorship/authorshipService';
+import { supabase } from '@/db/supabase';
 
 export interface SEOAnalysisSnapshot {
   kwResult: KeywordUsageResult;
@@ -144,5 +145,93 @@ export function clearSEOAssistantHistory(): void {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
     console.error('Failed to clear SEO history:', e);
+  }
+}
+
+
+/**
+ * Account-synced history. Supabase is authoritative for signed-in users;
+ * localStorage remains a cache/fallback for guests and temporary network failures.
+ */
+export async function getSyncedSEOAssistantHistory(): Promise<SEOAnalysisHistoryItem[]> {
+  const local = getSEOAssistantHistory();
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return local;
+    const { data, error } = await supabase
+      .from('seo_analysis_history')
+      .select('payload')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(MAX_HISTORY_ITEMS);
+    if (error) throw error;
+    const remote = (data || []).map((row: any) => row.payload as SEOAnalysisHistoryItem).filter(Boolean);
+    // Migrate any device-local entries into the account and merge by content hash.
+    for (const item of local) {
+      if (!remote.some(r => r.contentHash === item.contentHash)) {
+        await saveSyncedSEOAssistantHistoryItem(item);
+        remote.push(item);
+      }
+    }
+    const merged = remote
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .filter((item, index, arr) => arr.findIndex(x => x.contentHash === item.contentHash) === index)
+      .slice(0, MAX_HISTORY_ITEMS);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
+  } catch (e) {
+    console.error('Failed to load synced SEO history; using local cache:', e);
+    return local;
+  }
+}
+
+export async function saveSyncedSEOAssistantHistoryItem(item: SEOAnalysisHistoryItem): Promise<void> {
+  saveSEOAssistantHistoryItem(item);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('seo_analysis_history')
+      .upsert({
+        user_id: user.id,
+        content_hash: item.contentHash,
+        payload: item,
+        created_at: new Date(item.createdAt).toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,content_hash' });
+    if (error) throw error;
+  } catch (e) {
+    console.error('Failed to sync SEO history item:', e);
+  }
+}
+
+export async function deleteSyncedSEOAssistantHistoryItem(id: string): Promise<SEOAnalysisHistoryItem[]> {
+  const updated = deleteSEOAssistantHistoryItem(id);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from('seo_analysis_history')
+        .delete()
+        .eq('user_id', user.id)
+        .filter('payload->>id', 'eq', id);
+      if (error) throw error;
+    }
+  } catch (e) {
+    console.error('Failed to delete synced SEO history item:', e);
+  }
+  return updated;
+}
+
+export async function clearSyncedSEOAssistantHistory(): Promise<void> {
+  clearSEOAssistantHistory();
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('seo_analysis_history').delete().eq('user_id', user.id);
+      if (error) throw error;
+    }
+  } catch (e) {
+    console.error('Failed to clear synced SEO history:', e);
   }
 }
