@@ -8,7 +8,7 @@
     "lint": "tsgo -p tsconfig.check.json; npx biome lint; .rules/check.sh;npx tailwindcss -i ./src/index.css -o /dev/null 2>&1 | grep -E '^(CssSyntaxError|Error):.*' || true;.rules/testBuild.sh",
     "test:regression": "deno test --no-check --allow-all supabase/functions/_shared/detection/tests/ tests/subscription.test.ts",
     "test:billing": "node tests/billing/database.cjs",
-    "build:production": "node scripts/prepare-public-seo.mjs && vite build && playwright install chromium && node scripts/prerender-public.mjs && node scripts/verify-public-seo.mjs",
+    "build:production": "node scripts/prepare-public-seo.mjs && vite build && node scripts/prerender-public.mjs && node scripts/verify-public-seo.mjs",
     "seo:prepare": "node scripts/prepare-public-seo.mjs",
     "seo:verify": "node scripts/verify-public-seo.mjs"
   },
@@ -101,6 +101,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
     "@electric-sql/pglite": "^0.5.8",
+    "@sparticuz/chromium": "133.0.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "@testing-library/jest-dom": "^6.10.0",
     "@testing-library/react": "^16.3.2",

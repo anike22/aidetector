@@ -1,6 +1,6 @@
 # Public crawl and AdSense preparation
 
-The production Vercel project builds with `npm run build:production`. This prepares the reviewed public sitemap, builds the existing Vite application, installs the pinned browser, saves rendered anonymous HTML, and verifies the resulting HTML and route rewrites. Production must retain its existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` configuration. Never supply a service-role key to this client build.
+The production Vercel project builds with `npm run build:production`. This prepares the reviewed public sitemap, builds the existing Vite application, uses packaged server-compatible Chromium, saves rendered anonymous HTML, and verifies the resulting HTML and route rewrites. Production must retain its existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` configuration. Never supply a service-role key to this client build.
 
 Public snapshots use the actual application and published article data. The build blocks writes, usage deductions and advertising requests. It rejects redirected pages, pages marked noindex, missing headings and common unavailable/not-found screens. Rendering failures stop deployment rather than silently publishing an empty shell. Public content changes in the database need a new deployment to refresh the initial HTML snapshot; the interactive app still reads current content normally.
 

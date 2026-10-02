@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import serverChromium from '@sparticuz/chromium';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -20,7 +21,7 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 let browser;
 try {
-  browser = await chromium.launch({headless:true, args:['--no-sandbox']});
+  browser = await chromium.launch({headless:true, executablePath:await serverChromium.executablePath(), args:serverChromium.args.filter(arg => !['--single-process', '--disable-web-security', '--allow-running-insecure-content'].includes(arg))});
   async function renderPage(pathname) {
     const context = await browser.newContext();
     // No build-time visitors, lead submissions, usage deductions, ads or analytics.
