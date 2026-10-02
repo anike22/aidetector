@@ -20,4 +20,5 @@ for (const url of urls) {
   assert(!/name="robots"[^>]*noindex/.test(html), `Noindex: ${url}`);
   assert(!/pagead2\.googlesyndication\.com/.test(html), `Global ad script: ${url}`);
 }
+assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
