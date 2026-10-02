@@ -75,6 +75,8 @@ try {
       try { await renderPage(pathname); } catch (error) { throw new Error(`Prerender failed for ${pathname}: ${error.message}`, {cause:error}); }
     }
   }));
+  // Vercel serves the physical root index before rewrites.
+  await writeFile(path.join(dist, 'index.html'), await readFile(path.join(dist, 'prerender/home/index.html')));
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
