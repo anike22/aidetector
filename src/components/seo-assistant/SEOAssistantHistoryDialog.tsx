@@ -8,9 +8,9 @@ import {
   History, Trash2, Calendar, FileText, ArrowRight, ShieldCheck, Sparkles, AlertCircle
 } from 'lucide-react';
 import {
-  getSEOAssistantHistory,
-  deleteSEOAssistantHistoryItem,
-  clearSEOAssistantHistory,
+  getSyncedSEOAssistantHistory,
+  deleteSyncedSEOAssistantHistoryItem,
+  clearSyncedSEOAssistantHistory,
   type SEOAnalysisHistoryItem
 } from '@/lib/seoAssistantHistory';
 import { toast } from 'sonner';
@@ -30,8 +30,8 @@ export function SEOAssistantHistoryDialog({
 }: SEOAssistantHistoryDialogProps) {
   const [items, setItems] = useState<SEOAnalysisHistoryItem[]>([]);
 
-  const loadHistory = () => {
-    setItems(getSEOAssistantHistory());
+  const loadHistory = async () => {
+    setItems(await getSyncedSEOAssistantHistory());
   };
 
   useEffect(() => {
@@ -40,17 +40,18 @@ export function SEOAssistantHistoryDialog({
     }
   }, [open]);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = deleteSEOAssistantHistoryItem(id);
+    await deleteSyncedSEOAssistantHistoryItem(id);
+    const updated = await getSyncedSEOAssistantHistory();
     setItems(updated);
     toast.success('History entry removed.');
     onHistoryChange?.();
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to clear your entire analysis history? This action cannot be undone.')) {
-      clearSEOAssistantHistory();
+      await clearSyncedSEOAssistantHistory();
       setItems([]);
       toast.success('All history cleared.');
       onHistoryChange?.();
