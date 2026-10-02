@@ -29,6 +29,7 @@ import { reserveEntitlement, finalizeReservation } from '@/lib/entitlementsApi';
 import {
   getSEOAssistantHistory,
   saveSEOAssistantHistoryItem,
+  saveSyncedSEOAssistantHistoryItem,
   generateContentHash,
   extractArticleTitle,
   type SEOAnalysisHistoryItem
@@ -459,7 +460,7 @@ export function SEOAssistantWorkspace({
             metrics: bloggerMetrics || undefined,
           },
         };
-        saveSEOAssistantHistoryItem(historyItem);
+        void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
       }
 
@@ -529,7 +530,7 @@ export function SEOAssistantWorkspace({
             metrics: bloggerMetrics || undefined,
           },
         };
-        saveSEOAssistantHistoryItem(historyItem);
+        void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
       } catch (err) {
         console.error('Failed to auto-save session to history before Start New:', err);
@@ -691,7 +692,7 @@ export function SEOAssistantWorkspace({
             createdAt: Date.now(),
             contentHash: hash,
           };
-          saveSEOAssistantHistoryItem(historyItem);
+          void saveSyncedSEOAssistantHistoryItem(historyItem);
           setHistoryCount(getSEOAssistantHistory().length);
         }
         setLastAnalyzedHash(hash);
@@ -780,7 +781,7 @@ export function SEOAssistantWorkspace({
           createdAt: Date.now(),
           contentHash: hash,
         };
-        saveSEOAssistantHistoryItem(historyItem);
+        void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
       }
 
@@ -860,7 +861,7 @@ export function SEOAssistantWorkspace({
               metrics: bloggerMetrics || undefined,
             },
           };
-          saveSEOAssistantHistoryItem(historyItem);
+          void saveSyncedSEOAssistantHistoryItem(historyItem);
           setHistoryCount(getSEOAssistantHistory().length);
         }
       } catch (err) {
