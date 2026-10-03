@@ -25,12 +25,9 @@ async function getProfile(userId: string, userEmail?: string | null): Promise<Pr
     .eq('id', userId)
     .maybeSingle();
 
-  if (error) {
-    console.error('Failed to fetch profile:', error);
-  }
+  if (error) console.error('Failed to fetch profile:', error);
 
   const isExplicitAdmin = isUserAdmin(data as Profile | null, { email: userEmail } as User);
-
   if (data) {
     const profile = data as Profile;
     if (isExplicitAdmin && profile.role !== 'admin') {
@@ -41,31 +38,18 @@ async function getProfile(userId: string, userEmail?: string | null): Promise<Pr
   }
 
   if (isExplicitAdmin && userEmail) {
-    const fallbackProfile: Profile = {
-      id: userId,
-      email: userEmail,
-      phone: null,
-      full_name: 'Admin',
-      avatar_url: null,
-      role: 'admin',
-      subscription_plan: 'enterprise',
-      subscription_status: 'active',
-      plan_start_date: new Date().toISOString(),
-      plan_end_date: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    return {
+      id: userId, email: userEmail, phone: null, full_name: 'Admin', avatar_url: null,
+      role: 'admin', subscription_plan: 'enterprise', subscription_status: 'active',
+      plan_start_date: new Date().toISOString(), plan_end_date: null,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
     };
-    return fallbackProfile;
   }
-
   return null;
 }
 
 interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  loading: boolean;
-  isAdmin: boolean;
+  user: User | null; profile: Profile | null; loading: boolean; isAdmin: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
@@ -82,13 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     if (!user) { setProfile(null); return; }
-    // Refresh session to pull updated app_metadata/subscription entitlements
     await supabase.auth.refreshSession().catch(() => {});
     const profileData = await getProfile(user.id, user.email);
     setProfile(profileData);
-    if (user.email_confirmed_at) {
-      trackLifecycleEvent('email_verified');
-    }
+    if (user.email_confirmed_at) trackLifecycleEvent('email_verified');
   };
 
   useEffect(() => {
@@ -96,12 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { session } }) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          getProfile(session.user.id, session.user.email).then((p) => {
-            setProfile(p);
-          });
-          if (session.user.email_confirmed_at) {
-            trackLifecycleEvent('email_verified');
-          }
+          getProfile(session.user.id, session.user.email).then(setProfile);
+          if (session.user.email_confirmed_at) trackLifecycleEvent('email_verified');
         }
       })
       .catch((err) => console.error('Session fetch error:', err))
@@ -110,33 +87,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        getProfile(session.user.id, session.user.email).then((p) => {
-          setProfile(p);
-        });
-        if (session.user.email_confirmed_at) {
-          trackLifecycleEvent('email_verified');
-        }
-
-        // Link guest history and refresh usage allowances.
+        getProfile(session.user.id, session.user.email).then(setProfile);
+        if (session.user.email_confirmed_at) trackLifecycleEvent('email_verified');
         const guestId = (() => {
           try {
             return localStorage.getItem('aicx_vid') || localStorage.getItem('aidetector_visitor_id') || localStorage.getItem('visitor_id') || '';
-          } catch {
-            return '';
-          }
+          } catch { return ''; }
         })();
-
         if (guestId) {
-          supabase.rpc('link_guest_to_registered_user', {
-            p_guest_id: guestId,
-            p_user_id: session.user.id
-          }).then();
+          supabase.rpc('link_guest_to_registered_user', { p_guest_id: guestId, p_user_id: session.user.id }).then();
         }
-
         window.dispatchEvent(new CustomEvent('usage-updated'));
         window.dispatchEvent(new CustomEvent('subscription-updated'));
-
-        // Clear hash if returning from OAuth
         if (event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
           window.history.replaceState(null, '', window.location.pathname);
         }
@@ -145,7 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('usage-updated'));
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -157,23 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    });
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
     if (error) return { error: error.message };
     return { error: null };
   };
 
   const signInWithGoogle = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithSSO({
-        domain: 'miaoda-gg.com',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
         options: { redirectTo: window.location.origin },
       });
       if (error) return { error: error.message };
-      if (data?.url) window.open(data.url, '_self');
       return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Google sign-in failed.' };
@@ -182,12 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
+    setUser(null); setProfile(null);
   };
 
   const userIsAdmin = isUserAdmin(profile, user);
-
   return (
     <AuthContext.Provider value={{ user, profile, loading, isAdmin: userIsAdmin, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut, refreshProfile }}>
       {children}
