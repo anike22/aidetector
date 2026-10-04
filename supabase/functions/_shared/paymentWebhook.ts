@@ -16,6 +16,12 @@ export async function paymentWebhook(req: Request, provider?: 'paystack'): Promi
       // Subscription creation and cancellation are not proof of a payment.
       if(event.event==='charge.success') {
         await verifyPaystack(db,event.data?.reference);
+      } else if(['refund.processed','chargeback.accepted'].includes(event.event)) {
+        const reference=event.data?.transaction?.reference || event.data?.reference;
+        if(!reference) throw new Error('Paystack reversal is missing the original payment reference');
+        const {data:reversal,error:reversalError}=await db.rpc('reverse_affiliate_commission',{p_provider:'paystack',p_payment_reference:String(reference),p_reason:event.event});
+        if(reversalError) throw reversalError;
+        if(reversal?.reason==='already_paid'||reversal?.reason==='payout_reserved') throw new Error(`Affiliate commission requires manual recovery: ${reversal.reason}`);
       }
       return paymentJson({received:true});
     }
