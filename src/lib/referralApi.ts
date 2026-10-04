@@ -232,12 +232,27 @@ export async function deleteAffiliateLink(id: string) {
 
 // Commissions
 export async function getCommissions(filters?: { userId?: string; status?: CommissionStatus }): Promise<Commission[]> {
-  let q = supabase.from('commissions').select('*, referred_user:profiles!commissions_referred_user_id_fkey(email)').order('created_at', { ascending: false });
+  let q = supabase.from('commissions').select('*').order('created_at', { ascending: false });
   if (filters?.userId) q = q.eq('affiliate_user_id', filters.userId);
   if (filters?.status) q = q.eq('status', filters.status);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as Commission[]) || [];
+
+  const commissions = (data as Commission[]) || [];
+  const referredIds = [...new Set(commissions.map((row) => row.referred_user_id).filter(Boolean))] as string[];
+  if (referredIds.length === 0) return commissions;
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', referredIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return commissions.map((row) => ({
+    ...row,
+    referred_user: row.referred_user_id ? profilesById.get(row.referred_user_id) : undefined,
+  })) as Commission[];
 }
 
 export function calculateCommission(amount: number, type: CommissionType, rate: number): number {
@@ -389,12 +404,27 @@ export async function updatePayoutStatus(id: string, status: PayoutStatus, faile
 
 // Leaderboards & challenges
 export async function getLeaderboards(type?: LeaderboardType, period?: string): Promise<Leaderboard[]> {
-  let q = supabase.from('leaderboards').select('*, user:profiles!leaderboards_user_id_fkey(email, full_name)').order('rank', { ascending: true });
+  let q = supabase.from('leaderboards').select('*').order('rank', { ascending: true });
   if (type) q = q.eq('leaderboard_type', type);
   if (period) q = q.eq('period', period);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as Leaderboard[]) || [];
+
+  const rows = (data as Leaderboard[]) || [];
+  const userIds = [...new Set(rows.map((row) => row.user_id).filter(Boolean))];
+  if (userIds.length === 0) return rows;
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', userIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return rows.map((row) => ({
+    ...row,
+    user: profilesById.get(row.user_id) || undefined,
+  })) as Leaderboard[];
 }
 
 export async function getChallenges(enabledOnly = true): Promise<Challenge[]> {
