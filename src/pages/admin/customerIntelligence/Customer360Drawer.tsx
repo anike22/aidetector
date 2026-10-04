@@ -209,12 +209,12 @@ export function Customer360Modal({ customer, open, onOpenChange }: Customer360Mo
                           ? `${customer.location.city}, ${customer.location.region && customer.location.region !== 'Unknown' ? `${customer.location.region}, ` : ''}${customer.location.country}`
                           : customer.location.region && customer.location.region !== 'Unknown'
                           ? `${customer.location.region}, ${customer.location.country}`
-                          : customer.location.country || 'United States'}
+                          : customer.location.country || 'Unknown'}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block">Timezone</span>
-                      <span className="font-medium text-foreground font-mono text-xs">{customer.location.timezone || 'America/New_York (UTC-4)'}</span>
+                      <span className="font-medium text-foreground font-mono text-xs">{customer.location.timezone || 'Unknown'}</span>
                     </div>
                     <div className="col-span-2 pt-1 border-t border-border/60 flex items-center justify-between">
                       <span className="text-muted-foreground flex items-center gap-1">
