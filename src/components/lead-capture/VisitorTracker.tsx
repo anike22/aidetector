@@ -69,18 +69,9 @@ export function VisitorTracker() {
         p_affiliate_link_id: affiliateLinkId,
         p_visitor_id: visitorId,
         p_referred_user_id: user?.id || null,
-      }).then(async ({ data, error }) => {
-        if (error) {
-          console.error('[affiliate] attribution capture', error);
-          return;
-        }
-        if (data?.captured && data?.journey_id) {
-          const { error: metadataError } = await supabase
-            .from('referral_journeys')
-            .update({ metadata: { source: 'affiliate_link', affiliate_link_id: affiliateLinkId, landing_page: location.pathname } })
-            .eq('id', data.journey_id);
-          if (metadataError) console.error('[affiliate] landing page attribution', metadataError);
-        }
+        p_landing_page: location.pathname,
+      }).then(({ error }) => {
+        if (error) console.error('[affiliate] attribution capture', error);
       });
     }
 
