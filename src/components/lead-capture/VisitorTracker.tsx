@@ -64,12 +64,23 @@ export function VisitorTracker() {
     const isFirstVisit = !localStorage.getItem('aicx_vid');
 
     if (affiliateLinkId) {
+      const visitorId = getVisitorId();
       void supabase.rpc('capture_affiliate_attribution', {
         p_affiliate_link_id: affiliateLinkId,
-        p_visitor_id: getVisitorId(),
+        p_visitor_id: visitorId,
         p_referred_user_id: user?.id || null,
-      }).then(({ error }) => {
-        if (error) console.error('[affiliate] attribution capture', error);
+      }).then(async ({ data, error }) => {
+        if (error) {
+          console.error('[affiliate] attribution capture', error);
+          return;
+        }
+        if (data?.captured && data?.journey_id) {
+          const { error: metadataError } = await supabase
+            .from('referral_journeys')
+            .update({ metadata: { source: 'affiliate_link', affiliate_link_id: affiliateLinkId, landing_page: location.pathname } })
+            .eq('id', data.journey_id);
+          if (metadataError) console.error('[affiliate] landing page attribution', metadataError);
+        }
       });
     }
 
