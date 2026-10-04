@@ -1,0 +1,21 @@
+-- Internal SECURITY DEFINER RPCs must not be directly executable by browser roles.
+REVOKE EXECUTE ON FUNCTION public.aggregate_automation_analytics() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.anonymize_customer_profile(uuid) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.evaluate_lifecycle_stages() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.execute_workflow_action(jsonb,uuid,uuid) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.expire_organization_invitations() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_activation_funnel() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_auth_user_id_by_email(text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_automation_analytics(uuid,date,date) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_billing_summary_internal(uuid) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_customer_overview_stats() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_feature_adoption_stats() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_lead_event_stats() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_lifecycle_analytics(date,date) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.log_execution_step(uuid,text,text,jsonb,text,jsonb,text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_execution_status(uuid,text,text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.process_automation_event(text,uuid,jsonb) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.queue_delayed_execution(uuid,timestamptz) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.refresh_due_billing_accounts() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.refresh_lifecycle_metrics() FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.resume_execution(uuid) FROM anon, authenticated;
