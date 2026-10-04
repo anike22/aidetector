@@ -141,7 +141,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 Step 1: Enter Keywords & Evaluate Ranking Metrics
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Enter 1 primary keyword and up to 3 related keywords. The engine evaluates keyword difficulty (KD), search volume, and word count target needed to rank. Once locked, keywords cannot be changed.
+                Enter 1 primary keyword and up to 3 related keywords. The engine displays provider-backed keyword metrics and competitor-derived content targets when live data is available. Unavailable metrics are never estimated or fabricated. Once locked, keywords cannot be changed.
               </p>
             </div>
           </div>
@@ -210,7 +210,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               <div className="text-xs font-bold text-foreground mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                  Live Keyword Difficulty & Search SERP Evaluation
+                  Keyword & SERP Evaluation
                 </span>
                 <Badge variant="outline" className="text-[10px] font-normal border-primary/20 bg-primary/5 text-primary">
                   Evaluated Target
@@ -221,7 +221,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 <div className="p-2.5 rounded bg-muted/40 border border-border/60">
                   <span className="text-[10px] text-muted-foreground block">Primary Keyword Difficulty (KD)</span>
                   <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty}/100</span>
+                    <span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100`}</span>
                     <span className={`text-xs font-semibold ${metrics.primary.difficultyColor}`}>
                       {metrics.primary.difficultyLabel}
                     </span>
@@ -312,7 +312,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             )}
             {metrics && (
               <span className="text-xs text-primary font-medium ml-auto">
-                Target to rank: {metrics.recommendedWordCount.rangeText}
+                Content target: {metrics.recommendedWordCount.rangeText}
               </span>
             )}
           </div>
@@ -382,7 +382,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </span>
                   {metrics && (
                     <span className="text-xs text-primary font-medium ml-auto hidden sm:inline-block">
-                      Target: {metrics.recommendedWordCount.rangeText} to rank
+                      Content target: {metrics.recommendedWordCount.rangeText}
                     </span>
                   )}
                 </div>
@@ -398,7 +398,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </Badge>
                   {metrics && (
                     <Badge variant="outline" className="text-[11px] font-normal border-border">
-                      KD {metrics.primary.difficulty}/100 ({metrics.primary.difficultyLabel}) · Vol {metrics.primary.searchVolumeFormatted}
+                      KD {metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100 (${metrics.primary.difficultyLabel})`} · Vol {metrics.primary.searchVolumeFormatted}
                     </Badge>
                   )}
                   {relatedKeywords.filter(Boolean).map((rk, idx) => (
