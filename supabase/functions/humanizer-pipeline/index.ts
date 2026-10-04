@@ -9,12 +9,12 @@ import {
 } from "./entitlements.ts";
 import { analyzeAdvancedText } from "../_shared/detection/engine.ts";
 
-const INTEGRATIONS_API_KEY = Deno.env.get("INTEGRATIONS_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 const HUMANIZER_FEATURE_SLUG = 'ai_humanizer';
 
-const LLM_ENDPOINT = "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
-const FALLBACK_LLM_ENDPOINT = "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
+const GEMINI_MODEL = "gemini-2.5-flash";
+const LLM_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,7 +97,7 @@ serve(async (req) => {
           userId,
           guestId: guestIdForHandlers,
           featureSlug: HUMANIZER_FEATURE_SLUG,
-          creditsCost: 3,
+          creditsCost: 10,
           unitQuantity: Math.max(1, String(text || '').trim().split(/\s+/).filter(Boolean).length),
           timezone,
           idempotencyKey: null,
@@ -124,7 +124,7 @@ serve(async (req) => {
           userId,
           guestId: guestIdForHandlers,
           featureSlug: HUMANIZER_FEATURE_SLUG,
-          creditsCost: 3,
+          creditsCost: 10,
           unitQuantity: Math.max(1, String(sentence_context || job.original_text || '').trim().split(/\s+/).filter(Boolean).length),
           timezone,
           idempotencyKey: null,
@@ -168,7 +168,7 @@ serve(async (req) => {
             userId: jobRow.user_id,
             guestId: jobRow.guest_id,
             featureSlug: HUMANIZER_FEATURE_SLUG,
-            creditsCost: 3,
+            creditsCost: 10,
             unitQuantity: Math.max(1, String(jobRow.original_text || '').trim().split(/\s+/).filter(Boolean).length),
             timezone,
             idempotencyKey: `legacy_humanizer_${jobRow.job_id}`,
@@ -1167,7 +1167,7 @@ async function callLLMWithRetries(prompt: string, userText: string, options: LLM
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const start = Date.now();
-    const provider = "gemini-gateway";
+    const provider = "gemini-direct";
     const model = "gemini-2.5-flash";
 
     try {
@@ -1241,8 +1241,8 @@ async function callLLMWithRetries(prompt: string, userText: string, options: LLM
 }
 
 async function callLLM(prompt: string, userText: string, options: { structured?: boolean; timeoutMs?: number } = {}): Promise<string> {
-  if (!INTEGRATIONS_API_KEY) {
-    throw new Error("INTEGRATIONS_API_KEY is not configured");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
   }
 
   const { structured = false, timeoutMs = REQUEST_TIMEOUT_MS } = options;
@@ -1273,7 +1273,7 @@ async function callLLM(prompt: string, userText: string, options: { structured?:
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Gateway-Authorization": `Bearer ${INTEGRATIONS_API_KEY}`
+      "x-goog-api-key": GEMINI_API_KEY
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs)
