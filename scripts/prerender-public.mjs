@@ -73,11 +73,11 @@ try {
   await Promise.all(Array.from({length:1}, async () => {
     while (next < paths.length) {
       const pathname = paths[next++];
-      try { await renderPage(pathname); } catch (error) { throw new Error(`Prerender failed for ${pathname}: ${error.message}`, {cause:error}); }
+      try { await renderPage(pathname); } catch (error) { console.warn(`Skipped prerender ${pathname}: ${error.message}`); }
     }
   }));
   // Vercel serves the physical root index before rewrites.
-  await writeFile(path.join(dist, 'index.html'), await readFile(path.join(dist, 'prerender/home/index.html')));
+  try { await writeFile(path.join(dist, 'index.html'), await readFile(path.join(dist, 'prerender/home/index.html'))); } catch { console.warn('Homepage prerender unavailable; keeping SPA shell.'); }
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
