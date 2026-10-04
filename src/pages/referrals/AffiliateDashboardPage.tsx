@@ -42,7 +42,7 @@ export default function AffiliateDashboardPage() {
   const load = async () => {
     try {
       const [a, l, c, p, e] = await Promise.all([
-        getMyAffiliateApplication(),
+        user?.id ? getMyAffiliateApplication(user.id) : Promise.resolve(null),
         getAffiliateLinks(user?.id),
         getCommissions({ userId: user?.id }),
         getPayouts({ userId: user?.id }),
