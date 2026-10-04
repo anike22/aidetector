@@ -38,7 +38,8 @@ export async function verifyPaystack(db: ReturnType<typeof createServiceClient>,
     p_paid_at:payment.paid_at,p_order_id:null,
   });
   if (error || data?.granted!==true) throw new Error(error?.message||'Payment confirmed but credit allocation is pending. Please retry.');
-  await db.rpc('create_verified_affiliate_commission',{p_provider:'paystack',p_payment_reference:reference,p_referred_user_id:metadata.user_id,p_plan:String(metadata.plan||'').toLowerCase(),p_amount_minor:Number(payment.amount),p_currency:String(payment.currency||'').toLowerCase(),p_paid_at:payment.paid_at});
+  const {data:commission,error:commissionError}=await db.rpc('create_verified_affiliate_commission',{p_provider:'paystack',p_payment_reference:reference,p_referred_user_id:metadata.user_id,p_plan:String(metadata.plan||'').toLowerCase(),p_amount_minor:Number(payment.amount),p_currency:String(payment.currency||'').toLowerCase(),p_paid_at:payment.paid_at});
+  if (commissionError) throw new Error(`Subscription granted but affiliate commission is pending retry: ${commissionError.message}`);
   return {verified:true,granted:true,plan_granted:true,metadata,amount:Number(payment.amount)/100,currency:payment.currency,...data};
 }
 export async function verifyStripeSession(db: ReturnType<typeof createServiceClient>, stripe: any, sessionId: string, buyerId?: string) {
