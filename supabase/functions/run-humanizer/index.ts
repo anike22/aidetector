@@ -280,17 +280,12 @@ async function handleRequest(req: Request) {
     const token = authHeader.replace('Bearer ', '').trim();
     
     let user;
-    let isDirectKey = false;
     
     if (token.startsWith('aid_')) {
       const { data: apiKeyData, error: keyError } = await supabaseClient.from('api_keys').select('user_id').eq('api_key', token).single();
       if (keyError || !apiKeyData) throw new Error('Unauthorized');
       user = { id: apiKeyData.user_id, email: 'api-user@example.com' };
       supabaseClient.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('api_key', token).then();
-    } else if (!token.startsWith('eyJ')) {
-      // If it's not a JWT (doesn't start with eyJ), and not aid_, it's a direct API key (OpenAI or Gemini)
-      user = { id: 'direct_key_user', email: 'direct@example.com' };
-      isDirectKey = true;
     } else {
       const { data: authData, error: authError } = await supabaseClient.auth.getUser(token);
       if (authError || !authData?.user) throw new Error('Unauthorized');
@@ -324,20 +319,12 @@ async function handleRequest(req: Request) {
       return acc;
     }, {});
 
-    let geminiKey = keysMap['gemini'] || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('INTEGRATIONS_API_KEY');
+    let geminiKey = keysMap['gemini'] || Deno.env.get('GEMINI_API_KEY');
     let openAIKey = keysMap['openai'] || Deno.env.get('OPENAI_API_KEY');
     
     // Set priority based on config
     let primaryProvider = config.active_provider || 'gemini';
     let fallbackProvider = config.fallback_provider || 'openai';
-
-    if (token.startsWith('sk-')) {
-       openAIKey = token;
-       primaryProvider = 'openai';
-    } else if (isDirectKey) {
-       geminiKey = token;
-       primaryProvider = 'gemini';
-    }
 
     if ((!geminiKey || geminiKey === 'none') && !openAIKey) {
       const msg = 'API providers are not configured. Please contact admin.';
