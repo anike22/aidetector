@@ -109,7 +109,12 @@ export default function AffiliateDashboardPage() {
     ['SEO Assistant', '/seo-assistant'],
     ['AI Image Detector', '/ai-image-detector'],
     ['AI Video Detector', '/ai-video-detector'],
+    ['AI Summarizer', '/ai-summarizer'],
     ['Word Counter', '/word-counter'],
+    ['Document Intelligence', '/document-intelligence'],
+    ['API Platform', '/api'],
+    ['Chrome Extension', '/chrome-extension'],
+    ['WordPress Plugin', '/wordpress-plugin'],
     ['Pricing', '/pricing'],
   ] as const;
 
