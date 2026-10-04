@@ -24,7 +24,6 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     
     let user;
-    let isDirectKey = false;
     if (token.startsWith('aid_')) {
       const { data: keyData, error: keyError } = await supabaseClient.from('api_keys').select('user_id').eq('api_key', token).single();
       if (keyError || !keyData) {
@@ -32,9 +31,6 @@ serve(async (req) => {
       }
       user = { id: keyData.user_id };
       supabaseClient.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('api_key', token).then();
-    } else if (!token.startsWith('eyJ')) {
-      user = { id: 'direct_key_user' };
-      isDirectKey = true;
     } else {
       const { data: authData, error: authError } = await supabaseClient.auth.getUser(token);
       if (authError || !authData.user) {
@@ -56,8 +52,8 @@ serve(async (req) => {
       }
     } catch (e) {}
 
-    let geminiKey = isDirectKey && !token.startsWith('sk-') ? token : (systemKeys['gemini'] || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('INTEGRATIONS_API_KEY'));
-    const openAIKey = token.startsWith('sk-') ? token : (systemKeys['openai'] || Deno.env.get('OPENAI_API_KEY'));
+    let geminiKey = systemKeys['gemini'] || Deno.env.get('GEMINI_API_KEY');
+    const openAIKey = systemKeys['openai'] || Deno.env.get('OPENAI_API_KEY');
 
     if (!geminiKey && !openAIKey) {
       return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500, headers: corsHeaders });
@@ -90,7 +86,7 @@ serve(async (req) => {
 
     let resultText = '';
     
-    if (token.startsWith('sk-')) {
+    if (!geminiKey && openAIKey) {
        if (!openAIKey) throw new Error('OpenAI key not configured in admin');
        // Call OpenAI
        const res = await fetch('https://api.openai.com/v1/chat/completions', {
