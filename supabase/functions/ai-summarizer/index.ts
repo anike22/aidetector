@@ -47,11 +47,10 @@ import {
 } from "./summarizerCore.ts";
 
 const FEATURE_SLUG = "ai_summarizer";
-const INTEGRATIONS_API_KEY = Deno.env.get("INTEGRATIONS_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-// Approved gateway host (appmedo.com allowlist) — hardcoded, never dynamic.
 const GEMINI_ENDPOINT =
-  "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
 
 const PER_CALL_TIMEOUT_MS = 45_000;
 // Supabase kills the request at 150s (IDLE_TIMEOUT); stay under it with finalize headroom.
@@ -97,13 +96,13 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Gemini gateway call (approved appmedo.com host; SSE response)
+// Direct Gemini call (SSE response)
 // ─────────────────────────────────────────────────────────────────────────────
 async function callGemini(
   prompt: string,
   options: { structured?: boolean; timeoutMs?: number } = {}
 ): Promise<string> {
-  if (!INTEGRATIONS_API_KEY) {
+  if (!GEMINI_API_KEY) {
     throw new Error("Summarization service is not configured. Please contact support.");
   }
   const { structured = false } = options;
@@ -124,7 +123,7 @@ async function callGemini(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Gateway-Authorization": `Bearer ${INTEGRATIONS_API_KEY}`,
+      "x-goog-api-key": GEMINI_API_KEY,
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
