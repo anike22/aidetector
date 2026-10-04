@@ -66,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     if (!user) { setProfile(null); return; }
-    await supabase.auth.refreshSession().catch(() => {});
     const profileData = await getProfile(user.id, user.email);
     setProfile(profileData);
     if (user.email_confirmed_at) trackLifecycleEvent('email_verified');
@@ -142,15 +141,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const affiliateLinkId = params.get('aff');
-      if (affiliateLinkId) sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
-      const affiliateVisitorId = sessionStorage.getItem('affiliate_visitor_id');
-      if (!affiliateVisitorId && affiliateLinkId) {
-        sessionStorage.setItem('affiliate_visitor_id', crypto.randomUUID());
+      const affiliateLinkId = params.get('aff') || sessionStorage.getItem('affiliate_link_id');
+      if (affiliateLinkId) {
+        sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
+        const visitorId = (() => {
+          try {
+            return localStorage.getItem('aicx_vid') || localStorage.getItem('aidetector_visitor_id') || localStorage.getItem('visitor_id') || '';
+          } catch { return ''; }
+        })();
+        if (visitorId) sessionStorage.setItem('affiliate_visitor_id', visitorId);
       }
+      const redirectUrl = new URL(window.location.href);
+      redirectUrl.searchParams.delete('code');
+      redirectUrl.searchParams.delete('error');
+      redirectUrl.searchParams.delete('error_code');
+      redirectUrl.searchParams.delete('error_description');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.href },
+        options: { redirectTo: redirectUrl.toString() },
       });
       if (error) return { error: error.message };
       return { error: null };
