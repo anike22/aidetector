@@ -96,7 +96,7 @@ serve(async (req) => {
       if (data) data.forEach((k: any) => { systemKeys[k.provider] = k.key_value; });
     } catch (_e) {}
 
-    const geminiKey = systemKeys['gemini'] || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('INTEGRATIONS_API_KEY');
+    const geminiKey = systemKeys['gemini'] || Deno.env.get('GEMINI_API_KEY');
     const openAIKey = systemKeys['openai'] || Deno.env.get('OPENAI_API_KEY');
 
     if (!geminiKey && !openAIKey) {
