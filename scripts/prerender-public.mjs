@@ -32,13 +32,13 @@ try {
       }
       if (!['GET','HEAD'].includes(request.method()) || /googlesyndication|google-analytics|doubleclick/.test(request.url())) return route.abort();
       if (new URL(request.url()).hostname.endsWith('.supabase.co')) {
-        const response = await fetch(request.url(), {headers:request.headers(), signal:AbortSignal.timeout(30000)});
+        const response = await fetch(request.url(), {headers:request.headers(), signal:AbortSignal.timeout(10000)});
         return route.fulfill({status:response.status, contentType:response.headers.get('content-type') || 'application/json', headers:{'access-control-allow-origin':'*'}, body:Buffer.from(await response.arrayBuffer())});
       }
       return route.continue();
     });
     const page = await context.newPage();
-    await page.goto(origin + pathname, {waitUntil:'domcontentloaded',timeout:60000});
+    await page.goto(origin + pathname, {waitUntil:'domcontentloaded',timeout:30000});
     // Public pages may keep background auth/analytics requests open, so do not require networkidle.
     await page.waitForSelector('h1', {timeout:30000});
     if (new URL(page.url()).pathname !== pathname) throw new Error(`Redirected public page: ${pathname}`);
@@ -70,7 +70,7 @@ try {
     console.log(`Prerendered ${pathname}`);
   }
   let next = 0;
-  await Promise.all(Array.from({length:3}, async () => {
+  await Promise.all(Array.from({length:1}, async () => {
     while (next < paths.length) {
       const pathname = paths[next++];
       try { await renderPage(pathname); } catch (error) { throw new Error(`Prerender failed for ${pathname}: ${error.message}`, {cause:error}); }
