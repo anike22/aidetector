@@ -45,32 +45,6 @@ export async function verifyPaystack(db: ReturnType<typeof createServiceClient>,
   if (commissionError) throw new Error(`Affiliate commission reconciliation pending: ${commissionError.message}`);
   return {verified:true,granted:true,plan_granted:true,commission_reconciled:true,commission,metadata,amount:Number(payment.amount)/100,currency:payment.currency,...data};
 }
-export async function verifyStripeSession(db: ReturnType<typeof createServiceClient>, stripe: any, sessionId: string, buyerId?: string) {
-  const session=await stripe.checkout.sessions.retrieve(sessionId);
-  if (session.payment_status!=='paid') throw new Error('Payment has not been confirmed by Stripe');
-  const {data:order,error:orderError}=await db.from('orders').select('id,user_id,metadata,items,status').eq('stripe_session_id',session.id).single();
-  if (orderError || !order || buyerId && order.user_id!==buyerId) throw new Error('Payment order not found for this account');
-  const metadata=order.metadata||{};
-  if (!metadata.plan) {
-    // Preserve one-off marketplace purchases; they do not grant a subscription.
-    const {error}=await db.from('orders').update({status:'completed',completed_at:new Date().toISOString()}).eq('id',order.id);
-    if (error) throw error;
-    return {verified:true,granted:false,metadata,amount:session.amount_total/100,currency:session.currency};
-  }
-  const paymentId=typeof session.payment_intent==='string' ? session.payment_intent : session.payment_intent?.id;
-  if (!paymentId) throw new Error('Stripe payment intent missing');
-  const intent=await stripe.paymentIntents.retrieve(paymentId);
-  if (intent.status!=='succeeded') throw new Error('Stripe payment is not settled');
-  const {data,error}=await db.rpc('apply_verified_subscription_payment',{
-    p_provider:'stripe',p_payment_reference:paymentId,p_user_id:order.user_id,
-    p_plan:String(metadata.plan).toLowerCase(),p_interval:billingInterval(metadata),
-    p_amount_minor:Number(intent.amount_received),p_currency:String(intent.currency).toLowerCase(),
-    p_paid_at:new Date(intent.created*1000).toISOString(),p_order_id:order.id,
-  });
-  if (error || data?.granted!==true) throw new Error(error?.message||'Credit allocation pending; please retry');
-  return {verified:true,granted:true,metadata,amount:intent.amount_received/100,currency:intent.currency,...data};
-}
-
 // Require a complete signature even when a provider secret was not configured.
 export async function verifyPaystackSignature(body: string,signature: string|null,secret: string|undefined) {
   if (!secret || !signature || !/^[a-f0-9]{128}$/i.test(signature)) return false;
