@@ -447,6 +447,21 @@ export async function fetchLiveIntelligenceData(dateRange: string = '30d'): Prom
       supabase.from('customer_devices').select('*').limit(500),
     ]);
 
+    const failures = [
+      ['customer_profiles', profilesRes.error],
+      ['lead_events', eventsRes.error],
+      ['detector_results', detectorRes.error],
+      ['customer_segments', segmentsRes.error],
+      ['customer_devices', devicesRes.error],
+    ].filter(([, error]) => Boolean(error));
+
+    if (failures.length) {
+      const detail = failures
+        .map(([source, error]) => `${source}: ${(error as { message?: string })?.message || 'query failed'}`)
+        .join('; ');
+      throw new Error(`Customer Intelligence telemetry query failed — ${detail}`);
+    }
+
     const profiles = (profilesRes.data || []) as CustomerProfile[];
     const events = (eventsRes.data || []) as LeadEvent[];
     const detectorResults = detectorRes.data || [];
@@ -463,13 +478,6 @@ export async function fetchLiveIntelligenceData(dateRange: string = '30d'): Prom
     };
   } catch (err) {
     console.error('Error in fetchLiveIntelligenceData:', err);
-    return {
-      profiles: [],
-      events: [],
-      detectorResultsCount: 0,
-      detectorResults: [],
-      segments: [],
-      devices: [],
-    };
+    throw err;
   }
 }
