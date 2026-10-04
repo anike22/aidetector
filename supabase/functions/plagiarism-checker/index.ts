@@ -51,8 +51,8 @@ const PARA_RARE_OVERLAP_MIN = 0.30;
 const PARA_ENTITY_OVERLAP_MIN = 0.40;
 const PARA_LEX_JACCARD_MIN = 0.18;
 
-const GATEWAY =
-  "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com";
+const GEMINI_EMBED_MODEL = "gemini-embedding-001";
+const GEMINI_EMBED_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBED_MODEL}:embedContent`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1470,11 +1470,11 @@ export function runNear(submitted: string, sourceText: string, existingExactRang
 
 async function embed(text: string, apiKey: string, sig: AbortSignal): Promise<number[] | null> {
   try {
-    const resp = await fetch(`${GATEWAY}/v1beta/models/text-embedding-004:embedContent`, {
+    const resp = await fetch(GEMINI_EMBED_ENDPOINT, {
       method: "POST",
       signal: sig,
-      headers: { "Content-Type": "application/json", "X-Gateway-Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "models/text-embedding-004", content: { parts: [{ text: text.slice(0, 2048) }] } }),
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({ model: `models/${GEMINI_EMBED_MODEL}`, taskType: "SEMANTIC_SIMILARITY", content: { parts: [{ text: text.slice(0, 2048) }] } }),
     });
     if (!resp.ok) return null;
     const d = await resp.json();
@@ -2321,10 +2321,10 @@ if (import.meta.main) {
         return jsonResponse({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
       }
 
-      const apiKey = Deno.env.get("INTEGRATIONS_API_KEY") ?? "";
+      const apiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
       if (!apiKey) {
         if (reservation.reservationId) {
-          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "missing_api_key", timezone }).catch(() => {});
+          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "missing_gemini_api_key", timezone }).catch(() => {});
         }
         return jsonResponse({ status: "provider_unavailable", errorMessage: "Server configuration error." }, 503);
       }
