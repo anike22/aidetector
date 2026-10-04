@@ -154,11 +154,29 @@ export async function getReferralStats(userId?: string): Promise<ReferralStats> 
 
 // Affiliate applications
 export async function getAffiliateApplications(status?: AffiliateApplicationStatus): Promise<AffiliateApplication[]> {
-  let q = supabase.from('affiliate_applications').select('*, user:profiles!affiliate_applications_user_id_fkey(email, full_name)').order('created_at', { ascending: false });
+  let q = supabase.from('affiliate_applications').select('*').order('created_at', { ascending: false });
   if (status) q = q.eq('status', status);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as AffiliateApplication[]) || [];
+
+  const applications = (data as AffiliateApplication[]) || [];
+  if (applications.length === 0) return applications;
+
+  // affiliate_applications.user_id references auth.users, not public.profiles,
+  // so PostgREST cannot embed profiles through a direct FK relationship.
+  // Fetch the matching public profiles separately and attach them for admin display.
+  const userIds = [...new Set(applications.map((app) => app.user_id).filter(Boolean))];
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', userIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return applications.map((app) => ({
+    ...app,
+    user: profilesById.get(app.user_id) || undefined,
+  })) as AffiliateApplication[];
 }
 
 export async function getMyAffiliateApplication(): Promise<AffiliateApplication | null> {
