@@ -99,8 +99,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         window.dispatchEvent(new CustomEvent('usage-updated'));
         window.dispatchEvent(new CustomEvent('subscription-updated'));
-        if (event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
-          window.history.replaceState(null, '', window.location.pathname);
+        if (event === 'SIGNED_IN') {
+          const affiliateLinkId = sessionStorage.getItem('affiliate_link_id');
+          const affiliateVisitorId = sessionStorage.getItem('affiliate_visitor_id');
+          if (affiliateLinkId && affiliateVisitorId) {
+            supabase.rpc('link_affiliate_signup', {
+              p_affiliate_link_id: affiliateLinkId,
+              p_visitor_id: affiliateVisitorId,
+              p_user_id: session.user.id,
+            }).then(({ error }) => {
+              if (!error) {
+                sessionStorage.removeItem('affiliate_link_id');
+                sessionStorage.removeItem('affiliate_visitor_id');
+              }
+            });
+          }
+          if (window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         }
       } else {
         setProfile(null);
@@ -125,9 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const affiliateLinkId = params.get('aff');
+      if (affiliateLinkId) sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
+      const affiliateVisitorId = sessionStorage.getItem('affiliate_visitor_id');
+      if (!affiliateVisitorId && affiliateLinkId) {
+        sessionStorage.setItem('affiliate_visitor_id', crypto.randomUUID());
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: window.location.href },
       });
       if (error) return { error: error.message };
       return { error: null };
