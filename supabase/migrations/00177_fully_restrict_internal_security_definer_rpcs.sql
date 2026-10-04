@@ -1,0 +1,45 @@
+-- PostgreSQL grants EXECUTE on new functions to PUBLIC by default.
+-- Revoke PUBLIC as well as API roles for the internal SECURITY DEFINER RPCs
+-- previously classified as server-only.
+REVOKE EXECUTE ON FUNCTION public.aggregate_automation_analytics() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.aggregate_automation_analytics() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.anonymize_customer_profile(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.anonymize_customer_profile(uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.evaluate_lifecycle_stages() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.evaluate_lifecycle_stages() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.execute_workflow_action(jsonb,uuid,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.execute_workflow_action(jsonb,uuid,uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.execute_workflow_action(uuid,jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.execute_workflow_action(uuid,jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.expire_organization_invitations() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_organization_invitations() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_activation_funnel() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_activation_funnel() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_auth_user_id_by_email(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_auth_user_id_by_email(text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_automation_analytics(uuid,date,date) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_automation_analytics(uuid,date,date) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_billing_summary_internal(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_billing_summary_internal(uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_customer_overview_stats() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_customer_overview_stats() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_feature_adoption_stats() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_feature_adoption_stats() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_lead_event_stats() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_lead_event_stats() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_lifecycle_analytics(date,date) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_lifecycle_analytics(date,date) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.log_execution_step(uuid,text,text,jsonb,text,jsonb,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_execution_step(uuid,text,text,jsonb,text,jsonb,text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.mark_execution_status(uuid,text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_execution_status(uuid,text,text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.process_automation_event(text,uuid,jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.process_automation_event(text,uuid,jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.queue_delayed_execution(uuid,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.queue_delayed_execution(uuid,timestamptz) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.refresh_due_billing_accounts() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_due_billing_accounts() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.refresh_lifecycle_metrics() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_lifecycle_metrics() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.resume_execution(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resume_execution(uuid) TO service_role;
