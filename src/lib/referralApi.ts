@@ -140,7 +140,13 @@ export async function getReferralStats(userId?: string): Promise<ReferralStats> 
   const verified = rows.filter((r) => r.stage === 'email_verified').length;
   const active = rows.filter((r) => r.stage === 'first_scan').length;
   const paid = rows.filter((r) => r.stage === 'subscription').length;
-  const revenue = paid * 9.99; // placeholder estimate
+  const { data: commissionRows, error: commissionError } = await supabase
+    .from('commissions')
+    .select('gross_amount')
+    .in('referral_link_id', linkIds)
+    .not('gross_amount', 'is', null);
+  if (commissionError) throw commissionError;
+  const revenue = (commissionRows || []).reduce((sum, row) => sum + Number(row.gross_amount || 0), 0)
   return {
     clicks,
     signups,
@@ -386,10 +392,16 @@ export async function getPayouts(filters?: { userId?: string; status?: PayoutSta
   return (data as Payout[]) || [];
 }
 
-export async function requestPayout(amount: number, method?: string): Promise<Payout> {
-  const { data, error } = await supabase.from('payouts').insert({ amount, payout_method: method }).select().single();
+export async function requestPayout(_amount: number, method?: string): Promise<Payout> {
+  const { data, error } = await supabase.rpc('request_affiliate_payout', { p_method: method || 'Bank Transfer' });
   if (error) throw error;
-  return data as Payout;
+  if (!data?.created) {
+    if (data?.reason === 'minimum_not_met') throw new Error(`Minimum payout is ${Number(data.minimum).toFixed(2)}. Available balance: ${Number(data.available).toFixed(2)}.`);
+    throw new Error('Payout request could not be created.');
+  }
+  const { data: payout, error: payoutError } = await supabase.from('payouts').select('*').eq('id', data.payout_id).single();
+  if (payoutError) throw payoutError;
+  return payout as Payout;
 }
 
 export async function updatePayoutStatus(id: string, status: PayoutStatus, failedReason?: string): Promise<Payout> {
