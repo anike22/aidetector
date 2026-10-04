@@ -18,7 +18,7 @@ serve(async (req: Request) => {
       throw new Error('Text is required');
     }
 
-    const apiKey = Deno.env.get('INTEGRATIONS_API_KEY');
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('Server configuration error (missing key)');
     }
@@ -63,12 +63,12 @@ ${text}
     // Wait, the documentation says: POST .../v1beta/models/gemini-2.5-flash:generateContent
     // Let's see if generateContent works (non-streaming).
     const upstream = await fetch(
-      "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Gateway-Authorization": `Bearer ${apiKey}`,
+          "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
@@ -102,12 +102,12 @@ ${text}
     } else {
        // Fallback to streaming endpoint if non-streaming not allowed
        const fallbackUpstream = await fetch(
-          "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Gateway-Authorization": `Bearer ${apiKey}`,
+              "x-goog-api-key": apiKey,
             },
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
