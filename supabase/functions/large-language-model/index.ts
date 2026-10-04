@@ -49,10 +49,25 @@ serve(async (req: Request): Promise<Response> => {
   // Mandatory entitlement enforcement: every LLM stream reserves and settles
   // exactly one charge. Settlement happens when the stream completes (or is
   // released if the upstream errors before/while streaming).
-  const featureSlug = req.headers.get("x-feature-slug");
-  if (!featureSlug || !['seo_assistant','seo_content_studio','essay_studio','humanizer_rewrite','ai_humanizer','hallucination_check','hallucination_detector','citation_verify','citation_verifier'].includes(featureSlug)) {
-    return jsonResponse({ error: "Missing x-feature-slug header" }, 400);
+  const requestedFeatureSlug = req.headers.get("x-feature-slug");
+  const featureAliases: Record<string, string> = {
+    seo_content_studio: "seo_assistant",
+    humanizer_rewrite: "ai_humanizer",
+    hallucination_check: "citation_verify",
+    hallucination_detector: "citation_verify",
+    citation_verifier: "citation_verify",
+  };
+  const allowedFeatureSlugs = new Set([
+    "seo_assistant",
+    "essay_studio",
+    "ai_humanizer",
+    "citation_verify",
+    ...Object.keys(featureAliases),
+  ]);
+  if (!requestedFeatureSlug || !allowedFeatureSlugs.has(requestedFeatureSlug)) {
+    return jsonResponse({ error: "Missing or unsupported x-feature-slug header" }, 400);
   }
+  const featureSlug = featureAliases[requestedFeatureSlug] ?? requestedFeatureSlug;
   const llmSupabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const llmTimezone = getTimezone(req);
   let llmReservation;
