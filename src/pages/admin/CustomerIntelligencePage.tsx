@@ -27,6 +27,7 @@ import {
   fetchLiveIntelligenceData,
   LiveIntelligenceRawData,
   getCustomerEvents,
+  getCustomerDevices,
 } from '@/lib/cdpApi';
 import {
   computeOverviewMetrics,
@@ -324,29 +325,69 @@ export function CustomerIntelligencePage() {
 
   const openCustomer360 = async (customer: CustomerProfile) => {
     const requestId = ++customer360RequestRef.current;
-    // Clear the previous customer immediately so stale identity/journey data can never flash.
     setModalOpen(false);
     setSelected360Customer(null);
 
-    // Fetch live events for this customer
-    let timelineEvents: Array<{ id: string; visitorId: string; sessionId: string; eventType: string; toolName?: string; pageUrl?: string; timestamp: string }> = [];
+    let timelineEvents: any[] = [];
+    let rawEvents: any[] = [];
+    let latestDevice: any = null;
+
     try {
-      if (customer.visitor_id) {
-        const evs = await getCustomerEvents(customer.id, { limit: 100 });
-        timelineEvents = evs.map((e) => ({
-          id: e.id,
-          visitorId: e.visitor_id || '',
-          sessionId: 's1',
-          eventType: e.event_type,
-          pageUrl: e.page || undefined,
-          timestamp: e.created_at,
-        }));
-      }
-    } catch {
-      /* fallback to basic events */
+      const [events, devices] = await Promise.all([
+        getCustomerEvents(customer.id, { limit: 250 }),
+        getCustomerDevices(customer.id),
+      ]);
+      rawEvents = events;
+      latestDevice = devices[0] || null;
+      timelineEvents = events.map((e) => ({
+        id: e.id,
+        visitorId: e.visitor_id || customer.visitor_id || '',
+        userId: e.user_id || customer.user_id || undefined,
+        sessionId: String(e.metadata?.session_id || e.metadata?.sessionId || ''),
+        eventType: e.event_type,
+        page: e.page || undefined,
+        toolName: String(e.metadata?.tool_name || e.metadata?.tool || '') || undefined,
+        planName: String(e.metadata?.plan_name || e.metadata?.plan || '') || undefined,
+        metadata: e.metadata || {},
+        timestamp: e.created_at,
+      }));
+    } catch (err) {
+      console.error('Failed to load Customer 360 telemetry:', err);
     }
 
+    const pageEvents = rawEvents.filter((e) => e.event_type === 'page_view');
+    const pricingPageViews = pageEvents.filter((e) => /\/pricing(?:\/|$|\?)/i.test(e.page || '')).length;
+    const checkoutAttempts = rawEvents.filter((e) =>
+      ['checkout_started', 'checkout_attempt', 'plan_selected'].includes(e.event_type)
+    ).length;
+
+    const sessionKeys = new Set(
+      rawEvents
+        .map((e) => e.metadata?.session_id || e.metadata?.sessionId)
+        .filter(Boolean)
+        .map(String)
+    );
+    const sessionCount = sessionKeys.size || customer.session_count || 0;
+
+    const eventTimes = rawEvents
+      .map((e) => new Date(e.created_at).getTime())
+      .filter((t) => Number.isFinite(t))
+      .sort((a, b) => a - b);
+    const observedSeconds = eventTimes.length > 1
+      ? Math.max(0, Math.round((eventTimes[eventTimes.length - 1] - eventTimes[0]) / 1000))
+      : 0;
+    const explicitEngagedSeconds = rawEvents.reduce((sum, e) => {
+      const value = Number(e.metadata?.engaged_time_seconds ?? e.metadata?.duration_seconds ?? 0);
+      return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+    }, 0);
+    const engagedSeconds = explicitEngagedSeconds || observedSeconds;
+    const avgSessionSeconds = sessionCount > 0 ? Math.round(engagedSeconds / sessionCount) : 0;
+
     const resolvedGeo = resolveLocationFromProfile(customer);
+    const deviceCategory = ['mobile', 'tablet', 'desktop'].includes(latestDevice?.device_type)
+      ? latestDevice.device_type as DeviceCategory
+      : 'desktop' as DeviceCategory;
+
     const c360: Customer360Profile = {
       identity: {
         visitorId: customer.visitor_id || '',
@@ -368,11 +409,11 @@ export function CustomerIntelligencePage() {
         ipAuthorizedMasked: resolvedGeo.ipMasked,
       },
       device: {
-        category: 'desktop' as DeviceCategory,
-        browser: 'Chrome',
-        os: 'macOS',
-        screenResolution: '1920x1080',
-        language: customer.language || 'en',
+        category: deviceCategory,
+        browser: latestDevice?.browser || 'Unknown',
+        os: latestDevice?.os || 'Unknown',
+        screenResolution: latestDevice?.screen_resolution || 'Unknown',
+        language: latestDevice?.language || customer.language || 'Unknown',
       },
       acquisition: {
         firstSource: customer.first_utm_source || 'direct',
@@ -388,30 +429,29 @@ export function CustomerIntelligencePage() {
         },
       },
       engagement: {
-        totalSessions: customer.session_count || 0,
+        totalSessions: sessionCount,
         totalScansPerformed: customer.tools_used_count || 0,
-        totalPageViews: customer.page_views || 0,
-        totalEngagedTimeSeconds: 0,
-        avgSessionDurationSeconds: 0,
+        totalPageViews: pageEvents.length || customer.page_views || 0,
+        totalEngagedTimeSeconds: engagedSeconds,
+        avgSessionDurationSeconds: avgSessionSeconds,
         lastActivity: customer.last_login_at || customer.updated_at,
         toolsUsed: customer.tools_used_count ? [{ tool: 'Tracked tools', count: customer.tools_used_count }] : [],
         engagementScore: customer.engagement_score || 0,
       },
       conversion: {
         registrationStatus: customer.email ? 'verified' : 'anonymous',
-        pricingPageViews: 1,
-        checkoutAttempts: 0,
+        pricingPageViews,
+        checkoutAttempts,
         selectedPlan: customer.subscription_plan || 'free',
         subscriptionStatus: customer.subscription_status || 'none',
         lifetimeRevenue: Number(customer.lifetime_value || 0),
         conversionStatus: customer.subscription_plan && customer.subscription_plan !== 'free' ? 'paid_customer' : 'lead',
       },
-      timeline: timelineEvents as any,
+      timeline: timelineEvents,
       segments: [],
       tags: [],
     };
 
-    // Ignore an older request if the admin selected another customer while this fetch was in flight.
     if (requestId !== customer360RequestRef.current) return;
     setSelected360Customer(c360);
     setModalOpen(true);
