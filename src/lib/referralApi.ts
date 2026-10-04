@@ -200,19 +200,14 @@ export async function applyForAffiliate(payload: { website?: string; social_prof
 }
 
 export async function updateAffiliateApplicationStatus(id: string, status: AffiliateApplicationStatus, tier?: AffiliateTier): Promise<AffiliateApplication> {
-  const updates: Partial<AffiliateApplication> = { status };
-  if (tier) updates.tier = tier;
-  if (status === 'Approved' || status === 'Rejected') {
-    updates.reviewed_at = new Date().toISOString();
-  }
-  const { data, error } = await supabase.from('affiliate_applications').update(updates).eq('id', id).select().single();
+  const { error } = await supabase.rpc('admin_set_affiliate_application_status', {
+    p_application_id: id,
+    p_status: status,
+    p_tier: tier || null,
+  });
   if (error) throw error;
-  // Sync profile status when approved
-  if (status === 'Approved' || status === 'Rejected' || status === 'Suspended' || status === 'Terminated') {
-    const app = data as AffiliateApplication;
-    const profileStatus = status === 'Approved' ? 'active' : status === 'Rejected' ? 'none' : status.toLowerCase();
-    await updateProfileRewards(app.user_id, { affiliate_status: profileStatus, affiliate_tier: tier || app.tier });
-  }
+  const { data, error: fetchError } = await supabase.from('affiliate_applications').select('*').eq('id', id).single();
+  if (fetchError) throw fetchError;
   return data as AffiliateApplication;
 }
 
@@ -266,21 +261,11 @@ export function calculateCommission(amount: number, type: CommissionType, rate: 
   return Number(rate.toFixed(2));
 }
 
-export async function createCommission(payload: Partial<Commission>): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').insert(payload).select().single();
-  if (error) throw error;
-  return data as Commission;
-}
-
 export async function approveCommission(id: string): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').update({ status: 'Approved', approved_at: new Date().toISOString() }).eq('id', id).select().single();
+  const { error } = await supabase.rpc('admin_set_commission_status', { p_commission_id: id, p_status: 'Approved' });
   if (error) throw error;
-  return data as Commission;
-}
-
-export async function payCommission(id: string): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').update({ status: 'Paid', paid_at: new Date().toISOString() }).eq('id', id).select().single();
-  if (error) throw error;
+  const { data, error: fetchError } = await supabase.from('commissions').select('*').eq('id', id).single();
+  if (fetchError) throw fetchError;
   return data as Commission;
 }
 
