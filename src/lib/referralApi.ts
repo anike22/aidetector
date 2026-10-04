@@ -405,13 +405,15 @@ export async function requestPayout(_amount: number, method?: string): Promise<P
 }
 
 export async function updatePayoutStatus(id: string, status: PayoutStatus, failedReason?: string): Promise<Payout> {
-  const updates: Partial<Payout> = { status };
-  if (status === 'Paid') updates.paid_at = new Date().toISOString();
-  if (status === 'Approved') updates.approved_at = new Date().toISOString();
-  if (failedReason) updates.failed_reason = failedReason;
-  const { data, error } = await supabase.from('payouts').update(updates).eq('id', id).select().single();
+  const { error } = await supabase.rpc('set_affiliate_payout_status', {
+    p_payout_id: id,
+    p_status: status,
+    p_failed_reason: failedReason || null,
+  });
   if (error) throw error;
-  return data as Payout;
+  const { data: payout, error: payoutError } = await supabase.from('payouts').select('*').eq('id', id).single();
+  if (payoutError) throw payoutError;
+  return payout as Payout;
 }
 
 // Leaderboards & challenges
