@@ -89,7 +89,7 @@ export async function analyzeText(
       'UPGRADE_REQUIRED',
       {
         remaining: reservation.daily_remaining ?? 0,
-        limit: reservation.daily_limit ?? (userId ? 10 : 3),
+        limit: reservation.daily_limit ?? (userId ? 5 : 1),
         plan: reservation.plan ?? (userId ? 'free' : 'guest')
       }
     );
