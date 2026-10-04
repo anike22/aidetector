@@ -16,6 +16,7 @@ interface RegisterPayload {
   password?: string;
   fullName?: string;
   referralCode?: string;
+  affiliateLinkId?: string;
   visitorId?: string;
   timezone?: string;
   return_to?: string;
@@ -210,6 +211,21 @@ async function handleRegister(
   } catch (err: any) {
     console.error('Profile setup error:', err);
     // Continue; user exists and can repair on retry
+  }
+
+  // Bind an affiliate click to the newly created account on the trusted server.
+  // Failure is non-blocking for registration but never creates a commission.
+  if (payload.affiliateLinkId && payload.visitorId) {
+    try {
+      const { error: affiliateError } = await supabase.rpc('link_affiliate_signup', {
+        p_affiliate_link_id: payload.affiliateLinkId,
+        p_visitor_id: payload.visitorId,
+        p_user_id: user.id,
+      });
+      if (affiliateError) console.error('Affiliate signup attribution failed:', affiliateError);
+    } catch (err) {
+      console.error('Affiliate signup attribution failed:', err);
+    }
   }
 
   // Send verification email
