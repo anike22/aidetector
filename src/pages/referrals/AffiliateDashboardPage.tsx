@@ -34,6 +34,7 @@ export default function AffiliateDashboardPage() {
   const [experience, setExperience] = useState('');
   const [campaign, setCampaign] = useState('');
   const [coupon, setCoupon] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState('/ai-checker-for-bloggers');
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -99,7 +100,23 @@ export default function AffiliateDashboardPage() {
     toast.success('Copied');
   };
 
-  const trackingUrl = (link: AffiliateLink) => `${window.location.origin}/signup?aff=${link.id}${link.coupon_code ? `&coupon=${link.coupon_code}` : ''}`;
+  const affiliateProducts = [
+    ['AI Checker for Bloggers', '/ai-checker-for-bloggers'],
+    ['AI Detector', '/detector'],
+    ['Humanizer', '/humanizer'],
+    ['Plagiarism Checker', '/plagiarism-checker'],
+    ['SEO Assistant', '/seo-assistant'],
+    ['AI Image Detector', '/ai-image-detector'],
+    ['AI Video Detector', '/ai-video-detector'],
+    ['Word Counter', '/word-counter'],
+    ['Pricing', '/pricing'],
+  ] as const;
+
+  const trackingUrl = (link: AffiliateLink, path = '/signup') => {
+    const separator = path.includes('?') ? '&' : '?';
+    return `${window.location.origin}${path}${separator}aff=${link.id}${link.coupon_code ? `&coupon=${encodeURIComponent(link.coupon_code)}` : ''}`;
+  };
+  const primaryLink = links[0];
 
   if (loading) return <p className="p-8 text-center">Loading...</p>;
 
@@ -147,11 +164,23 @@ export default function AffiliateDashboardPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base font-medium">Tracking links</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input placeholder="Campaign name (optional)" value={campaign} onChange={(e) => setCampaign(e.target.value)} />
-                    <Input placeholder="Coupon code (optional)" value={coupon} onChange={(e) => setCoupon(e.target.value)} />
-                    <Button onClick={createLink}>Create</Button>
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" htmlFor="affiliate-product">Select product or page</label>
+                      <select id="affiliate-product" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
+                        {affiliateProducts.map(([name, path]) => <option key={path} value={path}>{name}</option>)}
+                      </select>
+                      {primaryLink && <Input readOnly value={trackingUrl(primaryLink, selectedProduct)} />}
+                    </div>
+                    <Button className="self-end" disabled={!primaryLink} onClick={() => primaryLink && copy(trackingUrl(primaryLink, selectedProduct))}><Copy className="h-4 w-4 mr-2" />Copy Link</Button>
                   </div>
+                  {!primaryLink && (
+                    <div className="flex gap-2">
+                      <Input placeholder="Campaign name (optional)" value={campaign} onChange={(e) => setCampaign(e.target.value)} />
+                      <Input placeholder="Coupon code (optional)" value={coupon} onChange={(e) => setCoupon(e.target.value)} />
+                      <Button onClick={createLink}>Create tracking ID</Button>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {links.map((l) => (
                       <div key={l.id} className="flex items-center justify-between p-2 border rounded-md">
