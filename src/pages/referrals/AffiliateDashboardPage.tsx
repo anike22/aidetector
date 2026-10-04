@@ -20,6 +20,7 @@ import {
 import type { AffiliateApplication, AffiliateLink, Commission, Payout, AffiliateEarnings } from '@/types/referral';
 import { DollarSign, Link2, Copy, TrendingUp, Wallet, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/db/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function AffiliateDashboardPage() {
@@ -35,6 +36,7 @@ export default function AffiliateDashboardPage() {
   const [campaign, setCampaign] = useState('');
   const [coupon, setCoupon] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('/ai-checker-for-bloggers');
+  const [productAnalytics, setProductAnalytics] = useState<Array<{ destination: string; clicks: number; signups: number; conversions: number; revenue: number; commission: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -51,6 +53,9 @@ export default function AffiliateDashboardPage() {
       setCommissions(c);
       setPayouts(p);
       setEarnings(e);
+      const { data: analytics, error: analyticsError } = await supabase.rpc('get_affiliate_product_analytics');
+      if (analyticsError) throw analyticsError;
+      setProductAnalytics((analytics || []).map((row: any) => ({ ...row, revenue: Number(row.revenue || 0), commission: Number(row.commission || 0) })));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load affiliate data');
     } finally {
@@ -159,6 +164,28 @@ export default function AffiliateDashboardPage() {
             <Card><CardContent className="p-4 flex items-center gap-3"><DollarSign className="h-5 w-5 text-primary" /><div><div className="text-sm text-muted-foreground">Approved</div><div className="text-xl font-semibold">${earnings.approved.toFixed(2)}</div></div></CardContent></Card>
             <Card><CardContent className="p-4 flex items-center gap-3"><TrendingUp className="h-5 w-5 text-primary" /><div><div className="text-sm text-muted-foreground">Paid</div><div className="text-xl font-semibold">${earnings.paid.toFixed(2)}</div></div></CardContent></Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium">Product performance</CardTitle>
+              <CardDescription>See which affiliate destinations generate visits, registrations, paid conversions, revenue and commission.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Clicks</TableHead><TableHead>Signups</TableHead><TableHead>Paid</TableHead><TableHead>Revenue</TableHead><TableHead>Commission</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {productAnalytics.map((row) => (
+                    <TableRow key={row.destination}>
+                      <TableCell className="font-medium">{affiliateProducts.find(([, path]) => path === row.destination)?.[0] || row.destination}</TableCell>
+                      <TableCell>{row.clicks}</TableCell><TableCell>{row.signups}</TableCell><TableCell>{row.conversions}</TableCell>
+                      <TableCell>${row.revenue.toFixed(2)}</TableCell><TableCell>${row.commission.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {productAnalytics.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No affiliate traffic yet.</p>}
+            </CardContent>
+          </Card>
 
           <Tabs defaultValue="links" className="space-y-4">
             <TabsList>
