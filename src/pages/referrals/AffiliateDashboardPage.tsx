@@ -101,6 +101,7 @@ export default function AffiliateDashboardPage() {
   };
 
   const affiliateProducts = [
+    ['AIDetector.cx Home', '/'],
     ['AI Checker for Bloggers', '/ai-checker-for-bloggers'],
     ['AI Detector', '/detector'],
     ['Humanizer', '/humanizer'],
