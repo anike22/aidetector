@@ -8,6 +8,8 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { upsertVisitor, mergeVisitorToUser, trackEvent } from '@/lib/leadApi';
+import { getVisitorId } from '@/lib/visitorId';
+import { supabase } from '@/db/supabase';
 
 function getDeviceType(): string {
   const ua = navigator.userAgent;
@@ -57,7 +59,19 @@ export function VisitorTracker() {
   // On every navigation: upsert visitor row + track page_view
   useEffect(() => {
     const utm = parseUTM();
+    const params = new URLSearchParams(window.location.search);
+    const affiliateLinkId = params.get('aff');
     const isFirstVisit = !localStorage.getItem('aicx_vid');
+
+    if (affiliateLinkId) {
+      void supabase.rpc('capture_affiliate_attribution', {
+        p_affiliate_link_id: affiliateLinkId,
+        p_visitor_id: getVisitorId(),
+        p_referred_user_id: user?.id || null,
+      }).then(({ error }) => {
+        if (error) console.error('[affiliate] attribution capture', error);
+      });
+    }
 
     void upsertVisitor({
       landing_page: isFirstVisit ? window.location.pathname : undefined,
@@ -72,7 +86,7 @@ export function VisitorTracker() {
     void trackEvent({
       event_type: 'page_view',
       page: location.pathname,
-      metadata: { referrer: document.referrer, ...utm },
+      metadata: { referrer: document.referrer, affiliate_link_id: affiliateLinkId || undefined, landing_page: location.pathname, ...utm },
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
