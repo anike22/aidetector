@@ -38,8 +38,9 @@ try {
       return route.continue();
     });
     const page = await context.newPage();
-    await page.goto(origin + pathname, {waitUntil:'networkidle',timeout:60000});
-    await page.waitForSelector('h1', {timeout:15000});
+    await page.goto(origin + pathname, {waitUntil:'domcontentloaded',timeout:60000});
+    // Public pages may keep background auth/analytics requests open, so do not require networkidle.
+    await page.waitForSelector('h1', {timeout:30000});
     if (new URL(page.url()).pathname !== pathname) throw new Error(`Redirected public page: ${pathname}`);
     const html = await page.evaluate(({pathname}) => {
       const h1 = document.querySelector('h1')?.textContent?.trim();
