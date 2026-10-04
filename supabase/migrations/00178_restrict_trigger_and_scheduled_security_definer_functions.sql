@@ -1,0 +1,25 @@
+-- Trigger/scheduled SECURITY DEFINER functions do not need direct browser RPC execution.
+REVOKE EXECUTE ON FUNCTION public.aggregate_organization_analytics_daily() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.aggregate_organization_analytics_daily() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.aggregate_personalization_analytics() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.aggregate_personalization_analytics() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_lifecycle_event() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_lifecycle_event() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_login_history_insert() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_login_history_insert() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_new_organization() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_organization() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_new_workspace() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_workspace() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.handle_profile_lifecycle_update() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_profile_lifecycle_update() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.process_pending_invitations() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.process_pending_invitations() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.settle_expired_reservations() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.settle_expired_reservations() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.trg_lead_events_customer_profile() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.trg_lead_events_customer_profile() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.trg_profiles_customer_profile() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.trg_profiles_customer_profile() TO service_role;
