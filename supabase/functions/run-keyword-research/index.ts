@@ -3,17 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { corsHeaders } from "../_shared/cors.ts";
 import { withBillingGuard } from "../_shared/billing.ts";
 
-function seededRandom(seedStr: string) {
-  let h = 0xdeadbeef;
-  for(let i = 0; i < seedStr.length; i++)
-      h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
-  const hash = ((h ^ h >>> 16) >>> 0);
-  return function() {
-    h = Math.imul(h ^ hash, 2654435761);
-    return ((h ^ h >>> 16) >>> 0) / 4294967296;
-  };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -51,9 +40,6 @@ serve(async (req) => {
         error: "DataForSEO API credentials not configured"
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    const rng = seededRandom(seed_keyword + country + language);
-    const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
 
     let dataSourceLabel = "DataForSEO";
     let realKeywords: any[] = [];
@@ -146,8 +132,8 @@ serve(async (req) => {
         country,
         language,
         status: 'Completed',
-        processing_time: randInt(2, 6),
-        total_keywords: 57,
+        processing_time: null,
+        total_keywords: realKeywords.length,
         keyword_data: keywordData
       })
       .select()
