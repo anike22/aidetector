@@ -27,6 +27,7 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref');
+  const affiliateLinkId = searchParams.get('aff');
   const invitationToken = searchParams.get('invitation_token');
   const returnTo = searchParams.get('returnTo') || searchParams.get('return_to') || searchParams.get('redirect') || '';
   const [visitorId] = useState(() => crypto.randomUUID());
@@ -46,12 +47,27 @@ export default function SignupPage() {
   const [existingUser, setExistingUser] = useState<{ verified: boolean } | null>(null);
 
   useEffect(() => {
-    if (refCode && !referralTracked) {
+    if (referralTracked) return;
+    if (affiliateLinkId) {
+      supabase.rpc('capture_affiliate_attribution', {
+        p_affiliate_link_id: affiliateLinkId,
+        p_visitor_id: visitorId,
+      })
+        .then(({ error }) => {
+          if (error) throw error;
+          sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
+          sessionStorage.setItem('affiliate_visitor_id', visitorId);
+          setReferralTracked(true);
+        })
+        .catch((err) => console.warn('Affiliate click tracking failed:', err));
+      return;
+    }
+    if (refCode) {
       recordReferralClick(refCode, visitorId)
         .then(() => setReferralTracked(true))
         .catch((err) => console.warn('Referral click tracking failed:', err));
     }
-  }, [refCode, visitorId, referralTracked]);
+  }, [affiliateLinkId, refCode, visitorId, referralTracked]);
 
   useEffect(() => {
     if (!invitationToken) return;
@@ -142,7 +158,7 @@ export default function SignupPage() {
 
       const guestId = getVisitorId();
       const { data, error } = await supabase.functions.invoke('register', {
-        body: { action: 'register', email, password, fullName: name.trim(), referralCode: refCode || undefined, return_to: returnTo || undefined, guestId }
+        body: { action: 'register', email, password, fullName: name.trim(), referralCode: refCode || undefined, affiliateLinkId: affiliateLinkId || undefined, visitorId, return_to: returnTo || undefined, guestId }
       });
       if (error) {
         const { message, body } = await parseFunctionError(error);
