@@ -185,10 +185,10 @@ export async function getAffiliateApplications(status?: AffiliateApplicationStat
   })) as AffiliateApplication[];
 }
 
-export async function getMyAffiliateApplication(): Promise<AffiliateApplication | null> {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) return null;
-  const { data, error } = await supabase.from('affiliate_applications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+export async function getMyAffiliateApplication(userId?: string): Promise<AffiliateApplication | null> {
+  const resolvedUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+  if (!resolvedUserId) return null;
+  const { data, error } = await supabase.from('affiliate_applications').select('*').eq('user_id', resolvedUserId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data as AffiliateApplication | null;
 }
