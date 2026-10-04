@@ -407,6 +407,17 @@ export default function SignupPage() {
                 </Button>
               </form>
 
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or sign up with</span></div>
+              </div>
+
+              <Button type="button" variant="outline" disabled={googleLoading} onClick={handleGoogle} className="w-full h-11">
+                {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                  <><span className="mr-2 font-semibold">G</span><span>Continue with Google</span></>
+                )}
+              </Button>
+
               <p className="text-sm text-muted-foreground text-center mt-6">
                 Already have an account?{' '}
                 <Link to="/login" className="text-primary font-medium hover:text-primary/80 transition-colors">
