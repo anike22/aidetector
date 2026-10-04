@@ -1,6 +1,5 @@
-import Stripe from 'npm:stripe@14.0.0';
 import { createServiceClient } from './entitlements.ts';
-import { paymentJson,verifyPaystack,verifyPaystackSignature,verifyStripeSession } from './payments.ts';
+import { paymentJson,verifyPaystack,verifyPaystackSignature } from './payments.ts';
 export async function paymentWebhook(req: Request, provider?: 'paystack'): Promise<Response> {
   if(req.method==='OPTIONS') return paymentJson({});
   if(req.method!=='POST') return paymentJson({error:'Method not allowed'},405);
@@ -25,20 +24,7 @@ export async function paymentWebhook(req: Request, provider?: 'paystack'): Promi
       }
       return paymentJson({received:true});
     }
-    const secret=Deno.env.get('STRIPE_SECRET_KEY');
-    const webhookSecret=Deno.env.get('STRIPE_WEBHOOK_SECRET');
-    const signature=req.headers.get('stripe-signature');
-    if(!secret||!webhookSecret||!signature) return paymentJson({error:'Webhook signature or configuration missing'},400);
-    const stripe=new Stripe(secret,{apiVersion:'2023-10-16'});
-    const event=await stripe.webhooks.constructEventAsync(raw,signature,webhookSecret);
-    verified=true;
-    if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded') {
-      const session=event.data.object as any;
-      if(session.payment_status==='paid') await verifyStripeSession(db,stripe,session.id);
-    }
-    // Checkout currently sells fixed paid periods (mode=payment). Invoice and
-    // subscription-created events must never mint additional plan credits.
-    return paymentJson({received:true});
+    return paymentJson({error:'Unsupported payment provider'},400);
   } catch(error) {
     console.error('[payment-webhook]',error);
     return paymentJson({error:'Webhook processing failed; delivery can be retried'},verified?500:400);
