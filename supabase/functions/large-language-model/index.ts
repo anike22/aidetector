@@ -38,7 +38,7 @@ serve(async (req: Request): Promise<Response> => {
     });
   }
 
-  const apiKey = Deno.env.get("INTEGRATIONS_API_KEY");
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "Server configuration error" }), {
       status: 500,
@@ -90,12 +90,12 @@ serve(async (req: Request): Promise<Response> => {
 
   let upstream: Response;
   try { upstream = await fetch(
-    "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Gateway-Authorization": `Bearer ${apiKey}`,
+        "x-goog-api-key": apiKey,
       },
       body: JSON.stringify(upstreamBody),
     }
