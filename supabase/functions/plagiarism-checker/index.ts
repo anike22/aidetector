@@ -2264,7 +2264,7 @@ if (import.meta.main) {
         );
       }
 
-      const featureSlug = "plagiarism_checker";
+      const featureSlug = "plagiarism_check";
       const idempotencyKey = req.headers.get("x-idempotency-key") || null;
       let reservation;
       try {
