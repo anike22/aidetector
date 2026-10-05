@@ -290,11 +290,18 @@ async function handleGoogleWelcome(req: Request, requestId: string): Promise<Res
   const frontendUrl = Deno.env.get('CUSTOM_DOMAIN') || origin || 'https://aidetector.cx';
 
   const subject = 'Welcome to AIDetector.cx';
-  const html = `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033">
-    <h2>Welcome to AIDetector.cx, ${firstName}!</h2>
-    <p>Your account is ready. You can now use your free introductory checks and explore AIDetector.cx tools.</p>
-    <p><a href="${frontendUrl}/detector">Start using AIDetector.cx</a></p>
-    <p>We're glad to have you with us.</p>
+  const html = `<div style="margin:0;padding:32px 16px;background:#f4f7fb;font-family:Arial,sans-serif;color:#172033">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e6eaf0;border-radius:16px;overflow:hidden">
+      <div style="padding:22px 28px;background:#0f172a;color:#ffffff;font-size:22px;font-weight:700">AIDetector.cx</div>
+      <div style="padding:30px 28px">
+        <p style="margin:0 0 8px;color:#64748b;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Account ready</p>
+        <h1 style="margin:0 0 16px;font-size:28px;line-height:1.25;color:#0f172a">Welcome, ${firstName}.</h1>
+        <p style="margin:0 0 18px;font-size:16px;line-height:1.65">Your AIDetector.cx account is ready, with <strong>5 free introductory checks</strong> to get started.</p>
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:#475569">Check content for AI signals, review the evidence, and explore the content-integrity tools available from your dashboard.</p>
+        <a href="${frontendUrl}/detector" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Run your first check</a>
+        <p style="margin:28px 0 0;font-size:13px;line-height:1.6;color:#64748b">Need help? Reply to this email and the AIDetector team will assist you.</p>
+      </div>
+    </div>
   </div>`;
 
   try {
