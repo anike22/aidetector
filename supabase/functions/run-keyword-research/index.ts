@@ -47,8 +47,8 @@ serve(async (req) => {
       const dfsUrl = 'https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live';
       const postData = [{
           "keyword": seed_keyword,
-          "location_code": 2840,
-          "language_code": "en",
+          "location_name": country,
+          "language_code": language,
           "limit": 50
       }];
       
@@ -88,39 +88,28 @@ serve(async (req) => {
       dataSourceLabel = `Demo Data (${e.message})`;
     }
 
-    const generateKeywords = (type: string, count: number) => {
-      // If we have real keywords, distribute them
-      if (realKeywords.length > 0) {
-        // Simple distribution just to fill the mock categories using real data
-        const shuffled = [...realKeywords].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, Math.min(count, shuffled.length));
-      }
-      
-      const arr = [];
-      for (let i = 0; i < count; i++) {
-        arr.push({
-          keyword: `${type} ${seed_keyword} ${i+1}`,
-          search_volume: randInt(100, 50000),
-          difficulty: randInt(10, 90),
-          cpc: (rng() * 10).toFixed(2),
-          intent: ['Informational', 'Commercial', 'Transactional', 'Navigational'][randInt(0, 3)],
-          trend: ['Rising', 'Stable', 'Declining'][randInt(0, 2)],
-          opportunity_score: randInt(40, 95)
-        });
-      }
-      return arr.sort((a, b) => b.search_volume - a.search_volume);
-    };
+    if (realKeywords.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "DataForSEO returned no verified keyword data",
+        data_source: dataSourceLabel
+      }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const byIntent = (label: string, limit: number) => realKeywords
+      .filter((item: any) => String(item.intent || '').toLowerCase() === label.toLowerCase())
+      .slice(0, limit);
 
     const keywordData = {
-      primary: generateKeywords('primary', 5),
-      secondary: generateKeywords('secondary', 10),
-      long_tail: generateKeywords('how to', 15),
-      questions: generateKeywords('what is', 8),
-      commercial: generateKeywords('best', 5),
-      transactional: generateKeywords('buy', 5),
-      informational: generateKeywords('guide', 5),
-      aeo: generateKeywords('ai', 4),
-      data_source: dataSourceLabel
+      primary: realKeywords.slice(0, 5),
+      secondary: realKeywords.slice(5, 15),
+      long_tail: realKeywords.filter((item: any) => item.keyword.split(/\\s+/).length >= 4).slice(0, 15),
+      questions: realKeywords.filter((item: any) => /^(who|what|when|where|why|how|can|does|is|are)\\b/i.test(item.keyword)).slice(0, 8),
+      commercial: byIntent('commercial', 5),
+      transactional: byIntent('transactional', 5),
+      informational: byIntent('informational', 5),
+      aeo: [],
+      data_source: "DataForSEO"
     };
 
     const { data, error: insertError } = await serviceClient
