@@ -151,6 +151,8 @@ export interface ContentGapResult {
   missingCount?: number;
   totalCompetitorKeywords?: number;
   targetWordCountRange?: string;
+  missingSubtopics?: string[];
+  recommendedH2s?: string[];
   recommendations?: string[];
 }
 
@@ -159,7 +161,10 @@ export function computeCompetitorKeywordCoverage(
   rawMissingKeywords: string[] = [],
   rawAllCompetitorKeywords: string[] = [],
   rawHeadings: string[] = [],
-  rawFAQs: string[] = []
+  rawFAQs: string[] = [],
+  rawSubtopics: string[] = [],
+  targetWordCountRange?: string,
+  recommendedH2s: string[] = []
 ): ContentGapResult {
   const normalizedContent = (content || '').toLowerCase();
   
@@ -209,6 +214,9 @@ export function computeCompetitorKeywordCoverage(
     coveredCount,
     missingCount,
     totalCompetitorKeywords: totalCount,
+    targetWordCountRange,
+    missingSubtopics: rawSubtopics,
+    recommendedH2s,
     recommendations,
   };
 }
