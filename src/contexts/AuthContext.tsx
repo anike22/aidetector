@@ -99,6 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('usage-updated'));
         window.dispatchEvent(new CustomEvent('subscription-updated'));
         if (event === 'SIGNED_IN') {
+          const provider = String(session.user.app_metadata?.provider || '');
+          const createdAt = Date.parse(session.user.created_at || '');
+          if (provider === 'google' && Number.isFinite(createdAt) && Date.now() - createdAt <= 15 * 60 * 1000) {
+            supabase.functions.invoke('register', { body: { action: 'google_welcome' } })
+              .then(({ error }) => { if (error) console.warn('Google welcome email trigger failed:', error); });
+          }
           const affiliateLinkId = sessionStorage.getItem('affiliate_link_id');
           const affiliateVisitorId = sessionStorage.getItem('affiliate_visitor_id');
           if (affiliateLinkId && affiliateVisitorId) {
