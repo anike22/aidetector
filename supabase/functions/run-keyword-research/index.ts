@@ -7,10 +7,11 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
+  return withBillingGuard(req, { featureSlug: (body) => body.billing_feature === 'ai_checker_for_bloggers' ? 'ai_checker_for_bloggers' : 'seo_assistant', corsHeaders }, async (ctx) => {
 
   try {
-    const { seed_keyword, country, language, project_id } = ctx.body;
+    const { seed_keyword, country, language, project_id, billing_feature } = ctx.body;
+    if (billing_feature && !['ai_checker_for_bloggers', 'seo_assistant'].includes(billing_feature)) throw new Error('Invalid billing feature');
     if (!seed_keyword || !country || !language) throw new Error('Missing required fields');
 
     const authHeader = req.headers.get('Authorization')!;
