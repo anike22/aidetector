@@ -11,7 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface RegisterPayload {
-  action?: 'register' | 'resend';
+  action?: 'register' | 'resend' | 'google_welcome';
   email?: string;
   password?: string;
   fullName?: string;
@@ -258,6 +258,60 @@ async function handleRegister(
   }, emailResult.sent ? 201 : 202);
 }
 
+async function handleGoogleWelcome(req: Request, requestId: string): Promise<Response> {
+  const authHeader = req.headers.get('authorization') || '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return safeError('Unauthorized', 401, requestId);
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const token = authHeader.slice(7);
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  const user = userData.user;
+  if (userError || !user?.id || !user.email) return safeError('Unauthorized', 401, requestId);
+
+  const provider = String(user.app_metadata?.provider || '');
+  const createdAt = Date.parse(user.created_at || '');
+  const isNewGoogleUser = provider === 'google' && Number.isFinite(createdAt) && Date.now() - createdAt <= 15 * 60 * 1000;
+  if (!isNewGoogleUser) return jsonResponse({ success: true, sent: false, reason: 'not_new_google_user' });
+
+  const { data: prior } = await supabase
+    .from('email_logs')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('template_name', 'Google Welcome')
+    .in('status', ['sending', 'sent'])
+    .limit(1)
+    .maybeSingle();
+  if (prior) return jsonResponse({ success: true, sent: false, reason: 'already_sent' });
+
+  const fullName = String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim();
+  const firstName = fullName ? fullName.split(/\s+/)[0] : 'there';
+  let origin = req.headers.get('origin') || req.headers.get('referer');
+  if (origin) { try { origin = new URL(origin).origin; } catch { origin = null; } }
+  const frontendUrl = Deno.env.get('CUSTOM_DOMAIN') || origin || 'https://aidetector.cx';
+
+  const subject = 'Welcome to AIDetector.cx';
+  const html = `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033">
+    <h2>Welcome to AIDetector.cx, ${firstName}!</h2>
+    <p>Your account is ready. You can now use your free introductory checks and explore AIDetector.cx tools.</p>
+    <p><a href="${frontendUrl}/detector">Start using AIDetector.cx</a></p>
+    <p>We're glad to have you with us.</p>
+  </div>`;
+
+  try {
+    await sendEmail({
+      supabase, recipient: user.email, subject, html, type: 'onboarding',
+      template_name: 'Google Welcome', userId: user.id, category: 'transactional',
+      metadata: { source: 'google_oauth_signup', request_id: requestId },
+    });
+    await trackEvent(supabase, user.id, 'welcome_email_sent', { source: 'google_oauth_signup' }, requestId);
+    return jsonResponse({ success: true, sent: true });
+  } catch (err: any) {
+    console.error('Google welcome email failed:', err);
+    await trackEvent(supabase, user.id, 'welcome_email_failed', { source: 'google_oauth_signup' }, requestId);
+    return jsonResponse({ success: true, sent: false, reason: 'send_failed' }, 202);
+  }
+}
+
 async function handleResend(
   req: Request,
   payload: RegisterPayload,
@@ -357,6 +411,9 @@ serve(async (req) => {
     }
     if (action === 'resend') {
       return await handleResend(req, payload, requestId);
+    }
+    if (action === 'google_welcome') {
+      return await handleGoogleWelcome(req, requestId);
     }
     return safeError('Invalid action.', 400, requestId);
   } catch (error: any) {
