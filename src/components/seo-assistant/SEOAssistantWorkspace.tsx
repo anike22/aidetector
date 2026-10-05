@@ -251,6 +251,10 @@ export function SEOAssistantWorkspace({
     try { const saved = localStorage.getItem(BLOGGER_SESSION_KEY); if (saved) return JSON.parse(saved).targetLanguage || 'en'; } catch {}
     return 'en';
   });
+  const [bloggerAutoGenerateRelated, setBloggerAutoGenerateRelated] = useState<boolean>(() => {
+    try { const saved = localStorage.getItem(BLOGGER_SESSION_KEY); if (saved) return Boolean(JSON.parse(saved).autoGenerateRelated); } catch {}
+    return false;
+  });
 
   const [bloggerTitle, setBloggerTitle] = useState<string>(() => {
     try {
@@ -319,6 +323,7 @@ export function SEOAssistantWorkspace({
     relatedKeywords: string[];
     targetCountry: string;
     targetLanguage: string;
+    autoGenerateRelated: boolean;
     title: string;
     isKeywordsLocked: boolean;
     isTitleLocked: boolean;
@@ -333,6 +338,7 @@ export function SEOAssistantWorkspace({
         relatedKeywords: bloggerRelatedKeywords,
         targetCountry: bloggerTargetCountry,
         targetLanguage: bloggerTargetLanguage,
+        autoGenerateRelated: bloggerAutoGenerateRelated,
         title: bloggerTitle,
         isKeywordsLocked,
         isTitleLocked,
@@ -342,7 +348,7 @@ export function SEOAssistantWorkspace({
       };
       localStorage.setItem(BLOGGER_SESSION_KEY, JSON.stringify(current));
     } catch {}
-  }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTargetCountry, bloggerTargetLanguage, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
+  }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTargetCountry, bloggerTargetLanguage, bloggerAutoGenerateRelated, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
 
   // Step 1A: analyze the keyword with live provider data. This does not charge credits.
   const handleAnalyzeKeyword = async () => {
@@ -400,7 +406,8 @@ export function SEOAssistantWorkspace({
       const providerRelated = liveKeywords
         .filter((item: any) => item.keyword.toLowerCase() !== cleanKw.toLowerCase())
         .slice(0, 3).map((item: any) => item.keyword);
-      const related = bloggerRelatedKeywords.filter(Boolean).length ? bloggerRelatedKeywords.filter(Boolean) : providerRelated;
+      const manualRelated = bloggerRelatedKeywords.filter(Boolean);
+      const related = bloggerAutoGenerateRelated ? providerRelated : manualRelated;
       const liveMetrics = evaluateBloggerKeywords(cleanKw, related, { keywords: liveKeywords, competitors, serpFeatures });
       setBloggerRelatedKeywords(related);
       setBloggerMetrics(liveMetrics);
@@ -464,6 +471,7 @@ export function SEOAssistantWorkspace({
       saveBloggerSession({
         step: 2, primaryKeyword: cleanKw, relatedKeywords: related,
         targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage,
+        autoGenerateRelated: bloggerAutoGenerateRelated,
         isKeywordsLocked: true, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
         metrics: bloggerMetrics,
       });
@@ -631,6 +639,7 @@ export function SEOAssistantWorkspace({
     setBloggerRelatedKeywords(['', '', '']);
     setBloggerTargetCountry('United States');
     setBloggerTargetLanguage('en');
+    setBloggerAutoGenerateRelated(false);
     setBloggerTitle('');
     setKeyword('');
     setBloggerMetrics(null);
@@ -2200,6 +2209,15 @@ Return ONLY valid JSON:
           targetLanguage={bloggerTargetLanguage}
           onTargetCountryChange={setBloggerTargetCountry}
           onTargetLanguageChange={setBloggerTargetLanguage}
+          autoGenerateRelated={bloggerAutoGenerateRelated}
+          onAutoGenerateRelatedChange={(checked) => {
+            if (!isKeywordsLocked) {
+              setBloggerAutoGenerateRelated(checked);
+              if (checked) setBloggerRelatedKeywords(['', '', '']);
+              setBloggerMetrics(null);
+              setBloggerAnalysisSignature(null);
+            }
+          }}
         />
       )}
 
