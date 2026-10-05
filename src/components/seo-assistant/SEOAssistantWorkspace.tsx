@@ -17,6 +17,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger
 } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/db/supabase';
 import { streamLLM } from '@/lib/sse';
 import { toast } from 'sonner';
 import { RichTextEditor, type RichTextEditorRef } from '@/pages/seo-assistant/RichTextEditor';
@@ -366,120 +367,130 @@ export function SEOAssistantWorkspace({
     }
 
     setIsLockingTitle(true);
-    const cost = 30; // Static 30 credit cost for blogger optimization
+    const cost = 30;
     const featureSlug = featureSlugForBilling;
-    try {
-      const res = await reserveEntitlement(featureSlug, cost, {
-        words: wordCount || 1,
-      });
+    let paidMetrics = bloggerMetrics;
+    let chargedCredits = cost;
+    let wasTrialCheck = false;
 
-      if (!res.allowed) {
-        setIsLockingTitle(false);
-        if (!user && (res.errorCode === 'REGISTER_REQUIRED' || res.errorCode === 'TRIAL_EXHAUSTED')) {
-          toast.error('Free trial limit reached. Please sign up to start blogger optimization.');
+    try {
+      if (isBloggerLanding) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          toast.error('Please sign in to start Blogger optimization.');
           handleAuthRedirect('/signup');
           return;
         }
 
-        const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
-        openUpgradeModal({
-          featureName: isBloggerLanding ? 'AI Checker for Bloggers' : 'SEO Assistant',
-          trigger: res.errorCode === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature',
-          remaining: availableBalance,
-          limit: cost,
+        const idempotencyKey = `blogger:${session.user.id}:${keyword.trim().toLowerCase()}:${cleanTitle.toLowerCase()}`;
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+            'x-idempotency-key': idempotencyKey,
+            'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          },
+          body: JSON.stringify({
+            seed_keyword: keyword.trim(),
+            country: 'United States',
+            language: 'en',
+            billing_feature: 'ai_checker_for_bloggers',
+          }),
         });
-        return;
-      }
 
-      await finalizeReservation(res.reservationId, 'success', {
-        words: wordCount || 1,
-        feature: featureSlug,
-        creditsDeducted: res.isTrialCheck ? 0 : cost,
-      });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const code = payload?.errorCode || payload?.error_code;
+          if (code === 'CREDITS_EXHAUSTED' || code === 'UPGRADE_REQUIRED') {
+            const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
+            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: code === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature', remaining: availableBalance, limit: cost });
+            return;
+          }
+          throw new Error(payload?.error || payload?.reason || 'Live keyword and SERP research failed.');
+        }
+
+        const kd = payload?.keyword_data || {};
+        const groups = [kd.primary, kd.secondary, kd.long_tail, kd.questions, kd.commercial, kd.transactional, kd.informational];
+        const providerRows = groups.flatMap((group: any) => Array.isArray(group) ? group : []);
+        const seen = new Set<string>();
+        const liveKeywords = providerRows.filter((row: any) => {
+          const key = String(row?.keyword || '').trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).map((row: any) => ({
+          keyword: String(row.keyword).trim(),
+          searchVolume: typeof row.search_volume === 'number' ? row.search_volume : null,
+          difficulty: typeof row.difficulty === 'number' ? row.difficulty : null,
+          cpc: typeof row.cpc === 'number' ? row.cpc : null,
+          intent: row.intent || null,
+          source: 'DataForSEO',
+          country: 'United States',
+        }));
+        const competitors = (payload?.competitors || kd?.competitors || []).map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) })).filter((item: any) => item.url && Number.isFinite(item.wordCount));
+        const serpFeatures = payload?.serp_features || kd?.serp_features || [];
+        const primaryKey = keyword.trim().toLowerCase();
+        const related = liveKeywords.filter((item: any) => item.keyword.toLowerCase() !== primaryKey).slice(0, 3).map((item: any) => item.keyword);
+        paidMetrics = evaluateBloggerKeywords(keyword.trim(), related, { keywords: liveKeywords, competitors, serpFeatures });
+        setBloggerRelatedKeywords(related);
+        setBloggerMetrics(paidMetrics);
+        wasTrialCheck = response.headers.get('x-is-trial-check') === 'true';
+        chargedCredits = wasTrialCheck ? 0 : cost;
+      } else {
+        const res = await reserveEntitlement(featureSlug, cost, { words: wordCount || 1 });
+        if (!res.allowed) {
+          if (!user && (res.errorCode === 'REGISTER_REQUIRED' || res.errorCode === 'TRIAL_EXHAUSTED')) {
+            toast.error('Free trial limit reached. Please sign up to start blogger optimization.');
+            handleAuthRedirect('/signup');
+            return;
+          }
+          const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
+          openUpgradeModal({ featureName: 'SEO Assistant', trigger: res.errorCode === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature', remaining: availableBalance, limit: cost });
+          return;
+        }
+        await finalizeReservation(res.reservationId, 'success', { words: wordCount || 1, feature: featureSlug, creditsDeducted: res.isTrialCheck ? 0 : cost });
+        wasTrialCheck = Boolean(res.isTrialCheck);
+        chargedCredits = wasTrialCheck ? 0 : cost;
+      }
 
       await refresh();
       setIsTitleLocked(true);
       setIsBloggerCreditsCharged(true);
       setBloggerStep(3);
-      setIsLockingTitle(false);
 
       let effectiveContent = content;
       if (!content.trim() || content === DEFAULT_PLACEHOLDER) {
         effectiveContent = `# ${cleanTitle}\n\nStart writing or paste your blog post here. Optimize your article for "${keyword}" and your related keywords to rank in top search results.`;
         setContent(effectiveContent);
         editorRef.current?.setContent(effectiveContent);
-        setWordCount(effectiveContent.split(/\s+/).filter(Boolean).length);
+        setWordCount(effectiveContent.split(/\\s+/).filter(Boolean).length);
       }
 
       setIsAnalyzed(true);
       setIsStale(false);
       const analysisData = executeAnalysisComputation(effectiveContent, keyword, aiLinksActive, false, cleanTitle);
-
-      // A Blogger analysis is already paid for and executed when the title is locked.
-      // Persist it immediately so History reflects the completed analysis without
-      // requiring a second billable action or forcing the user to press Start New.
       if (analysisData) {
         const historyItem: SEOAnalysisHistoryItem = {
-          id: `seo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          title: cleanTitle,
-          keyword: keyword.trim(),
-          wordCount: effectiveContent.split(/\s+/).filter(Boolean).length,
-          creditCost: res.isTrialCheck ? 0 : cost,
-          content: effectiveContent,
+          id: `seo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, title: cleanTitle, keyword: keyword.trim(),
+          wordCount: effectiveContent.split(/\\s+/).filter(Boolean).length, creditCost: chargedCredits, content: effectiveContent,
           scores: analysisData.computed,
-          snapshot: {
-            kwResult: analysisData.kwr,
-            semanticResult: analysisData.sem,
-            intentResult: analysisData.intent,
-            readabilityResult: analysisData.read,
-            sentenceResult: analysisData.sent,
-            paraResult: analysisData.para,
-            transitionResult: analysisData.trans,
-            grammarResult: analysisData.gram,
-            headingResult: analysisData.head,
-            eeatResult: analysisData.eeat,
-            engagementResult: analysisData.eng,
-            snippetResult: analysisData.snip,
-            aiRiskResult: analysisData.risk,
-            uniquenessResult: analysisData.uniq,
-            metaResult: analysisData.meta,
-            balancedResult,
-            plagiarismResult,
-            authorshipResult,
-          },
-          createdAt: Date.now(),
-          contentHash: generateContentHash(effectiveContent, keyword),
-          bloggerSession: {
-            primaryKeyword: keyword,
-            relatedKeywords: [...bloggerRelatedKeywords],
-            title: cleanTitle,
-            step: 3,
-            isKeywordsLocked: true,
-            isTitleLocked: true,
-            isCreditsCharged: true,
-            metrics: bloggerMetrics || undefined,
-          },
+          snapshot: { kwResult: analysisData.kwr, semanticResult: analysisData.sem, intentResult: analysisData.intent, readabilityResult: analysisData.read, sentenceResult: analysisData.sent, paraResult: analysisData.para, transitionResult: analysisData.trans, grammarResult: analysisData.gram, headingResult: analysisData.head, eeatResult: analysisData.eeat, engagementResult: analysisData.eng, snippetResult: analysisData.snip, aiRiskResult: analysisData.risk, uniquenessResult: analysisData.uniq, metaResult: analysisData.meta, balancedResult, plagiarismResult, authorshipResult },
+          createdAt: Date.now(), contentHash: generateContentHash(effectiveContent, keyword),
+          bloggerSession: { primaryKeyword: keyword, relatedKeywords: [...bloggerRelatedKeywords], title: cleanTitle, step: 3, isKeywordsLocked: true, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics || undefined },
         };
         void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
       }
 
-      saveBloggerSession({
-        step: 3,
-        title: cleanTitle,
-        isTitleLocked: true,
-        isCreditsCharged: true
-      });
-
-      if (res.isTrialCheck) {
-        toast.success('Title locked! (1 Free trial check used). Optimization workspace unlocked.');
-      } else {
-        toast.success('Title locked! 30 credits deducted. Content optimization workspace unlocked.');
-      }
+      saveBloggerSession({ step: 3, title: cleanTitle, relatedKeywords: paidMetrics?.related.map(item => item.keyword) || bloggerRelatedKeywords, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics });
+      toast.success(wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! 30 credits deducted. Live keyword and competitor data loaded.');
     } catch (err) {
+      console.error('Failed to lock Blogger title:', err);
+      toast.error(err instanceof Error ? err.message : 'Blogger optimization failed. Please try again.');
+    } finally {
       setIsLockingTitle(false);
-      console.error('Failed to lock title and reserve credits:', err);
-      toast.error('Failed to reserve credits. Please try again.');
     }
   };
 
