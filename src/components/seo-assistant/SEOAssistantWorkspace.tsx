@@ -534,6 +534,11 @@ export function SEOAssistantWorkspace({
       return;
     }
 
+    if (isBloggerLanding && (!isKeywordsLocked || !isBloggerCreditsCharged)) {
+      toast.error('Lock your primary keyword before continuing to the title step.');
+      return;
+    }
+
     setIsLockingTitle(true);
     const cost = 30;
     const featureSlug = featureSlugForBilling;
