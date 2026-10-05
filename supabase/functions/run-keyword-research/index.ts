@@ -7,23 +7,40 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-  return withBillingGuard(req, { featureSlug: (body) => body.billing_feature === 'ai_checker_for_bloggers' ? 'ai_checker_for_bloggers' : 'seo_assistant', corsHeaders }, async (ctx) => {
 
-  try {
-    const { seed_keyword, country, language, project_id, billing_feature } = ctx.body;
-    if (billing_feature && !['ai_checker_for_bloggers', 'seo_assistant'].includes(billing_feature)) throw new Error('Invalid billing feature');
-    if (!seed_keyword || !country || !language) throw new Error('Missing required fields');
-
-    const authHeader = req.headers.get('Authorization')!;
-    const serviceClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    const supabaseClient = createClient(
+  // Blogger analysis is a preview operation: authenticate it, but do not reserve credits.
+  // The explicit commit_only request below is the only paid checkpoint.
+  const previewBody = await req.clone().json().catch(() => ({}));
+  if (previewBody?.billing_feature === 'ai_checker_for_bloggers' && previewBody?.analyze_only === true) {
+    const authHeader = req.headers.get('Authorization') || '';
+    const previewClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
+    const { data: { user }, error: authError } = await previewClient.auth.getUser();
+    if (authError || !user?.id) {
+      return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    return runKeywordResearch(previewBody, user.id, false);
+  }
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const userId = user?.id || null;
+  return withBillingGuard(req, { featureSlug: (body) => body.billing_feature === 'ai_checker_for_bloggers' ? 'ai_checker_for_bloggers' : 'seo_assistant', corsHeaders }, async (ctx) => {
+    if (ctx.body?.billing_feature === 'ai_checker_for_bloggers' && ctx.body?.commit_only === true) {
+      return new Response(JSON.stringify({ success: true, locked: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    return runKeywordResearch(ctx.body, ctx.userId, true);
+  });
+});
+
+async function runKeywordResearch(body: Record<string, any>, authenticatedUserId: string | null, persistResult: boolean): Promise<Response> {
+  try {
+    const { seed_keyword, country, language, project_id, billing_feature } = body;
+    if (billing_feature && !['ai_checker_for_bloggers', 'seo_assistant'].includes(billing_feature)) throw new Error('Invalid billing feature');
+    if (!seed_keyword || !country || !language) throw new Error('Missing required fields');
+
+    const serviceClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const userId = authenticatedUserId;
 
     // Check for real API keys
     const { data: keysData } = await serviceClient.from('system_api_keys').select('provider, key_value').in('provider', ['dataforseo_login', 'dataforseo_password']);
@@ -151,27 +168,29 @@ serve(async (req) => {
       serp_features: serpFeatures
     };
 
-    const { data, error: insertError } = await serviceClient
-      .from('keyword_research')
-      .insert({
-        user_id: userId,
-        project_id: project_id || null,
-        seed_keyword,
-        country,
-        language,
-        status: 'Completed',
-        processing_time: null,
-        total_keywords: realKeywords.length,
-        keyword_data: keywordData
-      })
-      .select()
-      .single();
+    let persisted: Record<string, any> = {};
+    if (persistResult) {
+      const { data, error: insertError } = await serviceClient
+        .from('keyword_research')
+        .insert({
+          user_id: userId,
+          project_id: project_id || null,
+          seed_keyword,
+          country,
+          language,
+          status: 'Completed',
+          processing_time: null,
+          total_keywords: realKeywords.length,
+          keyword_data: keywordData
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      persisted = data || {};
+    }
 
-    if (insertError) throw insertError;
-
-    return new Response(JSON.stringify({ ...data, competitors, serp_features: serpFeatures, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ...persisted, success: true, keyword_data: keywordData, competitors, serp_features: serpFeatures, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
   }
-  });
-});
+}
