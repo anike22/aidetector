@@ -1890,7 +1890,7 @@ Return ONLY valid JSON:
       />
 
       {/* Modules 3–20 & Integrity Tools */}
-      {!isSubscriber ? (
+      {!isSubscriber && !isBloggerMode ? (
         <div className="relative mt-2 rounded-xl overflow-hidden border border-border bg-card/60">
           {/* Blurred Background Preview */}
           <div className="filter blur-[5px] select-none pointer-events-none opacity-30 p-2 space-y-3">
