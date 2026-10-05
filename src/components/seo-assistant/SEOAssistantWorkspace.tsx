@@ -1062,6 +1062,7 @@ export function SEOAssistantWorkspace({
       const restoredCharged = savedSession?.isCreditsCharged ?? item.creditCost > 0;
       const metrics = savedSession?.metrics ?? null;
 
+      bloggerLockAttemptKeyRef.current = null;
       setBloggerStep(savedStep);
       setIsKeywordsLocked(restoredKeywordsLocked);
       setIsTitleLocked(restoredTitleLocked);
