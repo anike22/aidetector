@@ -453,13 +453,26 @@ export function SEOAssistantWorkspace({
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          const code = payload?.errorCode || payload?.error_code;
-          if (code === 'INSUFFICIENT_CREDITS' || code === 'CREDITS_EXHAUSTED' || code === 'UPGRADE_REQUIRED') {
-            const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
-            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: code === 'INSUFFICIENT_CREDITS' || code === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature', remaining: availableBalance, limit: cost });
+          const code = String(payload?.errorCode || payload?.error_code || payload?.code || '').toUpperCase();
+          const message = String(payload?.error || payload?.message || '').toLowerCase();
+          const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
+          const insufficientCredits =
+            code === 'INSUFFICIENT_CREDITS' ||
+            code === 'CREDITS_EXHAUSTED' ||
+            message.includes('insufficient credit') ||
+            message.includes('credits exhausted') ||
+            (response.status === 402 && availableBalance < cost);
+          if (insufficientCredits) {
+            toast.error(`Insufficient credits. AI Checker for Bloggers requires ${cost} credits. You currently have ${availableBalance}.`);
+            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: 'limit_reached', remaining: availableBalance, limit: cost });
             return;
           }
-          throw new Error(payload?.error || 'Keyword lock failed.');
+          if (code === 'UPGRADE_REQUIRED' || response.status === 402) {
+            toast.error('Upgrade or top up your credits to continue.');
+            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: 'pro_feature', remaining: availableBalance, limit: cost });
+            return;
+          }
+          throw new Error(payload?.error || payload?.message || `Keyword lock failed (HTTP ${response.status}).`);
         }
         await refresh();
       }
@@ -488,7 +501,12 @@ export function SEOAssistantWorkspace({
       setHistoryCount(getSEOAssistantHistory().length);
       toast.success('Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Keyword lock failed.');
+      const message = err instanceof Error ? err.message : '';
+      if (/failed to fetch|networkerror|network request failed/i.test(message)) {
+        toast.error('Unable to reach the billing service. Please check your connection and try again. No credits were charged.');
+      } else {
+        toast.error(message || 'Keyword lock failed.');
+      }
     } finally {
       setIsLockingTitle(false);
     }
