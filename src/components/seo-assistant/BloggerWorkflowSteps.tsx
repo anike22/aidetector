@@ -109,7 +109,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 2. Title & Lock
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {isTitleLocked ? 'Locked (30 Credits)' : 'Cost: 30 Credits'}
+                {isTitleLocked ? 'Locked' : (isKeywordsLocked ? 'No additional charge' : 'After keyword research')}
               </span>
             </div>
           </div>
@@ -296,22 +296,22 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
         </div>
       )}
 
-      {/* ── STEP 2: TITLE & CREDIT CHARGE ── */}
+      {/* ── STEP 2: PAID KEYWORD SESSION + TITLE ── */}
       {step === 2 && (
         <div className="max-w-5xl mx-auto bg-muted/20 border border-border rounded-xl p-4 md:p-5">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                Step 2: Enter Content Title & Lock (Static 30 Credits)
+                Step 2: Review Keyword Research & Enter Content Title
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Your title must contain the primary keyword. Once confirmed, the title is locked and static 30 credits are deducted to activate multi-keyword optimization.
+                Your keyword research is already paid and saved. Review the locked keyword metrics below, then enter a title containing the primary keyword. Locking the title does not charge again.
               </p>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Coins className="w-3.5 h-3.5" />
-              <span>Static Cost: 30 Credits</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Keyword Research Paid & Saved</span>
             </div>
           </div>
 
@@ -340,6 +340,21 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             )}
           </div>
 
+          {metrics && (
+            <div className="bg-card border border-border rounded-lg p-3 md:p-4 mb-4">
+              <div className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                Locked Keyword & SERP Evaluation
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Keyword Difficulty</span><span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100`}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Monthly Search Volume</span><span className="text-base font-extrabold text-foreground">{metrics.primary.searchVolumeFormatted}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Recommended Word Count</span><span className="text-sm md:text-base font-extrabold text-primary">{metrics.recommendedWordCount.rangeText}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Intent</span><span className="text-xs font-bold text-foreground">{metrics.primary.intent}</span></div>
+              </div>
+            </div>
+          )}
+
           {/* Title Input */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1">
@@ -366,8 +381,18 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
-            <div className="text-xs text-muted-foreground">
-              Current balance: <strong className="text-foreground">{creditsBalance}</strong> credits. Static optimization charge: <strong className="text-primary">30 credits</strong>.
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Keyword research is saved in History. Title lock costs <strong className="text-foreground">0 additional credits</strong>.</span>
+              {!showResetConfirm ? (
+                <Button size="sm" variant="outline" onClick={() => setShowResetConfirm(true)} className="h-8 text-xs gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5" /> Start New
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Button size="sm" onClick={() => { setShowResetConfirm(false); onStartNew(); }} className="h-8 text-xs">Save & Start New</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowResetConfirm(false)} className="h-8 text-xs">Cancel</Button>
+                </div>
+              )}
             </div>
 
             <Button
@@ -381,7 +406,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               ) : (
                 <>
                   <Lock className="w-3.5 h-3.5" />
-                  Lock Title & Start Optimization (30 Credits)
+                  Lock Title & Start Optimization
                 </>
               )}
             </Button>
