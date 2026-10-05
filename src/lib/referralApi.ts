@@ -206,6 +206,12 @@ export async function updateAffiliateApplicationStatus(id: string, status: Affil
     p_tier: tier || null,
   });
   if (error) throw error;
+  if (status === 'Approved') {
+    const { error: emailError } = await supabase.functions.invoke('register', {
+      body: { action: 'affiliate_approved', applicationId: id },
+    });
+    if (emailError) console.warn('Affiliate approval email trigger failed:', emailError);
+  }
   const { data, error: fetchError } = await supabase.from('affiliate_applications').select('*').eq('id', id).single();
   if (fetchError) throw fetchError;
   return data as AffiliateApplication;
