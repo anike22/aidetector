@@ -1736,7 +1736,8 @@ Return ONLY valid JSON: {"faqs":[{"question":"...","answer":"..."}]}`
       contents: [{
         role: 'user',
         parts: [{
-          text: `Analyze top 5 ranking pages for keyword "${keyword}".
+          text: `Analyze the top 5 organic Google ranking pages for keyword "${keyword}" specifically in the selected market: country "${isBloggerMode ? bloggerTargetCountry : 'United States'}", language "${isBloggerMode ? bloggerTargetLanguage : 'en'}".
+Use search results relevant to that country and language. Do not substitute a different market. If market-specific ranking evidence is insufficient, return fewer competitors rather than inventing results.
 Return ONLY valid JSON:
 {"competitors":[{"url":"https://...","title":"Title","wordCount":1200,"readability":"Standard","h2Headings":["H2 1","H2 2"],"keywordsUsed":["kw1"],"strengths":["Clear"],"weaknesses":["Short"]}],"contentGap":{"missingSubtopics":["Subtopic A"],"targetWordCountRange":"1200-1500","recommendedH2s":["Rec H2"]}}`
         }]
@@ -1763,7 +1764,7 @@ Return ONLY valid JSON:
             parsed.contentGap?.missingFAQs || []
           );
           setContentGap(coverage);
-          toast.success(`Competitor analysis complete: ${coverage.coveragePercent}% keyword coverage.`);
+          toast.success(`Competitor analysis complete for ${isBloggerMode ? bloggerTargetCountry : 'United States'}: ${coverage.coveragePercent}% keyword coverage.`);
         } catch { toast.error('Failed to parse competitor data.'); }
       },
       onError: () => { setLoadingCompetitors(false); toast.error('Competitor analysis failed.'); },
@@ -2267,8 +2268,20 @@ Return ONLY valid JSON:
           creditsBalance={summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0}
           targetCountry={bloggerTargetCountry}
           targetLanguage={bloggerTargetLanguage}
-          onTargetCountryChange={setBloggerTargetCountry}
-          onTargetLanguageChange={setBloggerTargetLanguage}
+          onTargetCountryChange={(country) => {
+            if (!isKeywordsLocked) {
+              setBloggerTargetCountry(country);
+              setCompetitors([]);
+              setContentGap(null);
+            }
+          }}
+          onTargetLanguageChange={(language) => {
+            if (!isKeywordsLocked) {
+              setBloggerTargetLanguage(language);
+              setCompetitors([]);
+              setContentGap(null);
+            }
+          }}
           autoGenerateRelated={bloggerAutoGenerateRelated}
           onAutoGenerateRelatedChange={(checked) => {
             if (!isKeywordsLocked) {
