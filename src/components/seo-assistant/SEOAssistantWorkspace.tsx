@@ -298,22 +298,20 @@ export function SEOAssistantWorkspace({
     return false;
   });
 
-  const [bloggerMetrics, setBloggerMetrics] = useState<BloggerKeywordEvaluationResult | null>(() => {
-    if (initialKeyword && isBloggerMode) {
-      return evaluateBloggerKeywords(initialKeyword, []);
-    }
-    return null;
-  });
-
+  const [bloggerMetrics, setBloggerMetrics] = useState<BloggerKeywordEvaluationResult | null>(null);
+  const [bloggerAnalysisSignature, setBloggerAnalysisSignature] = useState<string | null>(null);
   const [isLockingTitle, setIsLockingTitle] = useState(false);
 
-  // Sync blogger metrics when primary keyword changes in step 1
+  const currentBloggerAnalysisSignature = `${keyword.trim().toLowerCase()}|${bloggerTargetCountry}|${bloggerTargetLanguage}`;
+  const hasCurrentBloggerAnalysis = Boolean(bloggerMetrics && bloggerAnalysisSignature === currentBloggerAnalysisSignature);
+
+  // Never show estimated/fabricated Blogger metrics. Editing the research target invalidates prior live evidence.
   useEffect(() => {
-    if (isBloggerMode && !isKeywordsLocked && keyword.trim()) {
-      const evaluated = evaluateBloggerKeywords(keyword.trim(), bloggerRelatedKeywords);
-      setBloggerMetrics(evaluated);
+    if (isBloggerMode && !isKeywordsLocked && bloggerAnalysisSignature && bloggerAnalysisSignature !== currentBloggerAnalysisSignature) {
+      setBloggerMetrics(null);
+      setBloggerAnalysisSignature(null);
     }
-  }, [keyword, bloggerRelatedKeywords, isBloggerMode, isKeywordsLocked]);
+  }, [currentBloggerAnalysisSignature, bloggerAnalysisSignature, isBloggerMode, isKeywordsLocked]);
 
   const saveBloggerSession = useCallback((updates: Partial<{
     step: 1 | 2 | 3;
@@ -346,155 +344,143 @@ export function SEOAssistantWorkspace({
     } catch {}
   }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTargetCountry, bloggerTargetLanguage, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
 
-  // Handle Step 1: lock keyword, run paid live research, persist session/history
+  // Step 1A: analyze the keyword with live provider data. This does not charge credits.
+  const handleAnalyzeKeyword = async () => {
+    const cleanKw = keyword.trim();
+    if (!cleanKw) { toast.error('Please enter a primary target keyword.'); return; }
+    if (isLockingTitle) return;
+    setIsLockingTitle(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Please sign in to analyze this keyword.');
+        handleAuthRedirect('/signup');
+        return;
+      }
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        },
+        body: JSON.stringify({
+          seed_keyword: cleanKw,
+          country: bloggerTargetCountry,
+          language: bloggerTargetLanguage,
+          billing_feature: 'ai_checker_for_bloggers',
+          analyze_only: true,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.success === false) throw new Error(payload?.error || 'Live keyword analysis failed.');
+
+      const kd = payload?.keyword_data || {};
+      const groups = [kd.primary, kd.secondary, kd.long_tail, kd.questions, kd.commercial, kd.transactional, kd.informational];
+      const rows = groups.flatMap((group: any) => Array.isArray(group) ? group : []);
+      const seen = new Set<string>();
+      const liveKeywords = rows.filter((row: any) => {
+        const key = String(row?.keyword || '').trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key); return true;
+      }).map((row: any) => ({
+        keyword: String(row.keyword).trim(),
+        searchVolume: typeof row.search_volume === 'number' ? row.search_volume : null,
+        difficulty: typeof row.difficulty === 'number' ? row.difficulty : null,
+        cpc: typeof row.cpc === 'number' ? row.cpc : null,
+        intent: row.intent || null,
+        source: 'DataForSEO',
+        country: bloggerTargetCountry,
+      }));
+      const competitors = (payload?.competitors || kd?.competitors || [])
+        .map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) }))
+        .filter((item: any) => item.url && Number.isFinite(item.wordCount));
+      const serpFeatures = payload?.serp_features || kd?.serp_features || [];
+      const providerRelated = liveKeywords
+        .filter((item: any) => item.keyword.toLowerCase() !== cleanKw.toLowerCase())
+        .slice(0, 3).map((item: any) => item.keyword);
+      const related = bloggerRelatedKeywords.filter(Boolean).length ? bloggerRelatedKeywords.filter(Boolean) : providerRelated;
+      const liveMetrics = evaluateBloggerKeywords(cleanKw, related, { keywords: liveKeywords, competitors, serpFeatures });
+      setBloggerRelatedKeywords(related);
+      setBloggerMetrics(liveMetrics);
+      setBloggerAnalysisSignature(currentBloggerAnalysisSignature);
+      toast.success('Keyword analysis complete. Review the live data, then lock the keyword to use 30 credits.');
+    } catch (err) {
+      setBloggerMetrics(null);
+      setBloggerAnalysisSignature(null);
+      toast.error(err instanceof Error ? err.message : 'Keyword analysis failed.');
+    } finally {
+      setIsLockingTitle(false);
+    }
+  };
+
+  // Step 1B: explicit paid checkpoint. No provider call is repeated here.
   const handleLockKeywords = async () => {
     const cleanKw = keyword.trim();
-    if (!cleanKw) {
-      toast.error('Please enter a primary target keyword.');
+    if (!cleanKw) { toast.error('Please enter a primary target keyword.'); return; }
+    if (!hasCurrentBloggerAnalysis || !bloggerMetrics) {
+      toast.error('Analyze this keyword successfully before locking it.');
       return;
     }
     if (isLockingTitle) return;
-
     setIsLockingTitle(true);
     const cost = 30;
     try {
-      let paidMetrics = evaluateBloggerKeywords(cleanKw, bloggerRelatedKeywords);
-      let related = bloggerRelatedKeywords.filter(Boolean);
-      let chargedCredits = 0;
-
       if (isBloggerLanding) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          toast.error('Please sign in to research and lock this keyword.');
-          handleAuthRedirect('/signup');
-          return;
-        }
-
-        const idempotencyKey = `blogger-keyword:${session.user.id}:${cleanKw.toLowerCase()}:${bloggerTargetCountry.toLowerCase()}:${bloggerTargetLanguage}`;
+        if (!session?.access_token) { toast.error('Please sign in to lock this keyword.'); handleAuthRedirect('/signup'); return; }
+        const idempotencyKey = `blogger-lock:${session.user.id}:${cleanKw.toLowerCase()}:${bloggerTargetCountry.toLowerCase()}:${bloggerTargetLanguage}:${Date.now()}`;
         const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY,
             Authorization: `Bearer ${session.access_token}`,
             'x-idempotency-key': idempotencyKey,
             'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           },
           body: JSON.stringify({
-            seed_keyword: cleanKw,
-            country: bloggerTargetCountry,
-            language: bloggerTargetLanguage,
-            billing_feature: 'ai_checker_for_bloggers',
+            seed_keyword: cleanKw, country: bloggerTargetCountry, language: bloggerTargetLanguage,
+            billing_feature: 'ai_checker_for_bloggers', commit_only: true,
           }),
         });
-
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           const code = payload?.errorCode || payload?.error_code;
-          if (code === 'CREDITS_EXHAUSTED' || code === 'UPGRADE_REQUIRED') {
+          if (code === 'INSUFFICIENT_CREDITS' || code === 'CREDITS_EXHAUSTED' || code === 'UPGRADE_REQUIRED') {
             const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
-            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: code === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature', remaining: availableBalance, limit: cost });
+            openUpgradeModal({ featureName: 'AI Checker for Bloggers', trigger: code === 'INSUFFICIENT_CREDITS' || code === 'CREDITS_EXHAUSTED' ? 'limit_reached' : 'pro_feature', remaining: availableBalance, limit: cost });
             return;
           }
-          throw new Error(payload?.error || payload?.reason || 'Live keyword and SERP research failed.');
+          throw new Error(payload?.error || 'Keyword lock failed.');
         }
-
-        const kd = payload?.keyword_data || {};
-        const groups = [kd.primary, kd.secondary, kd.long_tail, kd.questions, kd.commercial, kd.transactional, kd.informational];
-        const providerRows = groups.flatMap((group: any) => Array.isArray(group) ? group : []);
-        const seen = new Set<string>();
-        const liveKeywords = providerRows.filter((row: any) => {
-          const key = String(row?.keyword || '').trim().toLowerCase();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        }).map((row: any) => ({
-          keyword: String(row.keyword).trim(),
-          searchVolume: typeof row.search_volume === 'number' ? row.search_volume : null,
-          difficulty: typeof row.difficulty === 'number' ? row.difficulty : null,
-          cpc: typeof row.cpc === 'number' ? row.cpc : null,
-          intent: row.intent || null,
-          source: 'DataForSEO',
-          country: bloggerTargetCountry,
-        }));
-        const competitors = (payload?.competitors || kd?.competitors || [])
-          .map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) }))
-          .filter((item: any) => item.url && Number.isFinite(item.wordCount));
-        const serpFeatures = payload?.serp_features || kd?.serp_features || [];
-        const primaryKey = cleanKw.toLowerCase();
-        const providerRelated = liveKeywords
-          .filter((item: any) => item.keyword.toLowerCase() !== primaryKey)
-          .slice(0, 3)
-          .map((item: any) => item.keyword);
-        related = bloggerRelatedKeywords.filter(Boolean).length > 0 ? bloggerRelatedKeywords.filter(Boolean) : providerRelated;
-        paidMetrics = evaluateBloggerKeywords(cleanKw, related, { keywords: liveKeywords, competitors, serpFeatures });
-        chargedCredits = response.headers.get('x-is-trial-check') === 'true' ? 0 : cost;
         await refresh();
       }
 
-      setBloggerRelatedKeywords(related);
-      setBloggerMetrics(paidMetrics);
+      const related = bloggerRelatedKeywords.filter(Boolean);
       setIsKeywordsLocked(true);
       setIsBloggerCreditsCharged(isBloggerLanding ? true : isBloggerCreditsCharged);
       setBloggerStep(2);
       saveBloggerSession({
-        step: 2,
-        primaryKeyword: cleanKw,
-        relatedKeywords: related,
-        targetCountry: bloggerTargetCountry,
-        targetLanguage: bloggerTargetLanguage,
-        isKeywordsLocked: true,
-        isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
-        metrics: paidMetrics,
+        step: 2, primaryKeyword: cleanKw, relatedKeywords: related,
+        targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage,
+        isKeywordsLocked: true, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
+        metrics: bloggerMetrics,
       });
 
       const historyItem: SEOAnalysisHistoryItem = {
         id: `keyword_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        title: `Keyword Research: ${cleanKw}`,
-        keyword: cleanKw,
-        wordCount: 0,
-        creditCost: chargedCredits,
-        content: '',
-        scores: DEFAULT_SCORES,
-        snapshot: {
-          kwResult: DEFAULT_KW_RESULT,
-          semanticResult,
-          intentResult,
-          readabilityResult,
-          sentenceResult,
-          paraResult,
-          transitionResult,
-          grammarResult,
-          headingResult,
-          eeatResult,
-          engagementResult,
-          snippetResult,
-          aiRiskResult,
-          uniquenessResult,
-          metaResult,
-          balancedResult,
-          plagiarismResult,
-          authorshipResult,
-        },
-        createdAt: Date.now(),
-        contentHash: generateContentHash('', cleanKw),
-        bloggerSession: {
-          primaryKeyword: cleanKw,
-          relatedKeywords: [...related],
-          title: '',
-          step: 2,
-          isKeywordsLocked: true,
-          isTitleLocked: false,
-          isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
-          metrics: paidMetrics,
-        },
+        title: `Keyword Research: ${cleanKw}`, keyword: cleanKw, wordCount: 0,
+        creditCost: isBloggerLanding ? cost : 0, content: '', scores: DEFAULT_SCORES,
+        snapshot: { kwResult: DEFAULT_KW_RESULT, semanticResult, intentResult, readabilityResult, sentenceResult, paraResult, transitionResult, grammarResult, headingResult, eeatResult, engagementResult, snippetResult, aiRiskResult, uniquenessResult, metaResult, balancedResult, plagiarismResult, authorshipResult },
+        createdAt: Date.now(), contentHash: generateContentHash('', cleanKw),
+        bloggerSession: { primaryKeyword: cleanKw, relatedKeywords: [...related], title: '', step: 2, isKeywordsLocked: true, isTitleLocked: false, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged, metrics: bloggerMetrics },
       };
       await saveSyncedSEOAssistantHistoryItem(historyItem);
       setHistoryCount(getSEOAssistantHistory().length);
-      toast.success(isBloggerLanding ? 'Keyword research saved. 30 credits charged. You can enter a title or start a new keyword.' : 'Keywords locked and saved.');
+      toast.success('Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
     } catch (err) {
-      console.error('Failed to lock Blogger keyword:', err);
-      toast.error(err instanceof Error ? err.message : 'Keyword research failed. Please try again.');
+      toast.error(err instanceof Error ? err.message : 'Keyword lock failed.');
     } finally {
       setIsLockingTitle(false);
     }
@@ -2203,7 +2189,9 @@ Return ONLY valid JSON:
               setBloggerTitle(val);
             }
           }}
+          onAnalyzeKeyword={handleAnalyzeKeyword}
           onLockKeywords={handleLockKeywords}
+          hasCurrentAnalysis={hasCurrentBloggerAnalysis}
           onLockTitleAndPay={handleLockTitleAndPay}
           onStartNew={handleStartNewBloggerSession}
           isLockingTitle={isLockingTitle}
