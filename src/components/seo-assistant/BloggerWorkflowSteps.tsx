@@ -322,11 +322,11 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              Lock Keyword — 30 Credits
+              Optimize My Content — 30 Credits
             </Button>
           </div>
           {!hasCurrentAnalysis && (
-            <p className="text-[11px] text-muted-foreground text-right mt-2">Live keyword analysis is optional. You can analyze for additional insights, add related keywords manually, or lock and continue with your primary keyword.</p>
+            <p className="text-[11px] text-muted-foreground text-right mt-2">Review the full analysis first. When you're ready to act on the insights, optimize your content for 30 credits.</p>
           )}
         </div>
       )}
@@ -338,15 +338,15 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                Step 2: Review Keyword Research & Enter Content Title
+                Step 2: Optimization Session & Content Title
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Your keyword research is already paid and saved. Review the locked keyword metrics below, then enter a title containing the primary keyword. Locking the title does not charge again.
+                Your 30-credit optimization session is active and saved. Review the keyword insights below, then enter a title containing the primary keyword. There is no additional charge for the title or later optimization steps.
               </p>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Keyword Research Paid & Saved</span>
+              <span>Optimization Session Active</span>
             </div>
           </div>
 
