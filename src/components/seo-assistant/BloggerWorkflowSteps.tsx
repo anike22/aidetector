@@ -23,7 +23,9 @@ interface BloggerWorkflowStepsProps {
   onPrimaryKeywordChange: (val: string) => void;
   onRelatedKeywordChange: (index: number, val: string) => void;
   onTitleChange: (val: string) => void;
+  onAnalyzeKeyword: () => void;
   onLockKeywords: () => void;
+  hasCurrentAnalysis: boolean;
   onLockTitleAndPay: () => void;
   onStartNew: () => void;
   isLockingTitle?: boolean;
@@ -46,7 +48,9 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   onPrimaryKeywordChange,
   onRelatedKeywordChange,
   onTitleChange,
+  onAnalyzeKeyword,
   onLockKeywords,
+  hasCurrentAnalysis,
   onLockTitleAndPay,
   onStartNew,
   isLockingTitle = false,
@@ -282,17 +286,30 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/60">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2 border-t border-border/60">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onAnalyzeKeyword}
+              disabled={!cleanPrimary || isLockingTitle}
+              className="h-9 px-5 text-xs font-semibold gap-1.5"
+            >
+              <Search className="w-3.5 h-3.5" />
+              {isLockingTitle && !hasCurrentAnalysis ? 'Analyzing…' : 'Analyze Keyword'}
+            </Button>
             <Button
               size="sm"
               onClick={onLockKeywords}
-              disabled={!cleanPrimary}
+              disabled={!cleanPrimary || !hasCurrentAnalysis || isLockingTitle}
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              Lock Keywords & Proceed to Step 2
+              Lock Keyword — 30 Credits
             </Button>
           </div>
+          {!hasCurrentAnalysis && (
+            <p className="text-[11px] text-muted-foreground text-right mt-2">Analyze the keyword first. Lock becomes available only after live provider data loads successfully.</p>
+          )}
         </div>
       )}
 
