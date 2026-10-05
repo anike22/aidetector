@@ -147,7 +147,7 @@ function calculateRecommendedWordCount(competitors: CompetitorPageMetric[] = [])
       maxWords: null,
       targetWords: null,
       rangeText: 'Awaiting live SERP data',
-      rationale: 'Connect live SERP competitor data to calculate this target from measured ranking-page content. No synthetic word-count target is shown.',
+      rationale: 'Insufficient verified ranking-page word-count evidence is currently available to calculate a reliable target. No synthetic word-count target is shown.',
       competitorCount: measured.length,
     };
   }
