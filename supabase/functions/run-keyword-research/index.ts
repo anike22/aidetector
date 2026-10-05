@@ -44,6 +44,8 @@ serve(async (req) => {
 
     let dataSourceLabel = "DataForSEO";
     let realKeywords: any[] = [];
+    let competitors: Array<{ url: string; wordCount: number }> = [];
+    let serpFeatures: string[] = [];
     try {
       const dfsUrl = 'https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live';
       const postData = [{
@@ -66,27 +68,61 @@ serve(async (req) => {
       if (res.ok) {
         const dfsData = await res.json();
         if (dfsData.status_code && dfsData.status_code !== 20000) {
-          dataSourceLabel = `Demo Data (API Error: ${dfsData.status_message})`;
+          dataSourceLabel = `DataForSEO unavailable (API Error: ${dfsData.status_message})`;
         } else {
           const items = dfsData.tasks?.[0]?.result?.[0]?.items;
           if (items && Array.isArray(items)) {
             realKeywords = items.map((item: any) => ({
               keyword: item.keyword_data?.keyword || '',
-              search_volume: item.keyword_data?.keyword_info?.search_volume || 0,
-              difficulty: item.keyword_data?.keyword_properties?.keyword_difficulty || 0,
-              cpc: (item.keyword_data?.keyword_info?.cpc || 0).toFixed(2),
-              intent: item.keyword_data?.keyword_intent?.label || 'Informational',
-              trend: 'Stable', // DataForSEO trends requires monthly data parsing
-              opportunity_score: Math.max(0, 100 - (item.keyword_data?.keyword_properties?.keyword_difficulty || 0))
+              search_volume: item.keyword_data?.keyword_info?.search_volume ?? null,
+              difficulty: item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
+              cpc: item.keyword_data?.keyword_info?.cpc ?? null,
+              intent: item.keyword_data?.keyword_intent?.label || null
             }));
           }
         }
       } else {
-        dataSourceLabel = `Demo Data (HTTP ${res.status})`;
+        dataSourceLabel = `DataForSEO unavailable (HTTP ${res.status})`;
       }
     } catch (e: any) {
       console.error("DataForSEO Fetch Error:", e);
-      dataSourceLabel = `Demo Data (${e.message})`;
+      dataSourceLabel = `DataForSEO unavailable (${e.message})`;
+    }
+
+    // Blogger competitor evidence: real Google organic SERP + measured page word counts.
+    if (billing_feature === 'ai_checker_for_bloggers') {
+      const auth = btoa(`${dfsLogin}:${dfsPassword}`);
+      const serpRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, depth: 10, device: 'desktop' }])
+      });
+      if (!serpRes.ok) throw new Error(`DataForSEO SERP HTTP ${serpRes.status}`);
+      const serpData = await serpRes.json();
+      if (serpData.status_code !== 20000 || serpData.tasks?.[0]?.status_code !== 20000) {
+        throw new Error(`DataForSEO SERP unavailable: ${serpData.tasks?.[0]?.status_message || serpData.status_message || 'unknown error'}`);
+      }
+      const serpItems = serpData.tasks?.[0]?.result?.[0]?.items || [];
+      serpFeatures = [...new Set(serpItems.map((item: any) => item?.type).filter((type: any) => type && type !== 'organic'))];
+      const urls = serpItems
+        .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && /^https?:\\/\\//i.test(item.url))
+        .map((item: any) => item.url)
+        .filter((url: string) => !/\\.(pdf|jpg|jpeg|png|gif|webp)(?:[?#]|$)/i.test(url))
+        .slice(0, 10);
+
+      if (urls.length) {
+        const pageRes = await fetch('https://api.dataforseo.com/v3/on_page/instant_pages', {
+          method: 'POST',
+          headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(urls.map((url: string) => ({ url })))
+        });
+        if (!pageRes.ok) throw new Error(`DataForSEO OnPage HTTP ${pageRes.status}`);
+        const pageData = await pageRes.json();
+        if (pageData.status_code !== 20000) throw new Error(`DataForSEO OnPage unavailable: ${pageData.status_message || 'unknown error'}`);
+        competitors = (pageData.tasks || []).flatMap((task: any) => task?.result?.[0]?.items || [])
+          .map((item: any) => ({ url: item?.url || '', wordCount: Number(item?.meta?.content?.plain_text_word_count) }))
+          .filter((item: any) => item.url && Number.isFinite(item.wordCount) && item.wordCount >= 250 && item.wordCount <= 25000);
+      }
     }
 
     if (realKeywords.length === 0) {
@@ -110,7 +146,9 @@ serve(async (req) => {
       transactional: byIntent('transactional', 5),
       informational: byIntent('informational', 5),
       aeo: [],
-      data_source: "DataForSEO"
+      data_source: "DataForSEO",
+      competitors,
+      serp_features: serpFeatures
     };
 
     const { data, error: insertError } = await serviceClient
@@ -131,7 +169,7 @@ serve(async (req) => {
 
     if (insertError) throw insertError;
 
-    return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ...data, competitors, serp_features: serpFeatures, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
   }
