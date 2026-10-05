@@ -2420,7 +2420,7 @@ Return ONLY valid JSON:
               <p className="text-xs text-muted-foreground max-w-md text-pretty mb-4">
                 {bloggerStep === 1
                   ? 'Complete Step 1 above by entering your primary keyword and up to 3 related keywords. The engine will evaluate keyword difficulty, search volume, and ranking requirements.'
-                  : 'Enter your content title above (must contain the primary keyword) and lock it with 30 credits to unlock the full drafting & optimization editor.'}
+                  : 'Enter your content title above (must contain the primary keyword) and lock it to unlock the full drafting & optimization editor. No additional credits are charged.'}
               </p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-semibold text-primary">Next Action:</span>
