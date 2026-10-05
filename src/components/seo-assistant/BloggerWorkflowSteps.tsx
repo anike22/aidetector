@@ -28,6 +28,10 @@ interface BloggerWorkflowStepsProps {
   onStartNew: () => void;
   isLockingTitle?: boolean;
   creditsBalance?: number;
+  targetCountry: string;
+  targetLanguage: string;
+  onTargetCountryChange: (val: string) => void;
+  onTargetLanguageChange: (val: string) => void;
 }
 
 export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
@@ -47,6 +51,10 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   onStartNew,
   isLockingTitle = false,
   creditsBalance = 0,
+  targetCountry,
+  targetLanguage,
+  onTargetCountryChange,
+  onTargetLanguageChange,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSERPPreview, setShowSERPPreview] = useState(true);
@@ -143,6 +151,21 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               <p className="text-xs text-muted-foreground mt-0.5">
                 Enter 1 primary keyword and up to 3 related keywords. The engine displays provider-backed keyword metrics and competitor-derived content targets when live data is available. Unavailable metrics are never estimated or fabricated. Once locked, keywords cannot be changed.
               </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label htmlFor="blogger-target-country" className="text-xs font-semibold text-foreground mb-1 block">Target Country</Label>
+              <select id="blogger-target-country" value={targetCountry} onChange={(e) => onTargetCountryChange(e.target.value)} disabled={isKeywordsLocked} className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground">
+                <option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="Nigeria">Nigeria</option><option value="Canada">Canada</option><option value="Australia">Australia</option><option value="India">India</option><option value="Germany">Germany</option><option value="France">France</option><option value="South Africa">South Africa</option><option value="Ghana">Ghana</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="blogger-target-language" className="text-xs font-semibold text-foreground mb-1 block">Language</Label>
+              <select id="blogger-target-language" value={targetLanguage} onChange={(e) => onTargetLanguageChange(e.target.value)} disabled={isKeywordsLocked} className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground">
+                <option value="en">English</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="it">Italian</option>
+              </select>
             </div>
           </div>
 
