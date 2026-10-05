@@ -56,47 +56,54 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
     let competitors: Array<{ url: string; wordCount: number }> = [];
     let serpFeatures: string[] = [];
     let serpWarning: string | null = null;
-    try {
-      const dfsUrl = 'https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live';
-      const postData = [{
-          "keyword": seed_keyword,
-          "location_name": country,
-          "language_code": language,
-          "limit": 50
-      }];
-      
-      const auth = btoa(`${dfsLogin}:${dfsPassword}`);
-      const res = await fetch(dfsUrl, {
+    let keywordWarning: string | null = null;
+    const auth = btoa(`${dfsLogin}:${dfsPassword}`);
+
+    const mapKeywordItems = (items: any[]) => items
+      .map((item: any) => ({
+        keyword: item?.keyword_data?.keyword || item?.keyword || '',
+        search_volume: item?.keyword_data?.keyword_info?.search_volume ?? item?.keyword_info?.search_volume ?? null,
+        difficulty: item?.keyword_data?.keyword_properties?.keyword_difficulty ?? item?.keyword_properties?.keyword_difficulty ?? null,
+        cpc: item?.keyword_data?.keyword_info?.cpc ?? item?.keyword_info?.cpc ?? null,
+        intent: item?.keyword_data?.keyword_intent?.label || item?.keyword_intent?.label || null
+      }))
+      .filter((item: any) => item.keyword);
+
+    const requestLabsKeywords = async (path: string, extra: Record<string, any> = {}) => {
+      const res = await fetch(`https://api.dataforseo.com/v3/dataforseo_labs/google/${path}/live`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(postData)
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, limit: 50, ...extra }])
       });
-      
-      if (res.ok) {
-        const dfsData = await res.json();
-        if (dfsData.status_code && dfsData.status_code !== 20000) {
-          dataSourceLabel = `DataForSEO unavailable (API Error: ${dfsData.status_message})`;
-        } else {
-          const items = dfsData.tasks?.[0]?.result?.[0]?.items;
-          if (items && Array.isArray(items)) {
-            realKeywords = items.map((item: any) => ({
-              keyword: item.keyword_data?.keyword || '',
-              search_volume: item.keyword_data?.keyword_info?.search_volume ?? null,
-              difficulty: item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
-              cpc: item.keyword_data?.keyword_info?.cpc ?? null,
-              intent: item.keyword_data?.keyword_intent?.label || null
-            }));
-          }
-        }
-      } else {
-        dataSourceLabel = `DataForSEO unavailable (HTTP ${res.status})`;
+      if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
+      const data = await res.json();
+      const task = data?.tasks?.[0];
+      if (data?.status_code !== 20000 || task?.status_code !== 20000) {
+        throw new Error(`${path}: ${task?.status_message || data?.status_message || 'unknown DataForSEO error'}`);
       }
-    } catch (e: any) {
-      console.error("DataForSEO Fetch Error:", e);
-      dataSourceLabel = `DataForSEO unavailable (${e.message})`;
+      return mapKeywordItems(task?.result?.[0]?.items || []);
+    };
+
+    try {
+      // Related Keywords is preferred for semantic relevance.
+      realKeywords = await requestLabsKeywords('related_keywords');
+      // Some valid seeds have no related-keyword rows. Keyword Suggestions is an official
+      // DataForSEO Labs source and provides verified metrics without fabricating values.
+      if (realKeywords.length === 0) {
+        realKeywords = await requestLabsKeywords('keyword_suggestions', { include_seed_keyword: true });
+      }
+    } catch (primaryError: any) {
+      keywordWarning = primaryError?.message || 'Related keyword lookup failed';
+      console.error('DataForSEO related keywords unavailable:', keywordWarning);
+      try {
+        realKeywords = await requestLabsKeywords('keyword_suggestions', { include_seed_keyword: true });
+        dataSourceLabel = 'DataForSEO Keyword Suggestions';
+      } catch (fallbackError: any) {
+        const fallbackMessage = fallbackError?.message || 'Keyword suggestions lookup failed';
+        keywordWarning = `${keywordWarning}; ${fallbackMessage}`;
+        console.error('DataForSEO keyword suggestions unavailable:', fallbackMessage);
+        dataSourceLabel = `DataForSEO unavailable (${keywordWarning})`;
+      }
     }
 
     // Blogger competitor evidence is supplementary. A provider SERP/OnPage outage must not
@@ -147,7 +154,8 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
       return new Response(JSON.stringify({
         success: false,
         error: "DataForSEO returned no verified keyword data",
-        data_source: dataSourceLabel
+        data_source: dataSourceLabel,
+        provider_error: keywordWarning
       }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -167,7 +175,8 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
       data_source: "DataForSEO",
       competitors,
       serp_features: serpFeatures,
-      serp_warning: serpWarning
+      serp_warning: serpWarning,
+      keyword_warning: keywordWarning
     };
 
     let persisted: Record<string, any> = {};
