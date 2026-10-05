@@ -34,6 +34,8 @@ interface BloggerWorkflowStepsProps {
   targetLanguage: string;
   onTargetCountryChange: (val: string) => void;
   onTargetLanguageChange: (val: string) => void;
+  autoGenerateRelated: boolean;
+  onAutoGenerateRelatedChange: (checked: boolean) => void;
 }
 
 export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
@@ -59,6 +61,8 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   targetLanguage,
   onTargetCountryChange,
   onTargetLanguageChange,
+  autoGenerateRelated,
+  onAutoGenerateRelatedChange,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSERPPreview, setShowSERPPreview] = useState(true);
@@ -153,7 +157,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 Step 1: Enter Keywords & Evaluate Ranking Metrics
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Enter 1 primary keyword and up to 3 related keywords. The engine displays provider-backed keyword metrics and competitor-derived content targets when live data is available. Unavailable metrics are never estimated or fabricated. Once locked, keywords cannot be changed.
+                Enter a primary keyword and either add up to 3 related keywords yourself or auto-generate them during analysis. The engine displays provider-backed keyword metrics and competitor-derived content targets when live data is available. Unavailable metrics are never estimated or fabricated. Once locked, keywords cannot be changed.
               </p>
             </div>
           </div>
@@ -173,6 +177,20 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             </div>
           </div>
 
+          <label className="flex items-start gap-2 mb-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoGenerateRelated}
+              onChange={(e) => onAutoGenerateRelatedChange(e.target.checked)}
+              disabled={isKeywordsLocked}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+            />
+            <span>
+              <span className="text-xs font-semibold text-foreground block">Auto-generate related keywords</span>
+              <span className="text-[11px] text-muted-foreground">Find relevant related, long-tail, and question keywords automatically during analysis.</span>
+            </span>
+          </label>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <div className="md:col-span-1">
               <Label htmlFor="blogger-primary-kw" className="text-xs font-semibold text-foreground mb-1 block">
@@ -184,7 +202,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onPrimaryKeywordChange(e.target.value)}
                 placeholder="e.g. AI checker for bloggers"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
 
@@ -198,7 +216,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(0, e.target.value)}
                 placeholder="e.g. blog SEO tools"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
 
@@ -212,7 +230,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(1, e.target.value)}
                 placeholder="e.g. AI content detector"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
 
@@ -226,7 +244,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(2, e.target.value)}
                 placeholder="e.g. readability score"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
           </div>
