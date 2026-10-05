@@ -202,7 +202,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onPrimaryKeywordChange(e.target.value)}
                 placeholder="e.g. AI checker for bloggers"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked || autoGenerateRelated}
+                disabled={isKeywordsLocked}
               />
             </div>
 
