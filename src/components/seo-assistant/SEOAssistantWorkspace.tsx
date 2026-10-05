@@ -499,7 +499,7 @@ export function SEOAssistantWorkspace({
         creditCost: isBloggerLanding ? cost : 0, content: '', scores: DEFAULT_SCORES,
         snapshot: { kwResult: DEFAULT_KW_RESULT, semanticResult, intentResult, readabilityResult, sentenceResult, paraResult, transitionResult, grammarResult, headingResult, eeatResult, engagementResult, snippetResult, aiRiskResult, uniquenessResult, metaResult, balancedResult, plagiarismResult, authorshipResult },
         createdAt: Date.now(), contentHash: generateContentHash('', cleanKw),
-        bloggerSession: { primaryKeyword: cleanKw, relatedKeywords: [...related], title: '', step: 2, isKeywordsLocked: true, isTitleLocked: false, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged, metrics: bloggerMetrics },
+        bloggerSession: { primaryKeyword: cleanKw, relatedKeywords: [...related], title: '', step: 2, isKeywordsLocked: true, isTitleLocked: false, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged, metrics: bloggerMetrics, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
       };
       await saveSyncedSEOAssistantHistoryItem(historyItem);
       setHistoryCount(getSEOAssistantHistory().length);
@@ -640,6 +640,9 @@ export function SEOAssistantWorkspace({
             isTitleLocked,
             isCreditsCharged: isBloggerCreditsCharged,
             metrics: bloggerMetrics || undefined,
+            targetCountry: bloggerTargetCountry,
+            targetLanguage: bloggerTargetLanguage,
+            autoGenerateRelated: bloggerAutoGenerateRelated,
           },
         };
         void saveSyncedSEOAssistantHistoryItem(historyItem);
@@ -1041,6 +1044,9 @@ export function SEOAssistantWorkspace({
       setIsBloggerCreditsCharged(restoredCharged);
       setBloggerTitle(restoredTitle);
       setBloggerRelatedKeywords(restoredRelated);
+      setBloggerTargetCountry(savedSession?.targetCountry || 'United States');
+      setBloggerTargetLanguage(savedSession?.targetLanguage || 'en');
+      setBloggerAutoGenerateRelated(Boolean(savedSession?.autoGenerateRelated));
       setBloggerMetrics(metrics);
       setBloggerAnalysisSignature(null);
 
@@ -1054,6 +1060,9 @@ export function SEOAssistantWorkspace({
           isTitleLocked: restoredTitleLocked,
           isCreditsCharged: restoredCharged,
           metrics,
+          targetCountry: savedSession?.targetCountry || 'United States',
+          targetLanguage: savedSession?.targetLanguage || 'en',
+          autoGenerateRelated: Boolean(savedSession?.autoGenerateRelated),
         }));
       } catch (e) {
         console.error('Failed to sync restored blogger session:', e);
