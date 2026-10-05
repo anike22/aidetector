@@ -1832,7 +1832,10 @@ Return ONLY valid JSON:
             Array.isArray(gap.missingKeywords) ? gap.missingKeywords : [],
             [...(Array.isArray(gap.missingKeywords) ? gap.missingKeywords : []), ...competitorKeywords],
             Array.isArray(gap.missingHeadings) ? gap.missingHeadings : [],
-            Array.isArray(gap.missingFAQs) ? gap.missingFAQs : []
+            Array.isArray(gap.missingFAQs) ? gap.missingFAQs : [],
+            Array.isArray(gap.missingSubtopics) ? gap.missingSubtopics : [],
+            typeof gap.targetWordCountRange === 'string' ? gap.targetWordCountRange : undefined,
+            Array.isArray(gap.recommendedH2s) ? gap.recommendedH2s : []
           );
           setContentGap(coverage);
           toast.success(`Competitor analysis complete for ${marketCountry}: ${coverage.coveragePercent}% keyword coverage.`);
