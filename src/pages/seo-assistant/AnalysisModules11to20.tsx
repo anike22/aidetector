@@ -152,7 +152,7 @@ export function CompetitorIntelligencePanel({
                 <div className="text-xs font-medium text-navy truncate">{comp.title}</div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                   <span className="truncate flex-1 max-w-[70%] font-mono text-primary/70">{comp.url}</span>
-                  <span className="shrink-0 font-medium">{comp.wordCount} words</span>
+                  <span className="shrink-0 font-medium">{typeof comp.wordCount === 'number' ? `${comp.wordCount} words` : 'Word count unavailable'}</span>
                 </div>
               </div>
             ))}
