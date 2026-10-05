@@ -1817,9 +1817,23 @@ Return ONLY valid JSON:
           const parsed = JSON.parse(match[0]);
           const parsedCompetitors = Array.isArray(parsed.competitors) ? parsed.competitors : [];
           const evidenceSet = new Set(verifiedUrls.map(url => url.replace(/\/$/, '').toLowerCase()));
-          const groundedCompetitors = verifiedUrls.length
+          const groundedCompetitors: CompetitorResult[] = (verifiedUrls.length
             ? parsedCompetitors.filter((item: any) => evidenceSet.has(String(item?.url || '').replace(/\/$/, '').toLowerCase()))
-            : parsedCompetitors.filter((item: any) => /^https?:\/\//i.test(String(item?.url || '')));
+            : parsedCompetitors.filter((item: any) => /^https?:\/\//i.test(String(item?.url || ''))))
+            .map((item: any) => {
+              const normalizedUrl = String(item?.url || '').trim();
+              const verified = verifiedSerpCompetitors.find(v => v.url.replace(/\/$/, '').toLowerCase() === normalizedUrl.replace(/\/$/, '').toLowerCase());
+              const parsedWordCount = Number(item?.wordCount);
+              return {
+                url: normalizedUrl,
+                title: String(item?.title || normalizedUrl),
+                // When SERP evidence is available, only retain its verified count.
+                // In fallback mode, accept a grounded positive numeric count or mark it unavailable.
+                wordCount: verifiedUrls.length
+                  ? (typeof verified?.wordCount === 'number' ? verified.wordCount : null)
+                  : (Number.isFinite(parsedWordCount) && parsedWordCount > 0 ? parsedWordCount : null),
+              };
+            });
 
           setCompetitors(groundedCompetitors);
           if (groundedCompetitors.length) {
