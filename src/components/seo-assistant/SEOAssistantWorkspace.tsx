@@ -396,7 +396,7 @@ export function SEOAssistantWorkspace({
         difficulty: typeof row.difficulty === 'number' ? row.difficulty : null,
         cpc: typeof row.cpc === 'number' ? row.cpc : null,
         intent: row.intent || null,
-        source: 'DataForSEO',
+        source: 'Live keyword data',
         country: bloggerTargetCountry,
       }));
       const competitors = (payload?.competitors || kd?.competitors || [])
@@ -412,11 +412,12 @@ export function SEOAssistantWorkspace({
       setBloggerRelatedKeywords(related);
       setBloggerMetrics(liveMetrics);
       setBloggerAnalysisSignature(currentBloggerAnalysisSignature);
-      toast.success('Keyword analysis complete. Review the live data, then lock the keyword to use 30 credits.');
+      toast.success('Keyword analysis complete. Review the available keyword data, then lock and continue.');
     } catch (err) {
+      // External keyword intelligence is enrichment, never a workflow gate.
       setBloggerMetrics(null);
       setBloggerAnalysisSignature(null);
-      toast.error(err instanceof Error ? err.message : 'Keyword analysis failed.');
+      toast.info('Limited keyword data available. You can add related keywords manually or continue with your primary keyword.');
     } finally {
       setIsLockingTitle(false);
     }
@@ -426,10 +427,7 @@ export function SEOAssistantWorkspace({
   const handleLockKeywords = async () => {
     const cleanKw = keyword.trim();
     if (!cleanKw) { toast.error('Please enter a primary target keyword.'); return; }
-    if (!hasCurrentBloggerAnalysis || !bloggerMetrics) {
-      toast.error('Analyze this keyword successfully before locking it.');
-      return;
-    }
+    // Live keyword analysis is optional enrichment. A valid primary keyword can always be locked.
     if (isLockingTitle) return;
     setIsLockingTitle(true);
     const cost = 30;
