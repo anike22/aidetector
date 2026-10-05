@@ -32,10 +32,14 @@ export async function sendEmail({ supabase, recipient, subject, html, text, type
     return { skipped: true, reason: 'email_disabled' };
   }
 
-  // Get Resend settings
-  const { data: settings } = await supabase.from('email_settings').select('*').limit(1).single();
-  if (!settings || !settings.resend_api_key) {
-    throw new Error("Resend not configured in email_settings");
+  // Keep credentials in Edge Function secrets; database settings contain sender identity only.
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+  const { data: settings } = await supabase.from('email_settings').select('default_from_name, default_from_email, reply_to_email').limit(1).maybeSingle();
+  if (!resendApiKey) {
+    throw new Error("Resend API key is not configured");
+  }
+  if (!settings?.default_from_email) {
+    throw new Error("Resend sender identity is not configured in email_settings");
   }
 
   // Create log entry
@@ -58,7 +62,7 @@ export async function sendEmail({ supabase, recipient, subject, html, text, type
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${settings.resend_api_key}`
+        "Authorization": `Bearer ${resendApiKey}`
       },
       body: JSON.stringify({
         from: `${settings.default_from_name} <${settings.default_from_email}>`,
