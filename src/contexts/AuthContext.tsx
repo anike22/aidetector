@@ -157,11 +157,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })();
         if (visitorId) sessionStorage.setItem('affiliate_visitor_id', visitorId);
       }
-      const redirectUrl = new URL(window.location.href);
-      redirectUrl.searchParams.delete('code');
-      redirectUrl.searchParams.delete('error');
-      redirectUrl.searchParams.delete('error_code');
-      redirectUrl.searchParams.delete('error_description');
+      const paramsReturnTo = params.get('returnTo') || params.get('return_to') || params.get('redirect');
+      let postAuthPath = '/';
+      if (paramsReturnTo) {
+        try {
+          const candidate = new URL(paramsReturnTo, window.location.origin);
+          if (candidate.origin === window.location.origin && candidate.pathname !== '/login' && candidate.pathname !== '/signup') {
+            postAuthPath = candidate.pathname + candidate.search;
+          }
+        } catch {
+          // Ignore unsafe or malformed return destinations.
+        }
+      }
+      sessionStorage.setItem('post_auth_redirect', postAuthPath);
+      const redirectUrl = new URL(postAuthPath, window.location.origin);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: redirectUrl.toString() },
