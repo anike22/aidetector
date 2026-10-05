@@ -55,6 +55,7 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
     let realKeywords: any[] = [];
     let competitors: Array<{ url: string; wordCount: number }> = [];
     let serpFeatures: string[] = [];
+    let serpWarning: string | null = null;
     try {
       const dfsUrl = 'https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live';
       const postData = [{
@@ -98,39 +99,47 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
       dataSourceLabel = `DataForSEO unavailable (${e.message})`;
     }
 
-    // Blogger competitor evidence: real Google organic SERP + measured page word counts.
+    // Blogger competitor evidence is supplementary. A provider SERP/OnPage outage must not
+    // discard otherwise verified keyword data; surface the evidence as temporarily unavailable.
     if (billing_feature === 'ai_checker_for_bloggers') {
-      const auth = btoa(`${dfsLogin}:${dfsPassword}`);
-      const serpRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
-        method: 'POST',
-        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, depth: 10, device: 'desktop' }])
-      });
-      if (!serpRes.ok) throw new Error(`DataForSEO SERP HTTP ${serpRes.status}`);
-      const serpData = await serpRes.json();
-      if (serpData.status_code !== 20000 || serpData.tasks?.[0]?.status_code !== 20000) {
-        throw new Error(`DataForSEO SERP unavailable: ${serpData.tasks?.[0]?.status_message || serpData.status_message || 'unknown error'}`);
-      }
-      const serpItems = serpData.tasks?.[0]?.result?.[0]?.items || [];
-      serpFeatures = [...new Set(serpItems.map((item: any) => item?.type).filter((type: any) => type && type !== 'organic'))];
-      const urls = serpItems
-        .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && (item.url.startsWith('https://') || item.url.startsWith('http://')))
-        .map((item: any) => item.url)
-        .filter((url: string) => !/\\.(pdf|jpg|jpeg|png|gif|webp)(?:[?#]|$)/i.test(url))
-        .slice(0, 10);
-
-      if (urls.length) {
-        const pageRes = await fetch('https://api.dataforseo.com/v3/on_page/instant_pages', {
+      try {
+        const auth = btoa(`${dfsLogin}:${dfsPassword}`);
+        const serpRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
           method: 'POST',
           headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(urls.map((url: string) => ({ url })))
+          body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, depth: 10, device: 'desktop' }])
         });
-        if (!pageRes.ok) throw new Error(`DataForSEO OnPage HTTP ${pageRes.status}`);
-        const pageData = await pageRes.json();
-        if (pageData.status_code !== 20000) throw new Error(`DataForSEO OnPage unavailable: ${pageData.status_message || 'unknown error'}`);
-        competitors = (pageData.tasks || []).flatMap((task: any) => task?.result?.[0]?.items || [])
-          .map((item: any) => ({ url: item?.url || '', wordCount: Number(item?.meta?.content?.plain_text_word_count) }))
-          .filter((item: any) => item.url && Number.isFinite(item.wordCount) && item.wordCount >= 250 && item.wordCount <= 25000);
+        if (!serpRes.ok) throw new Error(`DataForSEO SERP HTTP ${serpRes.status}`);
+        const serpData = await serpRes.json();
+        if (serpData.status_code !== 20000 || serpData.tasks?.[0]?.status_code !== 20000) {
+          throw new Error(`DataForSEO SERP unavailable: ${serpData.tasks?.[0]?.status_message || serpData.status_message || 'unknown error'}`);
+        }
+        const serpItems = serpData.tasks?.[0]?.result?.[0]?.items || [];
+        serpFeatures = [...new Set(serpItems.map((item: any) => item?.type).filter((type: any) => type && type !== 'organic'))] as string[];
+        const urls = serpItems
+          .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && (item.url.startsWith('https://') || item.url.startsWith('http://')))
+          .map((item: any) => item.url)
+          .filter((url: string) => !/\\.(pdf|jpg|jpeg|png|gif|webp)(?:[?#]|$)/i.test(url))
+          .slice(0, 10);
+
+        if (urls.length) {
+          const pageRes = await fetch('https://api.dataforseo.com/v3/on_page/instant_pages', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(urls.map((url: string) => ({ url })))
+          });
+          if (!pageRes.ok) throw new Error(`DataForSEO OnPage HTTP ${pageRes.status}`);
+          const pageData = await pageRes.json();
+          if (pageData.status_code !== 20000) throw new Error(`DataForSEO OnPage unavailable: ${pageData.status_message || 'unknown error'}`);
+          competitors = (pageData.tasks || []).flatMap((task: any) => task?.result?.[0]?.items || [])
+            .map((item: any) => ({ url: item?.url || '', wordCount: Number(item?.meta?.content?.plain_text_word_count) }))
+            .filter((item: any) => item.url && Number.isFinite(item.wordCount) && item.wordCount >= 250 && item.wordCount <= 25000);
+        }
+      } catch (e: any) {
+        serpWarning = e?.message || 'DataForSEO SERP evidence temporarily unavailable';
+        console.error('Blogger SERP evidence unavailable:', serpWarning);
+        competitors = [];
+        serpFeatures = [];
       }
     }
 
@@ -157,7 +166,8 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
       aeo: [],
       data_source: "DataForSEO",
       competitors,
-      serp_features: serpFeatures
+      serp_features: serpFeatures,
+      serp_warning: serpWarning
     };
 
     let persisted: Record<string, any> = {};
@@ -181,7 +191,7 @@ async function runKeywordResearch(body: Record<string, any>, authenticatedUserId
       persisted = data || {};
     }
 
-    return new Response(JSON.stringify({ ...persisted, success: true, keyword_data: keywordData, competitors, serp_features: serpFeatures, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ...persisted, success: true, keyword_data: keywordData, competitors, serp_features: serpFeatures, serp_warning: serpWarning, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ success: false, error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
   }
