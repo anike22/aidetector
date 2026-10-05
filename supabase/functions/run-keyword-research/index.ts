@@ -105,7 +105,7 @@ serve(async (req) => {
       const serpItems = serpData.tasks?.[0]?.result?.[0]?.items || [];
       serpFeatures = [...new Set(serpItems.map((item: any) => item?.type).filter((type: any) => type && type !== 'organic'))];
       const urls = serpItems
-        .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && /^https?:\\/\\//i.test(item.url))
+        .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && (item.url.startsWith('https://') || item.url.startsWith('http://')))
         .map((item: any) => item.url)
         .filter((url: string) => !/\\.(pdf|jpg|jpeg|png|gif|webp)(?:[?#]|$)/i.test(url))
         .slice(0, 10);
