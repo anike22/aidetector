@@ -307,7 +307,7 @@ export function SEOAssistantWorkspace({
   const [isLockingTitle, setIsLockingTitle] = useState(false);
   const bloggerLockAttemptKeyRef = useRef<string | null>(null);
 
-  const currentBloggerAnalysisSignature = `${keyword.trim().toLowerCase()}|${bloggerTargetCountry}|${bloggerTargetLanguage}`;
+  const currentBloggerAnalysisSignature = `${keyword.trim().toLowerCase()}|${bloggerTargetCountry}|${bloggerTargetLanguage}|${bloggerAutoGenerateRelated ? 'auto' : 'manual'}|${bloggerAutoGenerateRelated ? '' : bloggerRelatedKeywords.map(k => k.trim().toLowerCase()).filter(Boolean).join(',')}`;
   const hasCurrentBloggerAnalysis = Boolean(bloggerMetrics && bloggerAnalysisSignature === currentBloggerAnalysisSignature);
 
   // Never show estimated/fabricated Blogger metrics. Editing the research target invalidates prior live evidence.
@@ -790,7 +790,7 @@ export function SEOAssistantWorkspace({
             title: bloggerTitle || extractArticleTitle(content, keyword),
             keyword: keyword.trim(),
             wordCount,
-            creditCost: 30,
+            creditCost: 0,
             content,
             scores: analysisData.computed,
             snapshot: {
