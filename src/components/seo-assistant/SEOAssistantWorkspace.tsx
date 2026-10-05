@@ -617,7 +617,7 @@ export function SEOAssistantWorkspace({
           title: itemTitle,
           keyword: keyword.trim() || 'General SEO',
           wordCount,
-          creditCost: isBloggerCreditsCharged ? 30 : 0,
+          creditCost: 0, // Snapshot only; the paid Keyword Lock history item owns the 30-credit event.
           content,
           scores,
           snapshot: {
