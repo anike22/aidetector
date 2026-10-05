@@ -1022,6 +1022,9 @@ export function SEOAssistantWorkspace({
   // Restore analysis from History (100% free, 0 credits)
   const handleRestoreFromHistory = useCallback((item: SEOAnalysisHistoryItem) => {
     setContent(item.content);
+    // Competitor intelligence belongs to the previously active keyword/market and must not leak into a restored session.
+    setCompetitors([]);
+    setContentGap(null);
     const restoredPrimary = item.bloggerSession?.primaryKeyword || item.keyword;
     setKeyword(restoredPrimary);
     setWordCount(item.wordCount);
