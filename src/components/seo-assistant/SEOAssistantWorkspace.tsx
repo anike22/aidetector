@@ -346,58 +346,31 @@ export function SEOAssistantWorkspace({
     } catch {}
   }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTargetCountry, bloggerTargetLanguage, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
 
-  // Handle Step 1 lock
-  const handleLockKeywords = () => {
+  // Handle Step 1: lock keyword, run paid live research, persist session/history
+  const handleLockKeywords = async () => {
     const cleanKw = keyword.trim();
     if (!cleanKw) {
       toast.error('Please enter a primary target keyword.');
       return;
     }
-    const evaluated = evaluateBloggerKeywords(cleanKw, bloggerRelatedKeywords);
-    setBloggerMetrics(evaluated);
-    setIsKeywordsLocked(true);
-    setBloggerStep(2);
-    saveBloggerSession({
-      step: 2,
-      primaryKeyword: cleanKw,
-      relatedKeywords: bloggerRelatedKeywords,
-      targetCountry: bloggerTargetCountry,
-      targetLanguage: bloggerTargetLanguage,
-      isKeywordsLocked: true,
-      metrics: evaluated,
-    });
-    toast.success('Keywords locked! Proceed to Step 2 to enter and lock your content title.');
-  };
-
-  // Handle Step 2 lock & 30-credit charge
-  const handleLockTitleAndPay = async () => {
-    const cleanTitle = bloggerTitle.trim();
-    if (!cleanTitle) {
-      toast.error('Please enter your blog article title.');
-      return;
-    }
-    if (!cleanTitle.toLowerCase().includes(keyword.toLowerCase().trim())) {
-      toast.error(`Content title must contain the primary keyword "${keyword}".`);
-      return;
-    }
+    if (isLockingTitle) return;
 
     setIsLockingTitle(true);
     const cost = 30;
-    const featureSlug = featureSlugForBilling;
-    let paidMetrics = bloggerMetrics;
-    let chargedCredits = cost;
-    let wasTrialCheck = false;
-
     try {
+      let paidMetrics = evaluateBloggerKeywords(cleanKw, bloggerRelatedKeywords);
+      let related = bloggerRelatedKeywords.filter(Boolean);
+      let chargedCredits = 0;
+
       if (isBloggerLanding) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          toast.error('Please sign in to start Blogger optimization.');
+          toast.error('Please sign in to research and lock this keyword.');
           handleAuthRedirect('/signup');
           return;
         }
 
-        const idempotencyKey = `blogger:${session.user.id}:${keyword.trim().toLowerCase()}:${cleanTitle.toLowerCase()}`;
+        const idempotencyKey = `blogger-keyword:${session.user.id}:${cleanKw.toLowerCase()}:${bloggerTargetCountry.toLowerCase()}:${bloggerTargetLanguage}`;
         const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
           method: 'POST',
           headers: {
@@ -408,7 +381,7 @@ export function SEOAssistantWorkspace({
             'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           },
           body: JSON.stringify({
-            seed_keyword: keyword.trim(),
+            seed_keyword: cleanKw,
             country: bloggerTargetCountry,
             language: bloggerTargetLanguage,
             billing_feature: 'ai_checker_for_bloggers',
@@ -444,15 +417,112 @@ export function SEOAssistantWorkspace({
           source: 'DataForSEO',
           country: bloggerTargetCountry,
         }));
-        const competitors = (payload?.competitors || kd?.competitors || []).map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) })).filter((item: any) => item.url && Number.isFinite(item.wordCount));
+        const competitors = (payload?.competitors || kd?.competitors || [])
+          .map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) }))
+          .filter((item: any) => item.url && Number.isFinite(item.wordCount));
         const serpFeatures = payload?.serp_features || kd?.serp_features || [];
-        const primaryKey = keyword.trim().toLowerCase();
-        const related = liveKeywords.filter((item: any) => item.keyword.toLowerCase() !== primaryKey).slice(0, 3).map((item: any) => item.keyword);
-        paidMetrics = evaluateBloggerKeywords(keyword.trim(), related, { keywords: liveKeywords, competitors, serpFeatures });
-        setBloggerRelatedKeywords(related);
-        setBloggerMetrics(paidMetrics);
-        wasTrialCheck = response.headers.get('x-is-trial-check') === 'true';
-        chargedCredits = wasTrialCheck ? 0 : cost;
+        const primaryKey = cleanKw.toLowerCase();
+        const providerRelated = liveKeywords
+          .filter((item: any) => item.keyword.toLowerCase() !== primaryKey)
+          .slice(0, 3)
+          .map((item: any) => item.keyword);
+        related = bloggerRelatedKeywords.filter(Boolean).length > 0 ? bloggerRelatedKeywords.filter(Boolean) : providerRelated;
+        paidMetrics = evaluateBloggerKeywords(cleanKw, related, { keywords: liveKeywords, competitors, serpFeatures });
+        chargedCredits = response.headers.get('x-is-trial-check') === 'true' ? 0 : cost;
+        await refresh();
+      }
+
+      setBloggerRelatedKeywords(related);
+      setBloggerMetrics(paidMetrics);
+      setIsKeywordsLocked(true);
+      setIsBloggerCreditsCharged(isBloggerLanding ? true : isBloggerCreditsCharged);
+      setBloggerStep(2);
+      saveBloggerSession({
+        step: 2,
+        primaryKeyword: cleanKw,
+        relatedKeywords: related,
+        targetCountry: bloggerTargetCountry,
+        targetLanguage: bloggerTargetLanguage,
+        isKeywordsLocked: true,
+        isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
+        metrics: paidMetrics,
+      });
+
+      const historyItem: SEOAnalysisHistoryItem = {
+        id: `keyword_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        title: `Keyword Research: ${cleanKw}`,
+        keyword: cleanKw,
+        wordCount: 0,
+        creditCost: chargedCredits,
+        content: '',
+        scores: DEFAULT_SCORES,
+        snapshot: {
+          kwResult: DEFAULT_KW_RESULT,
+          semanticResult,
+          intentResult,
+          readabilityResult,
+          sentenceResult,
+          paraResult,
+          transitionResult,
+          grammarResult,
+          headingResult,
+          eeatResult,
+          engagementResult,
+          snippetResult,
+          aiRiskResult,
+          uniquenessResult,
+          metaResult,
+          balancedResult,
+          plagiarismResult,
+          authorshipResult,
+        },
+        createdAt: Date.now(),
+        contentHash: generateContentHash('', cleanKw),
+        bloggerSession: {
+          primaryKeyword: cleanKw,
+          relatedKeywords: [...related],
+          title: '',
+          step: 2,
+          isKeywordsLocked: true,
+          isTitleLocked: false,
+          isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
+          metrics: paidMetrics,
+        },
+      };
+      await saveSyncedSEOAssistantHistoryItem(historyItem);
+      setHistoryCount(getSEOAssistantHistory().length);
+      toast.success(isBloggerLanding ? 'Keyword research saved. 30 credits charged. You can enter a title or start a new keyword.' : 'Keywords locked and saved.');
+    } catch (err) {
+      console.error('Failed to lock Blogger keyword:', err);
+      toast.error(err instanceof Error ? err.message : 'Keyword research failed. Please try again.');
+    } finally {
+      setIsLockingTitle(false);
+    }
+  };
+
+  // Handle Step 2: lock title without a second Blogger charge
+  const handleLockTitleAndPay = async () => {
+    const cleanTitle = bloggerTitle.trim();
+    if (!cleanTitle) {
+      toast.error('Please enter your blog article title.');
+      return;
+    }
+    if (!cleanTitle.toLowerCase().includes(keyword.toLowerCase().trim())) {
+      toast.error(`Content title must contain the primary keyword "${keyword}".`);
+      return;
+    }
+
+    setIsLockingTitle(true);
+    const cost = 30;
+    const featureSlug = featureSlugForBilling;
+    let paidMetrics = bloggerMetrics;
+    let chargedCredits = cost;
+    let wasTrialCheck = false;
+
+    try {
+      if (isBloggerLanding) {
+        chargedCredits = 0;
+        wasTrialCheck = false;
       } else {
         const res = await reserveEntitlement(featureSlug, cost, { words: wordCount || 1 });
         if (!res.allowed) {
@@ -500,7 +570,7 @@ export function SEOAssistantWorkspace({
       }
 
       saveBloggerSession({ step: 3, title: cleanTitle, relatedKeywords: paidMetrics?.related.map(item => item.keyword) || bloggerRelatedKeywords, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics });
-      toast.success(wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! 30 credits deducted. Live keyword and competitor data loaded.');
+      toast.success(isBloggerLanding ? 'Title locked. Optimization workspace unlocked — no additional credits charged.' : (wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! Optimization workspace unlocked.'));
     } catch (err) {
       console.error('Failed to lock Blogger title:', err);
       toast.error(err instanceof Error ? err.message : 'Blogger optimization failed. Please try again.');
