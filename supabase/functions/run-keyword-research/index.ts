@@ -12,17 +12,9 @@ serve(async (req) => {
   // The explicit commit_only request below is the only paid checkpoint.
   const previewBody = await req.clone().json().catch(() => ({}));
   if (previewBody?.billing_feature === 'ai_checker_for_bloggers' && previewBody?.analyze_only === true) {
-    const authHeader = req.headers.get('Authorization') || '';
-    const previewClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user }, error: authError } = await previewClient.auth.getUser();
-    if (authError || !user?.id) {
-      return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    return runKeywordResearch(previewBody, user.id, false);
+    // verify_jwt=true already rejects invalid/anonymous bearer tokens at the Edge gateway.
+    // Analysis is read-only/unbilled, so do not perform a second auth.getUser() round-trip here.
+    return runKeywordResearch(previewBody, null, false);
   }
 
   return withBillingGuard(req, { featureSlug: (body) => body.billing_feature === 'ai_checker_for_bloggers' ? 'ai_checker_for_bloggers' : 'seo_assistant', corsHeaders }, async (ctx) => {
