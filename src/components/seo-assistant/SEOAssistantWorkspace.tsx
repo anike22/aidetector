@@ -430,11 +430,6 @@ export function SEOAssistantWorkspace({
     if (!cleanKw) { toast.error('Please enter a primary target keyword.'); return; }
     // Live keyword analysis is optional enrichment. A valid primary keyword can always be locked.
     if (isLockingTitle) return;
-    if (isBloggerLanding && (!isKeywordsLocked || !isBloggerCreditsCharged)) {
-      toast.error('Lock your primary keyword before continuing to the title step.');
-      return;
-    }
-
     setIsLockingTitle(true);
     const cost = 30;
     try {
@@ -465,6 +460,11 @@ export function SEOAssistantWorkspace({
           const code = String(payload?.errorCode || payload?.error_code || payload?.code || '').toUpperCase();
           const message = String(payload?.error || payload?.message || '').toLowerCase();
           const availableBalance = summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0;
+          if (code === 'OPERATION_ALREADY_SUBMITTED') {
+            await refresh();
+            // Continue below and restore the paid/locked client state. The stable
+            // idempotency key prevents a second reservation for this lock attempt.
+          } else {
           const insufficientCredits =
             code === 'INSUFFICIENT_CREDITS' ||
             code === 'CREDITS_EXHAUSTED' ||
@@ -482,6 +482,7 @@ export function SEOAssistantWorkspace({
             return;
           }
           throw new Error(payload?.error || payload?.message || `Keyword lock failed (HTTP ${response.status}).`);
+          }
         }
         await refresh();
       }
@@ -512,7 +513,7 @@ export function SEOAssistantWorkspace({
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       if (/failed to fetch|networkerror|network request failed/i.test(message)) {
-        toast.error('Unable to reach the billing service. Please check your connection and try again. No credits were charged.');
+        toast.error('Connection was interrupted while confirming the keyword lock. Retry the lock; the same request key will prevent a duplicate charge.');
       } else {
         toast.error(message || 'Keyword lock failed.');
       }
