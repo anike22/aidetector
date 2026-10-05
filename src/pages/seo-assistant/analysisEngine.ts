@@ -131,7 +131,7 @@ export interface UniquenessResult {
 export interface CompetitorResult {
   url: string;
   title: string;
-  wordCount: string;
+  wordCount: number | null;
 }
 
 export interface CompetitorKeywordCoverageItem {
