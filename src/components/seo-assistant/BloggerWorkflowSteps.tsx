@@ -318,7 +318,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             <Button
               size="sm"
               onClick={onLockKeywords}
-              disabled={!cleanPrimary || !hasCurrentAnalysis || isLockingTitle}
+              disabled={!cleanPrimary || isLockingTitle}
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -326,7 +326,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             </Button>
           </div>
           {!hasCurrentAnalysis && (
-            <p className="text-[11px] text-muted-foreground text-right mt-2">Analyze the keyword first. Lock becomes available only after live provider data loads successfully.</p>
+            <p className="text-[11px] text-muted-foreground text-right mt-2">Live keyword analysis is optional. You can analyze for additional insights, add related keywords manually, or lock and continue with your primary keyword.</p>
           )}
         </div>
       )}
