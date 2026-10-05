@@ -243,6 +243,15 @@ export function SEOAssistantWorkspace({
     return ['', '', ''];
   });
 
+  const [bloggerTargetCountry, setBloggerTargetCountry] = useState<string>(() => {
+    try { const saved = localStorage.getItem(BLOGGER_SESSION_KEY); if (saved) return JSON.parse(saved).targetCountry || 'United States'; } catch {}
+    return 'United States';
+  });
+  const [bloggerTargetLanguage, setBloggerTargetLanguage] = useState<string>(() => {
+    try { const saved = localStorage.getItem(BLOGGER_SESSION_KEY); if (saved) return JSON.parse(saved).targetLanguage || 'en'; } catch {}
+    return 'en';
+  });
+
   const [bloggerTitle, setBloggerTitle] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(BLOGGER_SESSION_KEY);
@@ -310,6 +319,8 @@ export function SEOAssistantWorkspace({
     step: 1 | 2 | 3;
     primaryKeyword: string;
     relatedKeywords: string[];
+    targetCountry: string;
+    targetLanguage: string;
     title: string;
     isKeywordsLocked: boolean;
     isTitleLocked: boolean;
@@ -322,6 +333,8 @@ export function SEOAssistantWorkspace({
         step: bloggerStep,
         primaryKeyword: keyword,
         relatedKeywords: bloggerRelatedKeywords,
+        targetCountry: bloggerTargetCountry,
+        targetLanguage: bloggerTargetLanguage,
         title: bloggerTitle,
         isKeywordsLocked,
         isTitleLocked,
@@ -331,7 +344,7 @@ export function SEOAssistantWorkspace({
       };
       localStorage.setItem(BLOGGER_SESSION_KEY, JSON.stringify(current));
     } catch {}
-  }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
+  }, [bloggerStep, keyword, bloggerRelatedKeywords, bloggerTargetCountry, bloggerTargetLanguage, bloggerTitle, isKeywordsLocked, isTitleLocked, isBloggerCreditsCharged, bloggerMetrics, isBloggerMode]);
 
   // Handle Step 1 lock
   const handleLockKeywords = () => {
@@ -348,6 +361,8 @@ export function SEOAssistantWorkspace({
       step: 2,
       primaryKeyword: cleanKw,
       relatedKeywords: bloggerRelatedKeywords,
+      targetCountry: bloggerTargetCountry,
+      targetLanguage: bloggerTargetLanguage,
       isKeywordsLocked: true,
       metrics: evaluated,
     });
@@ -394,8 +409,8 @@ export function SEOAssistantWorkspace({
           },
           body: JSON.stringify({
             seed_keyword: keyword.trim(),
-            country: 'United States',
-            language: 'en',
+            country: bloggerTargetCountry,
+            language: bloggerTargetLanguage,
             billing_feature: 'ai_checker_for_bloggers',
           }),
         });
@@ -427,7 +442,7 @@ export function SEOAssistantWorkspace({
           cpc: typeof row.cpc === 'number' ? row.cpc : null,
           intent: row.intent || null,
           source: 'DataForSEO',
-          country: 'United States',
+          country: bloggerTargetCountry,
         }));
         const competitors = (payload?.competitors || kd?.competitors || []).map((item: any) => ({ url: String(item.url || ''), wordCount: Number(item.wordCount) })).filter((item: any) => item.url && Number.isFinite(item.wordCount));
         const serpFeatures = payload?.serp_features || kd?.serp_features || [];
@@ -558,6 +573,8 @@ export function SEOAssistantWorkspace({
     setIsTitleLocked(false);
     setIsBloggerCreditsCharged(false);
     setBloggerRelatedKeywords(['', '', '']);
+    setBloggerTargetCountry('United States');
+    setBloggerTargetLanguage('en');
     setBloggerTitle('');
     setKeyword('');
     setBloggerMetrics(null);
@@ -2121,6 +2138,10 @@ Return ONLY valid JSON:
           onStartNew={handleStartNewBloggerSession}
           isLockingTitle={isLockingTitle}
           creditsBalance={summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0}
+          targetCountry={bloggerTargetCountry}
+          targetLanguage={bloggerTargetLanguage}
+          onTargetCountryChange={setBloggerTargetCountry}
+          onTargetLanguageChange={setBloggerTargetLanguage}
         />
       )}
 
