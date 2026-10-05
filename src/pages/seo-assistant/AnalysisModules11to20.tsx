@@ -159,6 +159,30 @@ export function CompetitorIntelligencePanel({
           </div>
         )}
 
+        {contentGap && ((contentGap.missingSubtopics?.length || 0) > 0 || (contentGap.recommendedH2s?.length || 0) > 0 || contentGap.targetWordCountRange) && (
+          <div className="mt-1 p-2.5 bg-muted/20 border border-border rounded flex flex-col gap-2">
+            {contentGap.targetWordCountRange && (
+              <div className="text-[11px]"><span className="font-semibold">Competitor content range:</span> {contentGap.targetWordCountRange} words</div>
+            )}
+            {(contentGap.missingSubtopics?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Missing Subtopics</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.missingSubtopics!.map((topic, i) => <li key={i}>{topic}</li>)}
+                </ul>
+              </div>
+            )}
+            {(contentGap.recommendedH2s?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Recommended H2s</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.recommendedH2s!.map((heading, i) => <li key={i}>{heading}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Suggested Headings & FAQs */}
         {contentGap && (contentGap.missingHeadings?.length > 0 || (contentGap.missingFAQs && contentGap.missingFAQs.length > 0)) && (
           <div className="mt-2 flex flex-col gap-2 pt-2 border-t border-border">
