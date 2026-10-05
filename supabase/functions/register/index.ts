@@ -11,7 +11,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface RegisterPayload {
-  action?: 'register' | 'resend' | 'google_welcome';
+  action?: 'register' | 'resend' | 'google_welcome' | 'affiliate_approved';
+  applicationId?: string;
   email?: string;
   password?: string;
   fullName?: string;
@@ -319,6 +320,71 @@ async function handleGoogleWelcome(req: Request, requestId: string): Promise<Res
   }
 }
 
+
+async function handleAffiliateApproved(req: Request, payload: RegisterPayload, requestId: string): Promise<Response> {
+  const authHeader = req.headers.get('authorization') || '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return safeError('Unauthorized', 401, requestId);
+  if (!payload.applicationId) return safeError('Application ID required', 400, requestId);
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const token = authHeader.slice(7);
+  const { data: callerData, error: callerError } = await supabase.auth.getUser(token);
+  if (callerError || !callerData.user?.id) return safeError('Unauthorized', 401, requestId);
+  const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', callerData.user.id).maybeSingle();
+  if (callerProfile?.role !== 'admin') return safeError('Admin access required', 403, requestId);
+
+  const { data: app, error: appError } = await supabase.from('affiliate_applications')
+    .select('id,user_id,status,tier').eq('id', payload.applicationId).maybeSingle();
+  if (appError || !app || app.status !== 'Approved') return safeError('Approved application not found', 404, requestId);
+
+  const { data: prior } = await supabase.from('email_logs').select('id').eq('user_id', app.user_id)
+    .eq('template_name', 'Affiliate Approval').in('status', ['sending','sent']).limit(1).maybeSingle();
+  if (prior) return jsonResponse({ success: true, sent: false, reason: 'already_sent' });
+
+  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(app.user_id);
+  const user = userData.user;
+  if (userError || !user?.email) return safeError('Affiliate account email unavailable', 404, requestId);
+
+  const { data: link } = await supabase.from('referral_links').select('attribution_window_days')
+    .eq('user_id', app.user_id).limit(1).maybeSingle();
+  const attributionDays = Number(link?.attribution_window_days || 30);
+  const firstName = String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim().split(/\s+/)[0] || 'Partner';
+  let origin = req.headers.get('origin') || req.headers.get('referer');
+  if (origin) { try { origin = new URL(origin).origin; } catch { origin = null; } }
+  const frontendUrl = Deno.env.get('CUSTOM_DOMAIN') || origin || 'https://aidetector.cx';
+
+  const subject = 'Your AIDetector.cx Affiliate Account Is Approved';
+  const html = \`<div style="margin:0;padding:32px 16px;background:#f4f7fb;font-family:Arial,sans-serif;color:#172033">
+    <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6eaf0;border-radius:16px;overflow:hidden">
+      <div style="padding:22px 28px;background:#0f172a;color:#fff;font-size:22px;font-weight:700">AIDetector.cx Affiliate Program</div>
+      <div style="padding:30px 28px">
+        <p style="margin:0 0 8px;color:#16a34a;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Application approved</p>
+        <h1 style="margin:0 0 16px;font-size:27px;line-height:1.25;color:#0f172a">Welcome aboard, \${firstName}.</h1>
+        <p style="margin:0 0 20px;font-size:16px;line-height:1.65">Your AIDetector.cx affiliate account is now active. You can start sharing your unique referral link and earning <strong>30% recurring commission</strong> on qualifying subscription payments.</p>
+        <div style="padding:16px 18px;margin:0 0 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;line-height:1.8">
+          <strong>Tier:</strong> \${app.tier}<br>
+          <strong>Commission:</strong> 30% recurring<br>
+          <strong>Attribution window:</strong> \${attributionDays} days
+        </div>
+        <a href="\${frontendUrl}/affiliate-dashboard" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Open Affiliate Dashboard</a>
+        <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#64748b">Your dashboard contains your referral links, clicks, registrations, conversions, commissions and payout information. Need help? Reply to this email.</p>
+      </div>
+    </div>
+  </div>\`;
+
+  try {
+    await sendEmail({ supabase, recipient:user.email, subject, html, type:'affiliate_approval',
+      template_name:'Affiliate Approval', userId:app.user_id, category:'transactional',
+      metadata:{ application_id:app.id, tier:app.tier, request_id:requestId } });
+    await trackEvent(supabase, app.user_id, 'affiliate_approval_email_sent', { application_id:app.id, tier:app.tier }, requestId);
+    return jsonResponse({ success:true, sent:true });
+  } catch (err:any) {
+    console.error('Affiliate approval email failed:', err);
+    await trackEvent(supabase, app.user_id, 'affiliate_approval_email_failed', { application_id:app.id }, requestId);
+    return jsonResponse({ success:true, sent:false, reason:'send_failed' }, 202);
+  }
+}
+
 async function handleResend(
   req: Request,
   payload: RegisterPayload,
@@ -421,6 +487,9 @@ serve(async (req) => {
     }
     if (action === 'google_welcome') {
       return await handleGoogleWelcome(req, requestId);
+    }
+    if (action === 'affiliate_approved') {
+      return await handleAffiliateApproved(req, payload, requestId);
     }
     return safeError('Invalid action.', 400, requestId);
   } catch (error: any) {
