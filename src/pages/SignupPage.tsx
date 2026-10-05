@@ -212,6 +212,22 @@ export default function SignupPage() {
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
+    // Google signup uses the shared OAuth flow. Preserve only a safe requested
+    // post-auth destination; never return a successful signup to /signup.
+    if (returnTo) {
+      try {
+        const candidate = new URL(returnTo, window.location.origin);
+        if (candidate.origin === window.location.origin && candidate.pathname !== '/login' && candidate.pathname !== '/signup') {
+          sessionStorage.setItem('post_auth_redirect', candidate.pathname + candidate.search);
+        } else {
+          sessionStorage.setItem('post_auth_redirect', '/');
+        }
+      } catch {
+        sessionStorage.setItem('post_auth_redirect', '/');
+      }
+    } else {
+      sessionStorage.setItem('post_auth_redirect', '/');
+    }
     const { error: authError } = await signInWithGoogle();
     setGoogleLoading(false);
     if (authError) toast.error(authError);
