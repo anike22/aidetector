@@ -430,6 +430,11 @@ export function SEOAssistantWorkspace({
     if (!cleanKw) { toast.error('Please enter a primary target keyword.'); return; }
     // Live keyword analysis is optional enrichment. A valid primary keyword can always be locked.
     if (isLockingTitle) return;
+    if (isBloggerLanding && (!isKeywordsLocked || !isBloggerCreditsCharged)) {
+      toast.error('Lock your primary keyword before continuing to the title step.');
+      return;
+    }
+
     setIsLockingTitle(true);
     const cost = 30;
     try {
@@ -579,7 +584,7 @@ export function SEOAssistantWorkspace({
           scores: analysisData.computed,
           snapshot: { kwResult: analysisData.kwr, semanticResult: analysisData.sem, intentResult: analysisData.intent, readabilityResult: analysisData.read, sentenceResult: analysisData.sent, paraResult: analysisData.para, transitionResult: analysisData.trans, grammarResult: analysisData.gram, headingResult: analysisData.head, eeatResult: analysisData.eeat, engagementResult: analysisData.eng, snippetResult: analysisData.snip, aiRiskResult: analysisData.risk, uniquenessResult: analysisData.uniq, metaResult: analysisData.meta, balancedResult, plagiarismResult, authorshipResult },
           createdAt: Date.now(), contentHash: generateContentHash(effectiveContent, keyword),
-          bloggerSession: { primaryKeyword: keyword, relatedKeywords: [...bloggerRelatedKeywords], title: cleanTitle, step: 3, isKeywordsLocked: true, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics || undefined },
+          bloggerSession: { primaryKeyword: keyword, relatedKeywords: [...bloggerRelatedKeywords], title: cleanTitle, step: 3, isKeywordsLocked: true, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics || undefined, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
         };
         void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
@@ -810,6 +815,19 @@ export function SEOAssistantWorkspace({
             },
             createdAt: Date.now(),
             contentHash: hash,
+            bloggerSession: {
+              primaryKeyword: keyword.trim(),
+              relatedKeywords: [...bloggerRelatedKeywords],
+              title: bloggerTitle,
+              step: 3,
+              isKeywordsLocked: true,
+              isTitleLocked: true,
+              isCreditsCharged: true,
+              metrics: bloggerMetrics || undefined,
+              targetCountry: bloggerTargetCountry,
+              targetLanguage: bloggerTargetLanguage,
+              autoGenerateRelated: bloggerAutoGenerateRelated,
+            },
           };
           void saveSyncedSEOAssistantHistoryItem(historyItem);
           setHistoryCount(getSEOAssistantHistory().length);
