@@ -1727,47 +1727,113 @@ Return ONLY valid JSON: {"faqs":[{"question":"...","answer":"..."}]}`
 
   // Competitor analysis
   const handleAnalyzeCompetitors = async () => {
-    if (!keyword.trim()) { toast.error('Enter a target keyword first.'); return; }
+    const cleanKeyword = keyword.trim();
+    if (!cleanKeyword) { toast.error('Enter a target keyword first.'); return; }
     if (!(await gateAIAccess('Competitor Intelligence'))) return;
+
+    const marketCountry = isBloggerMode ? bloggerTargetCountry : 'United States';
+    const marketLanguage = isBloggerMode ? bloggerTargetLanguage : 'en';
     setLoadingCompetitors(true);
+
+    // Prefer location-aware SERP evidence from the existing keyword-research service.
+    // If it is unavailable or returns no usable competitors, keep the current
+    // search-grounded competitor workflow as the graceful fallback.
+    let verifiedSerpCompetitors: Array<{ url: string; wordCount?: number }> = [];
+    if (isBloggerMode) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${session.access_token}`,
+              'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            },
+            body: JSON.stringify({
+              seed_keyword: cleanKeyword,
+              country: marketCountry,
+              language: marketLanguage,
+              billing_feature: 'ai_checker_for_bloggers',
+              analyze_only: true,
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload?.success !== false) {
+            const kd = payload?.keyword_data || {};
+            verifiedSerpCompetitors = (payload?.competitors || kd?.competitors || [])
+              .map((item: any) => ({
+                url: String(item?.url || '').trim(),
+                wordCount: Number.isFinite(Number(item?.wordCount)) ? Number(item.wordCount) : undefined,
+              }))
+              .filter((item: any) => /^https?:\/\//i.test(item.url))
+              .slice(0, 5);
+          }
+        }
+      } catch {
+        // Provider enrichment is optional; current grounded search remains available.
+        verifiedSerpCompetitors = [];
+      }
+    }
+
+    const verifiedUrls = verifiedSerpCompetitors.map(item => item.url);
+    const evidenceInstruction = verifiedUrls.length
+      ? `The following competitor URLs came from location-aware organic SERP evidence for this exact market. Analyze these pages as the competitor set and do not replace them with invented competitors:\n${verifiedUrls.map((url, index) => `${index + 1}. ${url}`).join('\n')}`
+      : `Discover the top organic Google ranking pages for this keyword in the selected market using grounded search. Use only identifiable pages actually supported by search evidence; return fewer competitors if evidence is insufficient.`;
+
     let raw = '';
     await streamLLM({
       featureSlug: FEATURE_SLUG,
       contents: [{
         role: 'user',
         parts: [{
-          text: `Analyze the top 5 organic Google ranking pages for keyword "${keyword}" specifically in the selected market: country "${isBloggerMode ? bloggerTargetCountry : 'United States'}", language "${isBloggerMode ? bloggerTargetLanguage : 'en'}".
-Use search results relevant to that country and language. Do not substitute a different market. If market-specific ranking evidence is insufficient, return fewer competitors rather than inventing results.
+          text: `Analyze Content Gap & Competitor Keywords for keyword "${cleanKeyword}" specifically in country "${marketCountry}", language "${marketLanguage}".
+${evidenceInstruction}
+Extract competitor keywords/topics from the evidenced pages and compare them with the user's article. Do not invent URLs, rankings, keywords, word counts, headings, or FAQs when they cannot be supported.
 Return ONLY valid JSON:
-{"competitors":[{"url":"https://...","title":"Title","wordCount":1200,"readability":"Standard","h2Headings":["H2 1","H2 2"],"keywordsUsed":["kw1"],"strengths":["Clear"],"weaknesses":["Short"]}],"contentGap":{"missingSubtopics":["Subtopic A"],"targetWordCountRange":"1200-1500","recommendedH2s":["Rec H2"]}}`
+{"competitors":[{"url":"https://...","title":"Title","wordCount":1200,"readability":"Standard","h2Headings":["H2 1","H2 2"],"keywordsUsed":["kw1"],"strengths":["Clear"],"weaknesses":["Short"]}],"contentGap":{"missingKeywords":["keyword"],"missingHeadings":["Heading"],"missingFAQs":["Question?"],"missingSubtopics":["Subtopic A"],"targetWordCountRange":"1200-1500","recommendedH2s":["Rec H2"]}}`
         }]
       }],
       tools: [{ googleSearch: {} }],
       supabaseUrl: SUPABASE_URL,
       supabaseAnonKey: SUPABASE_ANON_KEY,
-      onChunk: (c) => { raw += c; },
+      onChunk: (chunk) => { raw += chunk; },
       onComplete: () => {
         setLoadingCompetitors(false);
         try {
-          const m = raw.match(/\{[\s\S]*\}/);
-          if (!m) throw new Error();
-          const parsed = JSON.parse(m[0]);
-          if (parsed.competitors) {
-            setCompetitors(parsed.competitors);
-            executeAnalysisComputation(content, keyword, aiLinksActive, aiGrammarActive, isBloggerMode ? bloggerTitle : undefined, parsed.competitors);
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error();
+          const parsed = JSON.parse(match[0]);
+          const parsedCompetitors = Array.isArray(parsed.competitors) ? parsed.competitors : [];
+          const evidenceSet = new Set(verifiedUrls.map(url => url.replace(/\/$/, '').toLowerCase()));
+          const groundedCompetitors = verifiedUrls.length
+            ? parsedCompetitors.filter((item: any) => evidenceSet.has(String(item?.url || '').replace(/\/$/, '').toLowerCase()))
+            : parsedCompetitors.filter((item: any) => /^https?:\/\//i.test(String(item?.url || '')));
+
+          setCompetitors(groundedCompetitors);
+          if (groundedCompetitors.length) {
+            executeAnalysisComputation(content, cleanKeyword, aiLinksActive, aiGrammarActive, isBloggerMode ? bloggerTitle : undefined, groundedCompetitors);
           }
+          const gap = parsed.contentGap || {};
+          const competitorKeywords = groundedCompetitors.flatMap((item: any) => Array.isArray(item.keywordsUsed) ? item.keywordsUsed : []);
           const coverage = computeCompetitorKeywordCoverage(
             content,
-            parsed.contentGap?.missingKeywords || [],
-            [...(parsed.contentGap?.missingKeywords || []), ...(parsed.competitors || []).flatMap((c: any) => c.keywordsUsed || [])],
-            parsed.contentGap?.missingHeadings || [],
-            parsed.contentGap?.missingFAQs || []
+            Array.isArray(gap.missingKeywords) ? gap.missingKeywords : [],
+            [...(Array.isArray(gap.missingKeywords) ? gap.missingKeywords : []), ...competitorKeywords],
+            Array.isArray(gap.missingHeadings) ? gap.missingHeadings : [],
+            Array.isArray(gap.missingFAQs) ? gap.missingFAQs : []
           );
           setContentGap(coverage);
-          toast.success(`Competitor analysis complete for ${isBloggerMode ? bloggerTargetCountry : 'United States'}: ${coverage.coveragePercent}% keyword coverage.`);
-        } catch { toast.error('Failed to parse competitor data.'); }
+          toast.success(`Competitor analysis complete for ${marketCountry}: ${coverage.coveragePercent}% keyword coverage.`);
+        } catch {
+          toast.error('Competitor data could not be verified for this market. Please try again.');
+        }
       },
-      onError: () => { setLoadingCompetitors(false); toast.error('Competitor analysis failed.'); },
+      onError: () => {
+        setLoadingCompetitors(false);
+        toast.error('Competitor analysis is temporarily unavailable. Please try again.');
+      },
     });
   };
 
