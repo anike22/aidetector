@@ -305,6 +305,7 @@ export function SEOAssistantWorkspace({
   const [bloggerMetrics, setBloggerMetrics] = useState<BloggerKeywordEvaluationResult | null>(null);
   const [bloggerAnalysisSignature, setBloggerAnalysisSignature] = useState<string | null>(null);
   const [isLockingTitle, setIsLockingTitle] = useState(false);
+  const bloggerLockAttemptKeyRef = useRef<string | null>(null);
 
   const currentBloggerAnalysisSignature = `${keyword.trim().toLowerCase()}|${bloggerTargetCountry}|${bloggerTargetLanguage}`;
   const hasCurrentBloggerAnalysis = Boolean(bloggerMetrics && bloggerAnalysisSignature === currentBloggerAnalysisSignature);
@@ -435,7 +436,12 @@ export function SEOAssistantWorkspace({
       if (isBloggerLanding) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) { toast.error('Please sign in to lock this keyword.'); handleAuthRedirect('/signup'); return; }
-        const idempotencyKey = `blogger-lock:${session.user.id}:${cleanKw.toLowerCase()}:${bloggerTargetCountry.toLowerCase()}:${bloggerTargetLanguage}:${Date.now()}`;
+        // Keep one stable idempotency key for this lock attempt. A network retry/double-submit
+        // must not become a second 30-credit purchase. Start New clears this key.
+        if (!bloggerLockAttemptKeyRef.current) {
+          bloggerLockAttemptKeyRef.current = `blogger-lock:${session.user.id}:${crypto.randomUUID()}`;
+        }
+        const idempotencyKey = bloggerLockAttemptKeyRef.current;
         const response = await fetch(`${SUPABASE_URL}/functions/v1/run-keyword-research`, {
           method: 'POST',
           headers: {
@@ -652,6 +658,7 @@ export function SEOAssistantWorkspace({
     setIsKeywordsLocked(false);
     setIsTitleLocked(false);
     setIsBloggerCreditsCharged(false);
+    bloggerLockAttemptKeyRef.current = null;
     setBloggerRelatedKeywords(['', '', '']);
     setBloggerTargetCountry('United States');
     setBloggerTargetLanguage('en');
