@@ -1026,37 +1026,47 @@ export function SEOAssistantWorkspace({
     // Requirement 1: When user opens history in blogger mode, related keywords and title are restored and locked
     // in Step 3. It does not require to put again, analyze again, or charge credits again.
     if (isBloggerMode || item.bloggerSession) {
-      const restoredTitle = item.bloggerSession?.title || item.title || extractArticleTitle(item.content, item.keyword);
-      const restoredRelated = item.bloggerSession?.relatedKeywords || ['', '', ''];
-      
-      setBloggerStep(3);
-      setIsKeywordsLocked(true);
-      setIsTitleLocked(true);
-      setIsBloggerCreditsCharged(true);
+      const savedSession = item.bloggerSession;
+      const savedStep = Math.min(3, Math.max(1, Number(savedSession?.step || (savedSession?.isTitleLocked ? 3 : 2)))) as 1 | 2 | 3;
+      const restoredTitle = savedSession?.title || (savedStep >= 3 ? (item.title || extractArticleTitle(item.content, item.keyword)) : '');
+      const restoredRelated = savedSession?.relatedKeywords || ['', '', ''];
+      const restoredKeywordsLocked = savedSession?.isKeywordsLocked ?? true;
+      const restoredTitleLocked = savedSession?.isTitleLocked ?? savedStep >= 3;
+      const restoredCharged = savedSession?.isCreditsCharged ?? item.creditCost > 0;
+      const metrics = savedSession?.metrics ?? null;
+
+      setBloggerStep(savedStep);
+      setIsKeywordsLocked(restoredKeywordsLocked);
+      setIsTitleLocked(restoredTitleLocked);
+      setIsBloggerCreditsCharged(restoredCharged);
       setBloggerTitle(restoredTitle);
       setBloggerRelatedKeywords(restoredRelated);
-      
-      const metrics = item.bloggerSession?.metrics || evaluateBloggerKeywords(restoredPrimary, restoredRelated);
       setBloggerMetrics(metrics);
+      setBloggerAnalysisSignature(null);
 
       try {
         localStorage.setItem(BLOGGER_SESSION_KEY, JSON.stringify({
-          step: 3,
+          step: savedStep,
           primaryKeyword: restoredPrimary,
           relatedKeywords: restoredRelated,
           title: restoredTitle,
-          isKeywordsLocked: true,
-          isTitleLocked: true,
-          isCreditsCharged: true,
+          isKeywordsLocked: restoredKeywordsLocked,
+          isTitleLocked: restoredTitleLocked,
+          isCreditsCharged: restoredCharged,
           metrics,
         }));
       } catch (e) {
         console.error('Failed to sync restored blogger session:', e);
       }
 
-      // Execute live computation to refresh active highlights & metrics seamlessly
-      executeAnalysisComputation(item.content, restoredPrimary, false, false, restoredTitle);
-      toast.success(`Saved work restored! Keywords and title are locked in Step 3. Ready to optimize.`);
+      // Only run article optimization when a saved article/title actually reached Step 3.
+      if (savedStep >= 3 && item.content.trim()) {
+        executeAnalysisComputation(item.content, restoredPrimary, false, false, restoredTitle);
+        toast.success('Saved article restored. Ready to continue optimization.');
+      } else {
+        setIsAnalyzed(false);
+        toast.success('Saved keyword session restored. Continue by entering your content title.');
+      }
     }
   }, [isBloggerMode, executeAnalysisComputation]);
 
