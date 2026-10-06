@@ -9,6 +9,8 @@ export interface ImageAltItem {
   issue: string;
   suggestion: string;
   raw: string;
+  start: number;
+  end: number;
   replacement: string;
   format: 'markdown' | 'html';
 }
@@ -64,11 +66,14 @@ function classifyAlt(alt: string | null, keyword: string) {
   if (!trimmed) return { status: 'empty' as const, score: 55, issue: 'ALT text is empty. Keep it empty only if the image is purely decorative.' };
   if (GENERIC_ALT.test(trimmed)) return { status: 'generic' as const, score: 30, issue: 'ALT text is too generic to describe the image.' };
   if (trimmed.length < 8 || trimmed.split(/\s+/).length < 2) return { status: 'weak' as const, score: 50, issue: 'ALT text is too short to be descriptive.' };
+  if (trimmed.length > 160) {
+    return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
+  }
   const kw = keyword.trim().toLowerCase();
   if (kw) {
     const hay = trimmed.toLowerCase();
     const occurrences = hay.split(kw).length - 1;
-    if (occurrences > 1 || trimmed.length > 160) {
+    if (occurrences > 1) {
       return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
     }
   }
@@ -107,6 +112,8 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
       issue: c.issue,
       suggestion,
       raw: md[0],
+      start: md.index,
+      end: md.index + md[0].length,
       replacement: markdownReplacement(md[0], suggestion),
       format: 'markdown',
     });
@@ -136,6 +143,8 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
       issue: c.issue,
       suggestion,
       raw,
+      start: hm.index,
+      end: hm.index + raw.length,
       replacement: htmlReplacement(raw, suggestion),
       format: 'html',
     });
