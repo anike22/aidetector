@@ -30,7 +30,7 @@ export default function SignupPage() {
   const affiliateLinkId = searchParams.get('aff');
   const invitationToken = searchParams.get('invitation_token');
   const returnTo = searchParams.get('returnTo') || searchParams.get('return_to') || searchParams.get('redirect') || '';
-  const [visitorId] = useState(() => crypto.randomUUID());
+  const [visitorId] = useState(() => getVisitorId());
   const [referralTracked, setReferralTracked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
