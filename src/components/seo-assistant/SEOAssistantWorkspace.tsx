@@ -1891,77 +1891,78 @@ Return ONLY valid JSON:
 
       {/* Modules 3–20 & Integrity Tools */}
       {!isSubscriber ? (
-        <div className="relative mt-2 rounded-xl overflow-hidden border border-border bg-card/60">
-          {/* Real optimization modules remain visible as the conversion preview. Results are obscured until upgrade. */}
-          <div className="filter blur-[3px] select-none pointer-events-none opacity-45 p-2 space-y-3" aria-hidden="true">
-            <KeywordUsagePanel result={kwResult} keyword={keyword} onKeywordChange={handleKeywordChange} />
-            <SemanticKeywordsPanel result={semanticResult} />
-            <SearchIntentPanel result={intentResult} />
-            <ReadabilityPanel result={readabilityResult} />
-            <SentenceAnalysisPanel result={sentenceResult} onNavigateIssue={handleNavigateIssue} />
-            <ParagraphAnalysisPanel result={paraResult} onNavigateIssue={handleNavigateIssue} />
-            <TransitionWordsPanel result={transitionResult} />
-            <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
-            <CompetitorIntelligencePanel 
-              competitors={competitors} 
-              contentGap={contentGap}
-              onAnalyze={handleAnalyzeCompetitors}
-              loading={loadingCompetitors}
-              keyword={keyword}
-              content={content}
-              onInsertKeyword={handleInsertCompetitorKeyword}
-            />
-            <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
-            <EEATPanel result={eeatResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
-            <EngagementPanel result={engagementResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
-            <SnippetPanel result={snippetResult} />
-            <MetaOptimizationPanel result={metaResult} />
-            <UniquenessPanel result={uniquenessResult} onNavigateOccurrence={handleNavigateIssue} />
-            <AIRiskPanel result={aiRiskResult} />
-          </div>
+        <>
+          {/* Keep the conversion action directly below the visible score summary. */}
+          {isBloggerMode && (
+            <div className="sticky top-0 z-20 rounded-lg border border-primary/20 bg-card/95 p-3 shadow-md text-center">
+              <div className="text-xs font-semibold text-foreground mb-2">
+                Unlock the detailed recommendations and complete optimization workflow.
+              </div>
+              <Button
+                onClick={() => isGuest ? handleAuthRedirect('/signup') : openUpgradeModal({
+                  featureName: 'AI Checker for Bloggers',
+                  trigger: 'pro_feature',
+                  remaining: summary?.creditsBalance ?? 0,
+                  limit: currentCost,
+                })}
+                className="w-full h-9 text-xs font-semibold bg-primary text-primary-foreground gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Upgrade to Optimize Content</span>
+              </Button>
+              {isGuest && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Already have an account?{' '}
+                  <button onClick={() => handleAuthRedirect('/login')} className="text-primary hover:underline font-medium">Log in</button>
+                </p>
+              )}
+            </div>
+          )}
 
-          {/* Locked Gating Overlay */}
-          <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-start pt-5 px-4 text-center z-10">
-            <div className="w-10 h-10 rounded-full bg-card/95 border border-primary/20 shadow-sm text-primary flex items-center justify-center mb-2">
-              <Lock className="w-6 h-6" />
+          <div className="relative mt-2 rounded-xl overflow-hidden border border-border bg-card/60">
+            {/* Real optimization features remain visible; detailed values stay obscured. */}
+            <div className="filter blur-[3px] select-none pointer-events-none opacity-45 p-2 space-y-3" aria-hidden="true">
+              <KeywordUsagePanel result={kwResult} keyword={keyword} onKeywordChange={handleKeywordChange} />
+              <SemanticKeywordsPanel result={semanticResult} />
+              <SearchIntentPanel result={intentResult} />
+              <ReadabilityPanel result={readabilityResult} />
+              <SentenceAnalysisPanel result={sentenceResult} onNavigateIssue={handleNavigateIssue} />
+              <ParagraphAnalysisPanel result={paraResult} onNavigateIssue={handleNavigateIssue} />
+              <TransitionWordsPanel result={transitionResult} />
+              <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
+              <CompetitorIntelligencePanel competitors={competitors} contentGap={contentGap} onAnalyze={handleAnalyzeCompetitors} loading={loadingCompetitors} keyword={keyword} content={content} onInsertKeyword={handleInsertCompetitorKeyword} />
+              <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
+              <EEATPanel result={eeatResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
+              <EngagementPanel result={engagementResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
+              <SnippetPanel result={snippetResult} />
+              <MetaOptimizationPanel result={metaResult} />
+              <UniquenessPanel result={uniquenessResult} onNavigateOccurrence={handleNavigateIssue} />
+              <AIRiskPanel result={aiRiskResult} />
             </div>
 
-            {isBloggerMode ? (
-              <>
-                <h4 className="text-sm font-bold text-foreground mb-1 bg-card/95 px-3 py-1 rounded-md shadow-sm">
-                  Full Optimization Intelligence Locked
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-xs mb-3 text-pretty bg-card/95 px-3 py-1.5 rounded-md shadow-sm">
-                  Your summary is ready. Upgrade to unlock publishing readiness, detailed recommendations, and the complete optimization workflow.
-                </p>
-                <Button
-                  onClick={() => isGuest ? handleAuthRedirect('/signup') : openUpgradeModal({
-                    featureName: 'AI Checker for Bloggers',
-                    trigger: 'pro_feature',
-                    remaining: summary?.creditsBalance ?? 0,
-                    limit: currentCost,
-                  })}
-                  className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Upgrade to Optimize Content</span>
-                </Button>
-                {isGuest && (
-                  <p className="text-[11px] text-muted-foreground mt-2.5">
-                    Already have an account?{' '}
-                    <button onClick={() => handleAuthRedirect('/login')} className="text-primary hover:underline font-medium">Log in</button>
-                  </p>
+            {!isBloggerMode && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-card/85 backdrop-blur-sm z-10">
+                {isGuest ? (
+                  <>
+                    <h4 className="text-sm font-bold text-foreground mb-1">Detailed SEO & AI Analysis Locked</h4>
+                    <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Create a free account or sign in to unlock comprehensive analysis.</p>
+                    <Button onClick={() => handleAuthRedirect('/signup')} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
+                      <Sparkles className="w-4 h-4" /><span>Register to View Full Analysis</span>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-sm font-bold text-foreground mb-1">Full SEO Assistant Analysis (Pro Plan)</h4>
+                    <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Upgrade to Pro to unlock the complete SEO Assistant analysis.</p>
+                    <Button onClick={() => openUpgradeModal({ featureName: 'SEO Assistant', trigger: 'pro_feature', remaining: summary?.creditsBalance ?? 0, limit: currentCost })} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
+                      <Sparkles className="w-4 h-4" /><span>Upgrade to View Full Analysis</span>
+                    </Button>
+                  </>
                 )}
-              </>
-            ) : isGuest ? (
-              <>
-                <h4 className="text-sm font-bold text-foreground mb-1">Detailed SEO & AI Analysis Locked</h4>
-                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Create a free account or sign in to unlock comprehensive analysis.</p>
-                <Button onClick={() => handleAuthRedirect('/signup')} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
-                  <Sparkles className="w-4 h-4" /><span>Register to View Full Analysis</span>
-                </Button>
-              </>
-            ) : (
+              </div>
+            )}
+          </div>
+        </>      ) : (
               <>
                 <h4 className="text-sm font-bold text-foreground mb-1">Full SEO Assistant Analysis (Pro Plan)</h4>
                 <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Upgrade to Pro to unlock the complete SEO Assistant analysis.</p>
