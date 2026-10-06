@@ -597,7 +597,7 @@ export function SEOAssistantWorkspace({
       }
 
       saveBloggerSession({ step: 3, title: cleanTitle, relatedKeywords: paidMetrics?.related.map(item => item.keyword) || bloggerRelatedKeywords, isTitleLocked: true, isCreditsCharged: isBloggerLanding && !isSubscriber ? false : true, metrics: paidMetrics });
-      toast.success(isBloggerLanding ? 'Title locked. Optimization workspace unlocked — no additional credits charged.' : (wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! Optimization workspace unlocked.'));
+      toast.success(isBloggerLanding && !isSubscriber ? 'Title locked. Paste or write your content to view the analysis summary.' : (isBloggerLanding ? 'Title locked. Optimization workspace unlocked — no additional credits charged.' : (wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! Optimization workspace unlocked.')));
     } catch (err) {
       console.error('Failed to lock Blogger title:', err);
       toast.error(err instanceof Error ? err.message : 'Blogger optimization failed. Please try again.');
@@ -1916,42 +1916,17 @@ Return ONLY valid JSON:
               <Lock className="w-6 h-6" />
             </div>
 
-            {isGuest ? (
+            {isBloggerMode ? (
               <>
                 <h4 className="text-sm font-bold text-foreground mb-1">
-                  Detailed SEO & AI Analysis Locked
+                  Full Optimization Intelligence Locked
                 </h4>
                 <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">
-                  Create a free account or sign in to unlock comprehensive keyword tracking, EEAT audits, and sentence-level writing recommendations.
+                  Your summary is ready. Upgrade to unlock publishing readiness, detailed recommendations, and the complete optimization workflow.
                 </p>
                 <Button
-                  onClick={() => handleAuthRedirect('/signup')}
-                  className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Register to View Full Analysis</span>
-                </Button>
-                <p className="text-[11px] text-muted-foreground mt-2.5">
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => handleAuthRedirect('/login')}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Log in
-                  </button>
-                </p>
-              </>
-            ) : (
-              <>
-                <h4 className="text-sm font-bold text-foreground mb-1">
-                  Full SEO Assistant Analysis (Pro Plan)
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">
-                  Upgrade to Pro to unlock the complete 20-module deep audit, semantic keyword clustering, EEAT recommendations, AI risk breakdown, and publishing readiness.
-                </p>
-                <Button
-                  onClick={() => openUpgradeModal({
-                    featureName: isBloggerLanding ? 'AI Checker for Bloggers' : 'SEO Assistant',
+                  onClick={() => isGuest ? handleAuthRedirect('/signup') : openUpgradeModal({
+                    featureName: 'AI Checker for Bloggers',
                     trigger: 'pro_feature',
                     remaining: summary?.creditsBalance ?? 0,
                     limit: currentCost,
@@ -1959,11 +1934,30 @@ Return ONLY valid JSON:
                   className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Upgrade to View Full Analysis</span>
+                  <span>Upgrade to Optimize Content</span>
                 </Button>
-                <span className="text-[11px] text-muted-foreground mt-2">
-                  Pro includes 1,000 monthly credits · From $19/mo
-                </span>
+                {isGuest && (
+                  <p className="text-[11px] text-muted-foreground mt-2.5">
+                    Already have an account?{' '}
+                    <button onClick={() => handleAuthRedirect('/login')} className="text-primary hover:underline font-medium">Log in</button>
+                  </p>
+                )}
+              </>
+            ) : isGuest ? (
+              <>
+                <h4 className="text-sm font-bold text-foreground mb-1">Detailed SEO & AI Analysis Locked</h4>
+                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Create a free account or sign in to unlock comprehensive analysis.</p>
+                <Button onClick={() => handleAuthRedirect('/signup')} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
+                  <Sparkles className="w-4 h-4" /><span>Register to View Full Analysis</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                <h4 className="text-sm font-bold text-foreground mb-1">Full SEO Assistant Analysis (Pro Plan)</h4>
+                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Upgrade to Pro to unlock the complete SEO Assistant analysis.</p>
+                <Button onClick={() => openUpgradeModal({ featureName: 'SEO Assistant', trigger: 'pro_feature', remaining: summary?.creditsBalance ?? 0, limit: currentCost })} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
+                  <Sparkles className="w-4 h-4" /><span>Upgrade to View Full Analysis</span>
+                </Button>
               </>
             )}
           </div>
@@ -2359,6 +2353,7 @@ Return ONLY valid JSON:
           onStartNew={handleStartNewBloggerSession}
           isLockingTitle={isLockingTitle}
           creditsBalance={summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0}
+          paidKeywordGate={isSubscriber}
           targetCountry={bloggerTargetCountry}
           targetLanguage={bloggerTargetLanguage}
           onTargetCountryChange={(country) => {
