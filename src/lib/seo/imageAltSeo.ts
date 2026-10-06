@@ -72,7 +72,12 @@ function suggestionFor(src: string, keyword: string, existingAlt?: string | null
     const candidate = keyword.trim() && !normalized.toLowerCase().includes(keyword.trim().toLowerCase())
       ? `${normalized} related to ${keyword.trim()}`
       : normalized;
-    return candidate.charAt(0).toUpperCase() + candidate.slice(1, 125);
+    const candidateWords = candidate.split(/\s+/).filter(Boolean);
+    const descriptiveCandidate =
+      candidate.length < 8 || candidateWords.length < 2
+        ? `${candidate} related image`
+        : candidate;
+    return descriptiveCandidate.charAt(0).toUpperCase() + descriptiveCandidate.slice(1, 125);
   }
   return 'Describe the image clearly and concisely for readers using assistive technology';
 }
@@ -82,10 +87,10 @@ function classifyAlt(alt: string | null, keyword: string) {
   const trimmed = alt.trim();
   if (!trimmed) return { status: 'empty' as const, score: 55, issue: 'ALT text is empty. Keep it empty only if the image is purely decorative.' };
   if (GENERIC_ALT.test(trimmed)) return { status: 'generic' as const, score: 30, issue: 'ALT text is too generic to describe the image.' };
-  if (trimmed.length < 8 || trimmed.split(/\s+/).length < 2) return { status: 'weak' as const, score: 50, issue: 'ALT text is too short to be descriptive.' };
   if (trimmed.length > 160) {
     return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
   }
+  if (trimmed.length < 8 || trimmed.split(/\s+/).length < 2) return { status: 'weak' as const, score: 50, issue: 'ALT text is too short to be descriptive.' };
   const occurrences = countKeywordOccurrences(trimmed, keyword);
   if (occurrences > 1) {
     return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
@@ -109,6 +114,18 @@ function htmlReplacement(raw: string, alt: string) {
 export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoResult {
   const items: ImageAltItem[] = [];
   const occupied: Array<[number, number]> = [];
+  const suggestionCounts = new Map<string, number>();
+
+  const uniqueSuggestion = (suggestion: string) => {
+    const key = suggestion.trim().toLowerCase();
+    const count = (suggestionCounts.get(key) || 0) + 1;
+    suggestionCounts.set(key, count);
+    if (count === 1) return suggestion;
+
+    const suffix = ` image ${count}`;
+    const base = suggestion.slice(0, Math.max(1, 125 - suffix.length)).trim();
+    return `${base}${suffix}`;
+  };
 
   const markdown = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
   let md: RegExpExecArray | null;
@@ -116,7 +133,7 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
     const alt = md[1];
     const src = md[2];
     const c = classifyAlt(alt, keyword);
-    const suggestion = suggestionFor(src, keyword, alt);
+    const suggestion = uniqueSuggestion(suggestionFor(src, keyword, alt));
     items.push({
       index: items.length,
       source: src,
@@ -147,7 +164,7 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
     if (alt === '' && (/\srole\s*=\s*(["'])presentation\1/i.test(raw) || /\saria-hidden\s*=\s*(["'])true\1/i.test(raw))) {
       c = { status: 'decorative' as const, score: 100, issue: 'Image is explicitly marked decorative and correctly uses empty ALT text.' };
     }
-    const suggestion = suggestionFor(src, keyword, alt);
+    const suggestion = uniqueSuggestion(suggestionFor(src, keyword, alt));
     items.push({
       index: items.length,
       source: src,
