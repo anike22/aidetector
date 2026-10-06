@@ -366,7 +366,7 @@ async function handleAffiliateApproved(req: Request, payload: RegisterPayload, r
           <strong>Commission:</strong> 30% recurring<br>
           <strong>Attribution window:</strong> ${attributionDays} days
         </div>
-        <a href="${frontendUrl}/affiliate-dashboard" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Open Affiliate Dashboard</a>
+        <a href="${frontendUrl}/affiliates/dashboard" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Open Affiliate Dashboard</a>
         <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#64748b">Your dashboard contains your referral links, clicks, registrations, conversions, commissions and payout information. Need help? Reply to this email.</p>
       </div>
     </div>
