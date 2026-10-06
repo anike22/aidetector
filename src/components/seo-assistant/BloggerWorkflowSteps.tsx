@@ -322,11 +322,11 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              Optimize My Content — 30 Credits
+              Lock Keyword — 30 Credits
             </Button>
           </div>
           {!hasCurrentAnalysis && (
-            <p className="text-[11px] text-muted-foreground text-right mt-2">Review the full analysis first. When you're ready to act on the insights, optimize your content for 30 credits.</p>
+            <p className="text-[11px] text-muted-foreground text-right mt-2">Live keyword analysis is free. Lock the keyword to continue to your title and content workflow.</p>
           )}
         </div>
       )}
@@ -338,15 +338,15 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                Step 2: Optimization Session & Content Title
+                Step 2: Review Keyword Research & Enter Content Title
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Your 30-credit optimization session is active and saved. Review the keyword insights below, then enter a title containing the primary keyword. There is no additional charge for the title or later optimization steps.
+                Review the locked keyword metrics below, then enter a title containing the primary keyword. Preview users can continue to their content analysis; paid sessions are already saved.
               </p>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Optimization Session Active</span>
+              <span>Keyword Session Active</span>
             </div>
           </div>
 
