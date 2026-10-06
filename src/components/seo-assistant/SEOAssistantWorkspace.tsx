@@ -764,7 +764,27 @@ export function SEOAssistantWorkspace({
       return matchInternalLinksToArticle(prev, text, kw, allKeywords);
     });
 
-    const computed = computeOverallScores({ kwResult: kwr, readability: read, grammar: gram, eeat, headings: head, engagement: eng, snippet: snip, uniqueness: uniq });
+    const baseComputed = computeOverallScores({ kwResult: kwr, readability: read, grammar: gram, eeat, headings: head, engagement: eng, snippet: snip, uniqueness: uniq });
+    const altSeo = analyzeImageAltSeo(text, kw);
+    const computed = isBloggerMode && altSeo.total > 0
+      ? (() => {
+          // Image ALT quality is a focused on-page SEO signal. Blend it into SEO without
+          // allowing images to dominate the broader content-quality score.
+          const seo = Math.round(baseComputed.seo * 0.90 + altSeo.score * 0.10);
+          const publishingScore = Math.round(
+            seo * 0.25 +
+            baseComputed.readability * 0.20 +
+            baseComputed.grammar * 0.15 +
+            baseComputed.eeat * 0.20 +
+            baseComputed.structure * 0.10 +
+            baseComputed.engagement * 0.10
+          );
+          const overall = Math.round(
+            (seo + baseComputed.readability + baseComputed.grammar + baseComputed.eeat + baseComputed.structure + baseComputed.engagement + uniq.score) / 7
+          );
+          return { ...baseComputed, seo, publishingScore, overall, readyToPublish: publishingScore >= 70 };
+        })()
+      : baseComputed;
     setScores(computed);
     return {
       kwr, sem, intent, read, sent, para, trans, gram, head, eeat, eng, snip, risk, uniq, meta, computed
@@ -1948,7 +1968,6 @@ Return ONLY valid JSON:
               <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
               <CompetitorIntelligencePanel competitors={competitors} contentGap={contentGap} onAnalyze={handleAnalyzeCompetitors} loading={loadingCompetitors} keyword={keyword} content={content} onInsertKeyword={handleInsertCompetitorKeyword} />
               <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
-          {isBloggerMode && <ImageAltSeoPanel result={imageAltResult} onApplyFix={handleApplyImageAltFix} />}
               {isBloggerMode && <ImageAltSeoPanel result={imageAltResult} onApplyFix={handleApplyImageAltFix} />}
               <EEATPanel result={eeatResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
               <EngagementPanel result={engagementResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
