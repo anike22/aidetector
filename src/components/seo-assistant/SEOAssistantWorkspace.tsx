@@ -799,11 +799,11 @@ export function SEOAssistantWorkspace({
   }, [content, keyword, navigate]);
 
   const handleApplyImageAltFix = useCallback((item: ImageAltItem) => {
-    if (!item.raw || !content.includes(item.raw)) {
+    if (!item.raw || item.start < 0 || item.end > content.length || content.slice(item.start, item.end) !== item.raw) {
       toast.error('This image markup changed. Re-run the image check and try again.');
       return;
     }
-    const next = content.replace(item.raw, item.replacement);
+    const next = content.slice(0, item.start) + item.replacement + content.slice(item.end);
     setContent(next);
     editorRef.current?.setContent(next);
     setWordCount(next.split(/\s+/).filter(Boolean).length);
