@@ -1892,13 +1892,16 @@ Return ONLY valid JSON:
       {/* Modules 3–20 & Integrity Tools */}
       {!isSubscriber ? (
         <div className="relative mt-2 rounded-xl overflow-hidden border border-border bg-card/60">
-          {/* Blurred Background Preview */}
-          <div className="filter blur-[5px] select-none pointer-events-none opacity-30 p-2 space-y-3">
+          {/* Real optimization modules remain visible as the conversion preview. Results are obscured until upgrade. */}
+          <div className="filter blur-[3px] select-none pointer-events-none opacity-45 p-2 space-y-3" aria-hidden="true">
             <KeywordUsagePanel result={kwResult} keyword={keyword} onKeywordChange={handleKeywordChange} />
             <SemanticKeywordsPanel result={semanticResult} />
             <SearchIntentPanel result={intentResult} />
             <ReadabilityPanel result={readabilityResult} />
             <SentenceAnalysisPanel result={sentenceResult} onNavigateIssue={handleNavigateIssue} />
+            <ParagraphAnalysisPanel result={paraResult} onNavigateIssue={handleNavigateIssue} />
+            <TransitionWordsPanel result={transitionResult} />
+            <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
             <CompetitorIntelligencePanel 
               competitors={competitors} 
               contentGap={contentGap}
@@ -1908,10 +1911,17 @@ Return ONLY valid JSON:
               content={content}
               onInsertKeyword={handleInsertCompetitorKeyword}
             />
+            <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
+            <EEATPanel result={eeatResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
+            <EngagementPanel result={engagementResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
+            <SnippetPanel result={snippetResult} />
+            <MetaOptimizationPanel result={metaResult} />
+            <UniquenessPanel result={uniquenessResult} onNavigateOccurrence={handleNavigateIssue} />
+            <AIRiskPanel result={aiRiskResult} />
           </div>
 
           {/* Locked Gating Overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-card/85 backdrop-blur-sm z-10">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-card/45 z-10">
             <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
               <Lock className="w-6 h-6" />
             </div>
