@@ -1921,17 +1921,17 @@ Return ONLY valid JSON:
           </div>
 
           {/* Locked Gating Overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-card/45 z-10">
-            <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
+          <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-start pt-5 px-4 text-center z-10">
+            <div className="w-10 h-10 rounded-full bg-card/95 border border-primary/20 shadow-sm text-primary flex items-center justify-center mb-2">
               <Lock className="w-6 h-6" />
             </div>
 
             {isBloggerMode ? (
               <>
-                <h4 className="text-sm font-bold text-foreground mb-1">
+                <h4 className="text-sm font-bold text-foreground mb-1 bg-card/95 px-3 py-1 rounded-md shadow-sm">
                   Full Optimization Intelligence Locked
                 </h4>
-                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">
+                <p className="text-xs text-muted-foreground max-w-xs mb-3 text-pretty bg-card/95 px-3 py-1.5 rounded-md shadow-sm">
                   Your summary is ready. Upgrade to unlock publishing readiness, detailed recommendations, and the complete optimization workflow.
                 </p>
                 <Button
@@ -2430,7 +2430,7 @@ Return ONLY valid JSON:
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-muted-foreground text-[11px]">
-                  {wordCount} words · 30 Credits Active
+                  {wordCount} words · {isSubscriber ? '30 Credits Active' : 'Preview Active'}
                 </span>
               </div>
             </div>
