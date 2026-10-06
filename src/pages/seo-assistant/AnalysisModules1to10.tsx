@@ -42,19 +42,6 @@ export function OverallScorePanel({
 
   // Gating CTA button component based on subscription tier
   const renderActionButton = () => {
-    if (isBloggerPreview) {
-      return (
-        <Button
-          size="sm"
-          onClick={isGuest ? onRegister : onUpgrade}
-          className="w-full h-8 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Upgrade to Optimize Content</span>
-        </Button>
-      );
-    }
-
     if (isGuest) {
       return (
         <Button
