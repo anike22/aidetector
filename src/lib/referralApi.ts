@@ -140,7 +140,13 @@ export async function getReferralStats(userId?: string): Promise<ReferralStats> 
   const verified = rows.filter((r) => r.stage === 'email_verified').length;
   const active = rows.filter((r) => r.stage === 'first_scan').length;
   const paid = rows.filter((r) => r.stage === 'subscription').length;
-  const revenue = paid * 9.99; // placeholder estimate
+  const { data: commissionRows, error: commissionError } = await supabase
+    .from('commissions')
+    .select('gross_amount')
+    .in('referral_link_id', linkIds)
+    .not('gross_amount', 'is', null);
+  if (commissionError) throw commissionError;
+  const revenue = (commissionRows || []).reduce((sum, row) => sum + Number(row.gross_amount || 0), 0)
   return {
     clicks,
     signups,
@@ -154,17 +160,35 @@ export async function getReferralStats(userId?: string): Promise<ReferralStats> 
 
 // Affiliate applications
 export async function getAffiliateApplications(status?: AffiliateApplicationStatus): Promise<AffiliateApplication[]> {
-  let q = supabase.from('affiliate_applications').select('*, user:profiles!affiliate_applications_user_id_fkey(email, full_name)').order('created_at', { ascending: false });
+  let q = supabase.from('affiliate_applications').select('*').order('created_at', { ascending: false });
   if (status) q = q.eq('status', status);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as AffiliateApplication[]) || [];
+
+  const applications = (data as AffiliateApplication[]) || [];
+  if (applications.length === 0) return applications;
+
+  // affiliate_applications.user_id references auth.users, not public.profiles,
+  // so PostgREST cannot embed profiles through a direct FK relationship.
+  // Fetch the matching public profiles separately and attach them for admin display.
+  const userIds = [...new Set(applications.map((app) => app.user_id).filter(Boolean))];
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', userIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return applications.map((app) => ({
+    ...app,
+    user: profilesById.get(app.user_id) || undefined,
+  })) as AffiliateApplication[];
 }
 
-export async function getMyAffiliateApplication(): Promise<AffiliateApplication | null> {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) return null;
-  const { data, error } = await supabase.from('affiliate_applications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+export async function getMyAffiliateApplication(userId?: string): Promise<AffiliateApplication | null> {
+  const resolvedUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+  if (!resolvedUserId) return null;
+  const { data, error } = await supabase.from('affiliate_applications').select('*').eq('user_id', resolvedUserId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data as AffiliateApplication | null;
 }
@@ -176,19 +200,20 @@ export async function applyForAffiliate(payload: { website?: string; social_prof
 }
 
 export async function updateAffiliateApplicationStatus(id: string, status: AffiliateApplicationStatus, tier?: AffiliateTier): Promise<AffiliateApplication> {
-  const updates: Partial<AffiliateApplication> = { status };
-  if (tier) updates.tier = tier;
-  if (status === 'Approved' || status === 'Rejected') {
-    updates.reviewed_at = new Date().toISOString();
-  }
-  const { data, error } = await supabase.from('affiliate_applications').update(updates).eq('id', id).select().single();
+  const { error } = await supabase.rpc('admin_set_affiliate_application_status', {
+    p_application_id: id,
+    p_status: status,
+    p_tier: tier || null,
+  });
   if (error) throw error;
-  // Sync profile status when approved
-  if (status === 'Approved' || status === 'Rejected' || status === 'Suspended' || status === 'Terminated') {
-    const app = data as AffiliateApplication;
-    const profileStatus = status === 'Approved' ? 'active' : status === 'Rejected' ? 'none' : status.toLowerCase();
-    await updateProfileRewards(app.user_id, { affiliate_status: profileStatus, affiliate_tier: tier || app.tier });
+  if (status === 'Approved') {
+    const { error: emailError } = await supabase.functions.invoke('register', {
+      body: { action: 'affiliate_approved', applicationId: id },
+    });
+    if (emailError) console.warn('Affiliate approval email trigger failed:', emailError);
   }
+  const { data, error: fetchError } = await supabase.from('affiliate_applications').select('*').eq('id', id).single();
+  if (fetchError) throw fetchError;
   return data as AffiliateApplication;
 }
 
@@ -214,12 +239,27 @@ export async function deleteAffiliateLink(id: string) {
 
 // Commissions
 export async function getCommissions(filters?: { userId?: string; status?: CommissionStatus }): Promise<Commission[]> {
-  let q = supabase.from('commissions').select('*, referred_user:profiles!commissions_referred_user_id_fkey(email)').order('created_at', { ascending: false });
+  let q = supabase.from('commissions').select('*').order('created_at', { ascending: false });
   if (filters?.userId) q = q.eq('affiliate_user_id', filters.userId);
   if (filters?.status) q = q.eq('status', filters.status);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as Commission[]) || [];
+
+  const commissions = (data as Commission[]) || [];
+  const referredIds = [...new Set(commissions.map((row) => row.referred_user_id).filter(Boolean))] as string[];
+  if (referredIds.length === 0) return commissions;
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', referredIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return commissions.map((row) => ({
+    ...row,
+    referred_user: row.referred_user_id ? profilesById.get(row.referred_user_id) : undefined,
+  })) as Commission[];
 }
 
 export function calculateCommission(amount: number, type: CommissionType, rate: number): number {
@@ -227,21 +267,11 @@ export function calculateCommission(amount: number, type: CommissionType, rate: 
   return Number(rate.toFixed(2));
 }
 
-export async function createCommission(payload: Partial<Commission>): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').insert(payload).select().single();
-  if (error) throw error;
-  return data as Commission;
-}
-
 export async function approveCommission(id: string): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').update({ status: 'Approved', approved_at: new Date().toISOString() }).eq('id', id).select().single();
+  const { error } = await supabase.rpc('admin_set_commission_status', { p_commission_id: id, p_status: 'Approved' });
   if (error) throw error;
-  return data as Commission;
-}
-
-export async function payCommission(id: string): Promise<Commission> {
-  const { data, error } = await supabase.from('commissions').update({ status: 'Paid', paid_at: new Date().toISOString() }).eq('id', id).select().single();
-  if (error) throw error;
+  const { data, error: fetchError } = await supabase.from('commissions').select('*').eq('id', id).single();
+  if (fetchError) throw fetchError;
   return data as Commission;
 }
 
@@ -353,30 +383,53 @@ export async function getPayouts(filters?: { userId?: string; status?: PayoutSta
   return (data as Payout[]) || [];
 }
 
-export async function requestPayout(amount: number, method?: string): Promise<Payout> {
-  const { data, error } = await supabase.from('payouts').insert({ amount, payout_method: method }).select().single();
+export async function requestPayout(_amount: number, method?: string): Promise<Payout> {
+  const { data, error } = await supabase.rpc('request_affiliate_payout', { p_method: method || 'Bank Transfer' });
   if (error) throw error;
-  return data as Payout;
+  if (!data?.created) {
+    if (data?.reason === 'minimum_not_met') throw new Error(`Minimum payout is ${Number(data.minimum).toFixed(2)}. Available balance: ${Number(data.available).toFixed(2)}.`);
+    throw new Error('Payout request could not be created.');
+  }
+  const { data: payout, error: payoutError } = await supabase.from('payouts').select('*').eq('id', data.payout_id).single();
+  if (payoutError) throw payoutError;
+  return payout as Payout;
 }
 
 export async function updatePayoutStatus(id: string, status: PayoutStatus, failedReason?: string): Promise<Payout> {
-  const updates: Partial<Payout> = { status };
-  if (status === 'Paid') updates.paid_at = new Date().toISOString();
-  if (status === 'Approved') updates.approved_at = new Date().toISOString();
-  if (failedReason) updates.failed_reason = failedReason;
-  const { data, error } = await supabase.from('payouts').update(updates).eq('id', id).select().single();
+  const { error } = await supabase.rpc('set_affiliate_payout_status', {
+    p_payout_id: id,
+    p_status: status,
+    p_failed_reason: failedReason || null,
+  });
   if (error) throw error;
-  return data as Payout;
+  const { data: payout, error: payoutError } = await supabase.from('payouts').select('*').eq('id', id).single();
+  if (payoutError) throw payoutError;
+  return payout as Payout;
 }
 
 // Leaderboards & challenges
 export async function getLeaderboards(type?: LeaderboardType, period?: string): Promise<Leaderboard[]> {
-  let q = supabase.from('leaderboards').select('*, user:profiles!leaderboards_user_id_fkey(email, full_name)').order('rank', { ascending: true });
+  let q = supabase.from('leaderboards').select('*').order('rank', { ascending: true });
   if (type) q = q.eq('leaderboard_type', type);
   if (period) q = q.eq('period', period);
   const { data, error } = await q;
   if (error) throw error;
-  return (data as Leaderboard[]) || [];
+
+  const rows = (data as Leaderboard[]) || [];
+  const userIds = [...new Set(rows.map((row) => row.user_id).filter(Boolean))];
+  if (userIds.length === 0) return rows;
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,email,full_name')
+    .in('id', userIds);
+  if (profilesError) throw profilesError;
+
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  return rows.map((row) => ({
+    ...row,
+    user: profilesById.get(row.user_id) || undefined,
+  })) as Leaderboard[];
 }
 
 export async function getChallenges(enabledOnly = true): Promise<Challenge[]> {
