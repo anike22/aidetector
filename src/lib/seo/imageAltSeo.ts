@@ -96,10 +96,7 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
   while ((md = markdown.exec(content))) {
     const alt = md[1];
     const src = md[2];
-    let c = classifyAlt(alt, keyword);
-    if (alt === '' && (/\srole\s*=\s*(["'])presentation\1/i.test(raw) || /\saria-hidden\s*=\s*(["'])true\1/i.test(raw))) {
-      c = { status: 'decorative' as const, score: 100, issue: 'Image is explicitly marked decorative and correctly uses empty ALT text.' };
-    }
+    const c = classifyAlt(alt, keyword);
     const suggestion = suggestionFor(src, keyword, alt);
     items.push({
       index: items.length,
@@ -125,7 +122,10 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
     const altMatch = raw.match(/\salt\s*=\s*(["'])(.*?)\1/i);
     const src = srcMatch?.[2] || '';
     const alt = altMatch ? altMatch[2] : null;
-    const c = classifyAlt(alt, keyword);
+    let c = classifyAlt(alt, keyword);
+    if (alt === '' && (/\srole\s*=\s*(["'])presentation\1/i.test(raw) || /\saria-hidden\s*=\s*(["'])true\1/i.test(raw))) {
+      c = { status: 'decorative' as const, score: 100, issue: 'Image is explicitly marked decorative and correctly uses empty ALT text.' };
+    }
     const suggestion = suggestionFor(src, keyword, alt);
     items.push({
       index: items.length,
