@@ -433,7 +433,7 @@ export function SEOAssistantWorkspace({
     setIsLockingTitle(true);
     const cost = 30;
     try {
-      if (isBloggerLanding) {
+      if (isBloggerLanding && isSubscriber) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) { toast.error('Please sign in to lock this keyword.'); handleAuthRedirect('/signup'); return; }
         // Keep one stable idempotency key for this lock attempt. A network retry/double-submit
@@ -489,27 +489,27 @@ export function SEOAssistantWorkspace({
 
       const related = bloggerRelatedKeywords.filter(Boolean);
       setIsKeywordsLocked(true);
-      setIsBloggerCreditsCharged(isBloggerLanding ? true : isBloggerCreditsCharged);
+      setIsBloggerCreditsCharged(isBloggerLanding && isSubscriber ? true : isBloggerCreditsCharged);
       setBloggerStep(2);
       saveBloggerSession({
         step: 2, primaryKeyword: cleanKw, relatedKeywords: related,
         targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage,
         autoGenerateRelated: bloggerAutoGenerateRelated,
-        isKeywordsLocked: true, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged,
+        isKeywordsLocked: true, isCreditsCharged: isBloggerLanding && isSubscriber ? true : isBloggerCreditsCharged,
         metrics: bloggerMetrics,
       });
 
       const historyItem: SEOAnalysisHistoryItem = {
         id: `keyword_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         title: `Keyword Research: ${cleanKw}`, keyword: cleanKw, wordCount: 0,
-        creditCost: isBloggerLanding ? cost : 0, content: '', scores: DEFAULT_SCORES,
+        creditCost: isBloggerLanding && isSubscriber ? cost : 0, content: '', scores: DEFAULT_SCORES,
         snapshot: { kwResult: DEFAULT_KW_RESULT, semanticResult, intentResult, readabilityResult, sentenceResult, paraResult, transitionResult, grammarResult, headingResult, eeatResult, engagementResult, snippetResult, aiRiskResult, uniquenessResult, metaResult, balancedResult, plagiarismResult, authorshipResult },
         createdAt: Date.now(), contentHash: generateContentHash('', cleanKw),
-        bloggerSession: { primaryKeyword: cleanKw, relatedKeywords: [...related], title: '', step: 2, isKeywordsLocked: true, isTitleLocked: false, isCreditsCharged: isBloggerLanding ? true : isBloggerCreditsCharged, metrics: bloggerMetrics, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
+        bloggerSession: { primaryKeyword: cleanKw, relatedKeywords: [...related], title: '', step: 2, isKeywordsLocked: true, isTitleLocked: false, isCreditsCharged: isBloggerLanding && isSubscriber ? true : isBloggerCreditsCharged, metrics: bloggerMetrics, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
       };
       await saveSyncedSEOAssistantHistoryItem(historyItem);
       setHistoryCount(getSEOAssistantHistory().length);
-      toast.success('Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
+      toast.success(isBloggerLanding && !isSubscriber ? 'Keyword locked. Continue with your title and content preview.' : 'Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       if (/failed to fetch|networkerror|network request failed/i.test(message)) {
@@ -534,7 +534,7 @@ export function SEOAssistantWorkspace({
       return;
     }
 
-    if (isBloggerLanding && (!isKeywordsLocked || !isBloggerCreditsCharged)) {
+    if (isBloggerLanding && (!isKeywordsLocked || (isSubscriber && !isBloggerCreditsCharged))) {
       toast.error('Lock your primary keyword before continuing to the title step.');
       return;
     }
@@ -569,7 +569,7 @@ export function SEOAssistantWorkspace({
 
       await refresh();
       setIsTitleLocked(true);
-      setIsBloggerCreditsCharged(true);
+      setIsBloggerCreditsCharged(isBloggerLanding && !isSubscriber ? false : true);
       setBloggerStep(3);
 
       let effectiveContent = content;
@@ -590,13 +590,13 @@ export function SEOAssistantWorkspace({
           scores: analysisData.computed,
           snapshot: { kwResult: analysisData.kwr, semanticResult: analysisData.sem, intentResult: analysisData.intent, readabilityResult: analysisData.read, sentenceResult: analysisData.sent, paraResult: analysisData.para, transitionResult: analysisData.trans, grammarResult: analysisData.gram, headingResult: analysisData.head, eeatResult: analysisData.eeat, engagementResult: analysisData.eng, snippetResult: analysisData.snip, aiRiskResult: analysisData.risk, uniquenessResult: analysisData.uniq, metaResult: analysisData.meta, balancedResult, plagiarismResult, authorshipResult },
           createdAt: Date.now(), contentHash: generateContentHash(effectiveContent, keyword),
-          bloggerSession: { primaryKeyword: keyword, relatedKeywords: [...bloggerRelatedKeywords], title: cleanTitle, step: 3, isKeywordsLocked: true, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics || undefined, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
+          bloggerSession: { primaryKeyword: keyword, relatedKeywords: [...bloggerRelatedKeywords], title: cleanTitle, step: 3, isKeywordsLocked: true, isTitleLocked: true, isCreditsCharged: isBloggerLanding && !isSubscriber ? false : true, metrics: paidMetrics || undefined, targetCountry: bloggerTargetCountry, targetLanguage: bloggerTargetLanguage, autoGenerateRelated: bloggerAutoGenerateRelated },
         };
         void saveSyncedSEOAssistantHistoryItem(historyItem);
         setHistoryCount(getSEOAssistantHistory().length);
       }
 
-      saveBloggerSession({ step: 3, title: cleanTitle, relatedKeywords: paidMetrics?.related.map(item => item.keyword) || bloggerRelatedKeywords, isTitleLocked: true, isCreditsCharged: true, metrics: paidMetrics });
+      saveBloggerSession({ step: 3, title: cleanTitle, relatedKeywords: paidMetrics?.related.map(item => item.keyword) || bloggerRelatedKeywords, isTitleLocked: true, isCreditsCharged: isBloggerLanding && !isSubscriber ? false : true, metrics: paidMetrics });
       toast.success(isBloggerLanding ? 'Title locked. Optimization workspace unlocked — no additional credits charged.' : (wasTrialCheck ? 'Title locked! Free trial check used. Optimization workspace unlocked.' : 'Title locked! Optimization workspace unlocked.'));
     } catch (err) {
       console.error('Failed to lock Blogger title:', err);
@@ -1890,7 +1890,7 @@ Return ONLY valid JSON:
       />
 
       {/* Modules 3–20 & Integrity Tools */}
-      {!isSubscriber && !isBloggerMode ? (
+      {!isSubscriber ? (
         <div className="relative mt-2 rounded-xl overflow-hidden border border-border bg-card/60">
           {/* Blurred Background Preview */}
           <div className="filter blur-[5px] select-none pointer-events-none opacity-30 p-2 space-y-3">
