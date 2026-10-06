@@ -9,6 +9,7 @@ function statusLabel(item: ImageAltItem) {
   switch (item.status) {
     case 'optimized': return 'Optimized';
     case 'missing': return 'Missing ALT';
+    case 'empty': return 'Empty ALT';
     case 'decorative': return 'Decorative';
     case 'generic': return 'Generic ALT';
     case 'stuffed': return 'Over-optimized';
