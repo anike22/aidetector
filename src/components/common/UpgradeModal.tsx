@@ -19,6 +19,7 @@ interface UpgradeModalProps {
   trigger: 'limit_reached' | 'pro_feature';
   remaining?: number | null;
   limit?: number | null;
+  returnTo?: string;
 }
 
 const PRO_BENEFITS = [
@@ -40,6 +41,7 @@ export default function UpgradeModal({
   trigger,
   remaining,
   limit,
+  returnTo,
 }: UpgradeModalProps) {
   const navigate = useNavigate();
   const { trackEvent } = useCustomerDataPlatform();
@@ -67,8 +69,11 @@ export default function UpgradeModal({
         source: 'modal',
       },
     });
+    if (returnTo?.startsWith('/')) {
+      sessionStorage.setItem('upgrade_return_to', returnTo);
+    }
     onOpenChange(false);
-    navigate('/pricing');
+    navigate(returnTo?.startsWith('/') ? `/pricing?returnTo=${encodeURIComponent(returnTo)}` : '/pricing');
   };
 
   const headline =
