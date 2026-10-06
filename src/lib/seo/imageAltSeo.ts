@@ -27,6 +27,16 @@ export interface ImageAltSeoResult {
 
 const GENERIC_ALT = /^(image|photo|picture|graphic|screenshot|img|photo\s*\d*|image\s*\d*)$/i;
 
+function countKeywordOccurrences(text: string, keyword: string): number {
+  const normalized = keyword.trim().toLowerCase();
+  if (!normalized) return 0;
+  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = /^[a-z0-9 ]+$/i.test(normalized)
+    ? new RegExp('\\b' + escaped.replace(/\\ /g, '\\s+') + '\\b', 'gi')
+    : new RegExp(escaped, 'gi');
+  return (text.match(pattern) || []).length;
+}
+
 function cleanFilename(src: string): string {
   try {
     const pathname = src.split('?')[0].split('#')[0];
@@ -47,10 +57,7 @@ function suggestionFor(src: string, keyword: string, existingAlt?: string | null
     ? filename
     : keyword.trim();
   const existing = (existingAlt || '').trim();
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  const existingKeywordOccurrences = normalizedKeyword
-    ? existing.toLowerCase().split(normalizedKeyword).length - 1
-    : 0;
+  const existingKeywordOccurrences = countKeywordOccurrences(existing, keyword);
   if (
     existing &&
     !GENERIC_ALT.test(existing) &&
@@ -79,13 +86,9 @@ function classifyAlt(alt: string | null, keyword: string) {
   if (trimmed.length > 160) {
     return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
   }
-  const kw = keyword.trim().toLowerCase();
-  if (kw) {
-    const hay = trimmed.toLowerCase();
-    const occurrences = hay.split(kw).length - 1;
-    if (occurrences > 1) {
-      return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
-    }
+  const occurrences = countKeywordOccurrences(trimmed, keyword);
+  if (occurrences > 1) {
+    return { status: 'stuffed' as const, score: 45, issue: 'ALT text looks over-optimized or excessively long.' };
   }
   return { status: 'optimized' as const, score: 100, issue: 'ALT text is descriptive and usable.' };
 }
@@ -95,11 +98,12 @@ function markdownReplacement(raw: string, alt: string) {
 }
 
 function htmlReplacement(raw: string, alt: string) {
-  const escaped = alt.replace(/"/g, '&quot;');
-  if (/\salt\s*=\s*["'][^"']*["']/i.test(raw)) {
-    return raw.replace(/\salt\s*=\s*(["'])[^"']*\1/i, ` alt="${escaped}"`);
+  const escaped = alt.replace(/\"/g, '&quot;');
+  const altAttribute = /\salt\s*=\s*(?:(['\"])[^'\"]*\1|[^\s>]+)/i;
+  if (altAttribute.test(raw)) {
+    return raw.replace(altAttribute, ' alt="' + escaped + '"');
   }
-  return raw.replace(/<img\b/i, `<img alt="${escaped}"`);
+  return raw.replace(/<img\b/i, '<img alt="' + escaped + '"');
 }
 
 export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoResult {
@@ -135,10 +139,10 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
   while ((hm = html.exec(content))) {
     if (occupied.some(([start, end]) => hm!.index >= start && hm!.index < end)) continue;
     const raw = hm[0];
-    const srcMatch = raw.match(/\ssrc\s*=\s*(["'])(.*?)\1/i);
-    const altMatch = raw.match(/\salt\s*=\s*(["'])(.*?)\1/i);
-    const src = srcMatch?.[2] || '';
-    const alt = altMatch ? altMatch[2] : null;
+    const srcMatch = raw.match(/\ssrc\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))/i);
+    const altMatch = raw.match(/\salt\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))/i);
+    const src = srcMatch?.[2] || srcMatch?.[3] || '';
+    const alt = altMatch ? (altMatch[2] ?? altMatch[3] ?? '') : null;
     let c = classifyAlt(alt, keyword);
     if (alt === '' && (/\srole\s*=\s*(["'])presentation\1/i.test(raw) || /\saria-hidden\s*=\s*(["'])true\1/i.test(raw))) {
       c = { status: 'decorative' as const, score: 100, issue: 'Image is explicitly marked decorative and correctly uses empty ALT text.' };
