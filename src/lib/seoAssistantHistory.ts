@@ -51,6 +51,9 @@ export interface SEOAnalysisHistoryItem {
     isTitleLocked: boolean;
     isCreditsCharged: boolean;
     metrics?: any;
+    targetCountry?: string;
+    targetLanguage?: string;
+    autoGenerateRelated?: boolean;
   };
 }
 
