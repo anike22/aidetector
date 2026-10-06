@@ -13,7 +13,7 @@ import {
   CheckCircle2, X, HelpCircle, Zap, Users, Shield, Sparkles,
   Building2, Layers, Coins, ArrowRight, ShieldCheck, Check,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomerDataPlatform } from '@/contexts/CustomerDataPlatformContext';
 import { supabase } from '@/db/supabase';
@@ -210,6 +210,9 @@ export default function PricingPage() {
   const { trackEvent } = useCustomerDataPlatform();
   const { summary: billingSummary, refresh: refreshEntitlements } = useEntitlement('ai_detector');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedReturnTo = searchParams.get('returnTo');
+  const safeReturnTo = requestedReturnTo?.startsWith('/') && !requestedReturnTo.startsWith('//') ? requestedReturnTo : null;
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [topUpModalOpen, setTopUpModalOpen] = useState<boolean>(false);
 
@@ -243,6 +246,7 @@ export default function PricingPage() {
       trackLifecycleEvent('upgrade_to_pro', { plan: planId, billing, amount });
       trackEvent({ event_type: 'custom', metadata: { event_name: 'checkout_started', plan: planId, billing, amount } });
 
+      if (safeReturnTo) sessionStorage.setItem('upgrade_return_to', safeReturnTo);
       const res = await supabase.functions.invoke('paystack-checkout', {
         body: {
           email: user.email,
