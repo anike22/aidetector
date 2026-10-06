@@ -23,11 +23,20 @@ interface BloggerWorkflowStepsProps {
   onPrimaryKeywordChange: (val: string) => void;
   onRelatedKeywordChange: (index: number, val: string) => void;
   onTitleChange: (val: string) => void;
+  onAnalyzeKeyword: () => void;
   onLockKeywords: () => void;
+  hasCurrentAnalysis: boolean;
   onLockTitleAndPay: () => void;
   onStartNew: () => void;
   isLockingTitle?: boolean;
   creditsBalance?: number;
+  paidKeywordGate?: boolean;
+  targetCountry: string;
+  targetLanguage: string;
+  onTargetCountryChange: (val: string) => void;
+  onTargetLanguageChange: (val: string) => void;
+  autoGenerateRelated: boolean;
+  onAutoGenerateRelatedChange: (checked: boolean) => void;
 }
 
 export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
@@ -42,11 +51,20 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   onPrimaryKeywordChange,
   onRelatedKeywordChange,
   onTitleChange,
+  onAnalyzeKeyword,
   onLockKeywords,
+  hasCurrentAnalysis,
   onLockTitleAndPay,
   onStartNew,
   isLockingTitle = false,
   creditsBalance = 0,
+  paidKeywordGate = true,
+  targetCountry,
+  targetLanguage,
+  onTargetCountryChange,
+  onTargetLanguageChange,
+  autoGenerateRelated,
+  onAutoGenerateRelatedChange,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSERPPreview, setShowSERPPreview] = useState(true);
@@ -101,7 +119,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 2. Title & Lock
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {isTitleLocked ? 'Locked (30 Credits)' : 'Cost: 30 Credits'}
+                {isTitleLocked ? 'Locked' : (isKeywordsLocked ? 'No additional charge' : 'After keyword research')}
               </span>
             </div>
           </div>
@@ -141,10 +159,39 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 Step 1: Enter Keywords & Evaluate Ranking Metrics
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Enter 1 primary keyword and up to 3 related keywords. The engine evaluates keyword difficulty (KD), search volume, and word count target needed to rank. Once locked, keywords cannot be changed.
+                Enter a primary keyword and either add up to 3 related keywords yourself or auto-generate them during analysis. The engine displays provider-backed keyword metrics and competitor-derived content targets when live data is available. Unavailable metrics are never estimated or fabricated. Once locked, keywords cannot be changed.
               </p>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label htmlFor="blogger-target-country" className="text-xs font-semibold text-foreground mb-1 block">Target Country</Label>
+              <select id="blogger-target-country" value={targetCountry} onChange={(e) => onTargetCountryChange(e.target.value)} disabled={isKeywordsLocked} className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground">
+                <option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="Nigeria">Nigeria</option><option value="Canada">Canada</option><option value="Australia">Australia</option><option value="India">India</option><option value="Germany">Germany</option><option value="France">France</option><option value="South Africa">South Africa</option><option value="Ghana">Ghana</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="blogger-target-language" className="text-xs font-semibold text-foreground mb-1 block">Language</Label>
+              <select id="blogger-target-language" value={targetLanguage} onChange={(e) => onTargetLanguageChange(e.target.value)} disabled={isKeywordsLocked} className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground">
+                <option value="en">English</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="it">Italian</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-start gap-2 mb-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoGenerateRelated}
+              onChange={(e) => onAutoGenerateRelatedChange(e.target.checked)}
+              disabled={isKeywordsLocked}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+            />
+            <span>
+              <span className="text-xs font-semibold text-foreground block">Auto-generate related keywords</span>
+              <span className="text-[11px] text-muted-foreground">Find relevant related, long-tail, and question keywords automatically during analysis.</span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <div className="md:col-span-1">
@@ -171,7 +218,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(0, e.target.value)}
                 placeholder="e.g. blog SEO tools"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
 
@@ -185,7 +232,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(1, e.target.value)}
                 placeholder="e.g. AI content detector"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
 
@@ -199,7 +246,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 onChange={(e) => onRelatedKeywordChange(2, e.target.value)}
                 placeholder="e.g. readability score"
                 className="h-9 text-xs border-border bg-background"
-                disabled={isKeywordsLocked}
+                disabled={isKeywordsLocked || autoGenerateRelated}
               />
             </div>
           </div>
@@ -210,7 +257,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               <div className="text-xs font-bold text-foreground mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                  Live Keyword Difficulty & Search SERP Evaluation
+                  Keyword & SERP Evaluation
                 </span>
                 <Badge variant="outline" className="text-[10px] font-normal border-primary/20 bg-primary/5 text-primary">
                   Evaluated Target
@@ -221,7 +268,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                 <div className="p-2.5 rounded bg-muted/40 border border-border/60">
                   <span className="text-[10px] text-muted-foreground block">Primary Keyword Difficulty (KD)</span>
                   <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty}/100</span>
+                    <span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100`}</span>
                     <span className={`text-xs font-semibold ${metrics.primary.difficultyColor}`}>
                       {metrics.primary.difficultyLabel}
                     </span>
@@ -259,36 +306,49 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/60">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2 border-t border-border/60">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onAnalyzeKeyword}
+              disabled={!cleanPrimary || isLockingTitle}
+              className="h-9 px-5 text-xs font-semibold gap-1.5"
+            >
+              <Search className="w-3.5 h-3.5" />
+              {isLockingTitle && !hasCurrentAnalysis ? 'Analyzing…' : 'Analyze Keyword'}
+            </Button>
             <Button
               size="sm"
               onClick={onLockKeywords}
-              disabled={!cleanPrimary}
+              disabled={!cleanPrimary || isLockingTitle}
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              Lock Keywords & Proceed to Step 2
+              {paidKeywordGate ? 'Lock Keyword — 30 Credits' : 'Lock Keyword'}
             </Button>
           </div>
+          {!hasCurrentAnalysis && (
+            <p className="text-[11px] text-muted-foreground text-right mt-2">Live keyword analysis is free. Lock the keyword to continue to your title and content workflow.</p>
+          )}
         </div>
       )}
 
-      {/* ── STEP 2: TITLE & CREDIT CHARGE ── */}
+      {/* ── STEP 2: PAID KEYWORD SESSION + TITLE ── */}
       {step === 2 && (
         <div className="max-w-5xl mx-auto bg-muted/20 border border-border rounded-xl p-4 md:p-5">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                Step 2: Enter Content Title & Lock (Static 30 Credits)
+                Step 2: Review Keyword Research & Enter Content Title
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Your title must contain the primary keyword. Once confirmed, the title is locked and static 30 credits are deducted to activate multi-keyword optimization.
+                Review the locked keyword metrics below, then enter a title containing the primary keyword. Preview users can continue to their content analysis; paid sessions are already saved.
               </p>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Coins className="w-3.5 h-3.5" />
-              <span>Static Cost: 30 Credits</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Keyword Session Active</span>
             </div>
           </div>
 
@@ -312,10 +372,25 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
             )}
             {metrics && (
               <span className="text-xs text-primary font-medium ml-auto">
-                Target to rank: {metrics.recommendedWordCount.rangeText}
+                Content target: {metrics.recommendedWordCount.rangeText}
               </span>
             )}
           </div>
+
+          {metrics && (
+            <div className="bg-card border border-border rounded-lg p-3 md:p-4 mb-4">
+              <div className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                Locked Keyword & SERP Evaluation
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Keyword Difficulty</span><span className="text-base font-extrabold text-foreground">{metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100`}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Monthly Search Volume</span><span className="text-base font-extrabold text-foreground">{metrics.primary.searchVolumeFormatted}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Recommended Word Count</span><span className="text-sm md:text-base font-extrabold text-primary">{metrics.recommendedWordCount.rangeText}</span></div>
+                <div className="p-2.5 rounded bg-muted/40 border border-border/60"><span className="text-[10px] text-muted-foreground block">Intent</span><span className="text-xs font-bold text-foreground">{metrics.primary.intent}</span></div>
+              </div>
+            </div>
+          )}
 
           {/* Title Input */}
           <div className="mb-4">
@@ -343,8 +418,18 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
-            <div className="text-xs text-muted-foreground">
-              Current balance: <strong className="text-foreground">{creditsBalance}</strong> credits. Static optimization charge: <strong className="text-primary">30 credits</strong>.
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Keyword research is saved in History. Title lock costs <strong className="text-foreground">0 additional credits</strong>.</span>
+              {!showResetConfirm ? (
+                <Button size="sm" variant="outline" onClick={() => setShowResetConfirm(true)} className="h-8 text-xs gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5" /> Start New
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Button size="sm" onClick={() => { setShowResetConfirm(false); onStartNew(); }} className="h-8 text-xs">Save & Start New</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowResetConfirm(false)} className="h-8 text-xs">Cancel</Button>
+                </div>
+              )}
             </div>
 
             <Button
@@ -358,7 +443,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               ) : (
                 <>
                   <Lock className="w-3.5 h-3.5" />
-                  Lock Title & Start Optimization (30 Credits)
+                  Lock Title & Start Optimization
                 </>
               )}
             </Button>
@@ -378,11 +463,11 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </span>
                   <span className="text-xs text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
-                    30 Credits Charged (Full Session Active)
+                    {paidKeywordGate ? '30 Credits Charged (Full Session Active)' : 'Preview Session Active'}
                   </span>
                   {metrics && (
                     <span className="text-xs text-primary font-medium ml-auto hidden sm:inline-block">
-                      Target: {metrics.recommendedWordCount.rangeText} to rank
+                      Content target: {metrics.recommendedWordCount.rangeText}
                     </span>
                   )}
                 </div>
@@ -398,7 +483,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </Badge>
                   {metrics && (
                     <Badge variant="outline" className="text-[11px] font-normal border-border">
-                      KD {metrics.primary.difficulty}/100 ({metrics.primary.difficultyLabel}) · Vol {metrics.primary.searchVolumeFormatted}
+                      KD {metrics.primary.difficulty == null ? 'Unavailable' : `${metrics.primary.difficulty}/100 (${metrics.primary.difficultyLabel})`} · Vol {metrics.primary.searchVolumeFormatted}
                     </Badge>
                   )}
                   {relatedKeywords.filter(Boolean).map((rk, idx) => (
