@@ -71,7 +71,13 @@ export function VisitorTracker() {
         p_referred_user_id: user?.id || null,
         p_landing_page: location.pathname,
       }).then(({ error }) => {
-        if (error) console.error('[affiliate] attribution capture', error);
+        if (error) {
+          console.error('[affiliate] attribution capture', error);
+          return;
+        }
+        // Persist first-touch affiliate context across product -> signup -> OAuth navigation.
+        sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
+        sessionStorage.setItem('affiliate_visitor_id', visitorId);
       });
     }
 
