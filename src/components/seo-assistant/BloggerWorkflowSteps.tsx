@@ -30,6 +30,7 @@ interface BloggerWorkflowStepsProps {
   onStartNew: () => void;
   isLockingTitle?: boolean;
   creditsBalance?: number;
+  paidKeywordGate?: boolean;
   targetCountry: string;
   targetLanguage: string;
   onTargetCountryChange: (val: string) => void;
@@ -57,6 +58,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   onStartNew,
   isLockingTitle = false,
   creditsBalance = 0,
+  paidKeywordGate = true,
   targetCountry,
   targetLanguage,
   onTargetCountryChange,
@@ -322,7 +324,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              Lock Keyword — 30 Credits
+              {paidKeywordGate ? 'Lock Keyword — 30 Credits' : 'Lock Keyword'}
             </Button>
           </div>
           {!hasCurrentAnalysis && (
