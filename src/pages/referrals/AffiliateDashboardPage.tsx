@@ -20,6 +20,7 @@ import {
 import type { AffiliateApplication, AffiliateLink, Commission, Payout, AffiliateEarnings } from '@/types/referral';
 import { DollarSign, Link2, Copy, TrendingUp, Wallet, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/db/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function AffiliateDashboardPage() {
@@ -34,12 +35,14 @@ export default function AffiliateDashboardPage() {
   const [experience, setExperience] = useState('');
   const [campaign, setCampaign] = useState('');
   const [coupon, setCoupon] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState('/ai-checker-for-bloggers');
+  const [productAnalytics, setProductAnalytics] = useState<Array<{ destination: string; clicks: number; signups: number; conversions: number; revenue: number; commission: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
       const [a, l, c, p, e] = await Promise.all([
-        getMyAffiliateApplication(),
+        user?.id ? getMyAffiliateApplication(user.id) : Promise.resolve(null),
         getAffiliateLinks(user?.id),
         getCommissions({ userId: user?.id }),
         getPayouts({ userId: user?.id }),
@@ -50,6 +53,9 @@ export default function AffiliateDashboardPage() {
       setCommissions(c);
       setPayouts(p);
       setEarnings(e);
+      const { data: analytics, error: analyticsError } = await supabase.rpc('get_affiliate_product_analytics');
+      if (analyticsError) throw analyticsError;
+      setProductAnalytics((analytics || []).map((row: any) => ({ ...row, revenue: Number(row.revenue || 0), commission: Number(row.commission || 0) })));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load affiliate data');
     } finally {
@@ -99,7 +105,29 @@ export default function AffiliateDashboardPage() {
     toast.success('Copied');
   };
 
-  const trackingUrl = (link: AffiliateLink) => `${window.location.origin}/signup?aff=${link.id}${link.coupon_code ? `&coupon=${link.coupon_code}` : ''}`;
+  const affiliateProducts = [
+    ['AIDetector.cx Home', '/'],
+    ['AI Checker for Bloggers', '/ai-checker-for-bloggers'],
+    ['AI Detector', '/detector'],
+    ['Humanizer', '/humanizer'],
+    ['Plagiarism Checker', '/plagiarism-checker'],
+    ['SEO Assistant', '/seo-assistant'],
+    ['AI Image Detector', '/ai-image-detector'],
+    ['AI Video Detector', '/ai-video-detector'],
+    ['AI Summarizer', '/ai-summarizer'],
+    ['Word Counter', '/word-counter'],
+    ['Document Intelligence', '/document-intelligence'],
+    ['API Platform', '/api'],
+    ['Chrome Extension', '/chrome-extension'],
+    ['WordPress Plugin', '/wordpress-plugin'],
+    ['Pricing', '/pricing'],
+  ] as const;
+
+  const trackingUrl = (link: AffiliateLink, path = '/signup') => {
+    const separator = path.includes('?') ? '&' : '?';
+    return `${window.location.origin}${path}${separator}aff=${link.id}${link.coupon_code ? `&coupon=${encodeURIComponent(link.coupon_code)}` : ''}`;
+  };
+  const primaryLink = links[0];
 
   if (loading) return <p className="p-8 text-center">Loading...</p>;
 
@@ -137,6 +165,28 @@ export default function AffiliateDashboardPage() {
             <Card><CardContent className="p-4 flex items-center gap-3"><TrendingUp className="h-5 w-5 text-primary" /><div><div className="text-sm text-muted-foreground">Paid</div><div className="text-xl font-semibold">${earnings.paid.toFixed(2)}</div></div></CardContent></Card>
           </div>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium">Product performance</CardTitle>
+              <CardDescription>See which affiliate destinations generate visits, registrations, paid conversions, revenue and commission.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Clicks</TableHead><TableHead>Signups</TableHead><TableHead>Paid</TableHead><TableHead>Revenue</TableHead><TableHead>Commission</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {productAnalytics.map((row) => (
+                    <TableRow key={row.destination}>
+                      <TableCell className="font-medium">{affiliateProducts.find(([, path]) => path === row.destination)?.[0] || row.destination}</TableCell>
+                      <TableCell>{row.clicks}</TableCell><TableCell>{row.signups}</TableCell><TableCell>{row.conversions}</TableCell>
+                      <TableCell>${row.revenue.toFixed(2)}</TableCell><TableCell>${row.commission.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {productAnalytics.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No affiliate traffic yet.</p>}
+            </CardContent>
+          </Card>
+
           <Tabs defaultValue="links" className="space-y-4">
             <TabsList>
               <TabsTrigger value="links"><Link2 className="h-4 w-4 mr-1" /> Links</TabsTrigger>
@@ -147,11 +197,23 @@ export default function AffiliateDashboardPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base font-medium">Tracking links</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input placeholder="Campaign name (optional)" value={campaign} onChange={(e) => setCampaign(e.target.value)} />
-                    <Input placeholder="Coupon code (optional)" value={coupon} onChange={(e) => setCoupon(e.target.value)} />
-                    <Button onClick={createLink}>Create</Button>
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" htmlFor="affiliate-product">Select product or page</label>
+                      <select id="affiliate-product" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
+                        {affiliateProducts.map(([name, path]) => <option key={path} value={path}>{name}</option>)}
+                      </select>
+                      {primaryLink && <Input readOnly value={trackingUrl(primaryLink, selectedProduct)} />}
+                    </div>
+                    <Button className="self-end" disabled={!primaryLink} onClick={() => primaryLink && copy(trackingUrl(primaryLink, selectedProduct))}><Copy className="h-4 w-4 mr-2" />Copy Link</Button>
                   </div>
+                  {!primaryLink && (
+                    <div className="flex gap-2">
+                      <Input placeholder="Campaign name (optional)" value={campaign} onChange={(e) => setCampaign(e.target.value)} />
+                      <Input placeholder="Coupon code (optional)" value={coupon} onChange={(e) => setCoupon(e.target.value)} />
+                      <Button onClick={createLink}>Create tracking ID</Button>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {links.map((l) => (
                       <div key={l.id} className="flex items-center justify-between p-2 border rounded-md">
