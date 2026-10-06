@@ -354,23 +354,23 @@ async function handleAffiliateApproved(req: Request, payload: RegisterPayload, r
   const frontendUrl = Deno.env.get('CUSTOM_DOMAIN') || origin || 'https://aidetector.cx';
 
   const subject = 'Your AIDetector.cx Affiliate Account Is Approved';
-  const html = \`<div style="margin:0;padding:32px 16px;background:#f4f7fb;font-family:Arial,sans-serif;color:#172033">
+  const html = `<div style="margin:0;padding:32px 16px;background:#f4f7fb;font-family:Arial,sans-serif;color:#172033">
     <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6eaf0;border-radius:16px;overflow:hidden">
       <div style="padding:22px 28px;background:#0f172a;color:#fff;font-size:22px;font-weight:700">AIDetector.cx Affiliate Program</div>
       <div style="padding:30px 28px">
         <p style="margin:0 0 8px;color:#16a34a;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Application approved</p>
-        <h1 style="margin:0 0 16px;font-size:27px;line-height:1.25;color:#0f172a">Welcome aboard, \${firstName}.</h1>
+        <h1 style="margin:0 0 16px;font-size:27px;line-height:1.25;color:#0f172a">Welcome aboard, ${firstName}.</h1>
         <p style="margin:0 0 20px;font-size:16px;line-height:1.65">Your AIDetector.cx affiliate account is now active. You can start sharing your unique referral link and earning <strong>30% recurring commission</strong> on qualifying subscription payments.</p>
         <div style="padding:16px 18px;margin:0 0 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;line-height:1.8">
-          <strong>Tier:</strong> \${app.tier}<br>
+          <strong>Tier:</strong> ${app.tier}<br>
           <strong>Commission:</strong> 30% recurring<br>
-          <strong>Attribution window:</strong> \${attributionDays} days
+          <strong>Attribution window:</strong> ${attributionDays} days
         </div>
-        <a href="\${frontendUrl}/affiliate-dashboard" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Open Affiliate Dashboard</a>
+        <a href="${frontendUrl}/affiliate-dashboard" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:9px">Open Affiliate Dashboard</a>
         <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#64748b">Your dashboard contains your referral links, clicks, registrations, conversions, commissions and payout information. Need help? Reply to this email.</p>
       </div>
     </div>
-  </div>\`;
+  </div>`;
 
   try {
     await sendEmail({ supabase, recipient:user.email, subject, html, type:'affiliate_approval',
