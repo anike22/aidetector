@@ -152,10 +152,34 @@ export function CompetitorIntelligencePanel({
                 <div className="text-xs font-medium text-navy truncate">{comp.title}</div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                   <span className="truncate flex-1 max-w-[70%] font-mono text-primary/70">{comp.url}</span>
-                  <span className="shrink-0 font-medium">{comp.wordCount} words</span>
+                  <span className="shrink-0 font-medium">{typeof comp.wordCount === 'number' ? `${comp.wordCount} words` : 'Word count unavailable'}</span>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {contentGap && ((contentGap.missingSubtopics?.length || 0) > 0 || (contentGap.recommendedH2s?.length || 0) > 0 || contentGap.targetWordCountRange) && (
+          <div className="mt-1 p-2.5 bg-muted/20 border border-border rounded flex flex-col gap-2">
+            {contentGap.targetWordCountRange && (
+              <div className="text-[11px]"><span className="font-semibold">Competitor content range:</span> {contentGap.targetWordCountRange} words</div>
+            )}
+            {(contentGap.missingSubtopics?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Missing Subtopics</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.missingSubtopics!.map((topic, i) => <li key={i}>{topic}</li>)}
+                </ul>
+              </div>
+            )}
+            {(contentGap.recommendedH2s?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Recommended H2s</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.recommendedH2s!.map((heading, i) => <li key={i}>{heading}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
