@@ -75,7 +75,8 @@ try {
     console.log(`Prerendered ${pathname}`);
   }
   let next = 0;
-  await Promise.all(Array.from({length:3}, async () => {
+  // Keep prerender concurrency conservative on Vercel's 2-core build workers to avoid transient page.goto timeouts.
+  await Promise.all(Array.from({length:2}, async () => {
     while (next < paths.length) {
       const pathname = paths[next++];
       try { await renderPage(pathname); } catch (error) { throw new Error(`Prerender failed for ${pathname}: ${error.message}`, {cause:error}); }
