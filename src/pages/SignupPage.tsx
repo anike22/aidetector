@@ -27,9 +27,10 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref');
+  const affiliateLinkId = searchParams.get('aff');
   const invitationToken = searchParams.get('invitation_token');
   const returnTo = searchParams.get('returnTo') || searchParams.get('return_to') || searchParams.get('redirect') || '';
-  const [visitorId] = useState(() => crypto.randomUUID());
+  const [visitorId] = useState(() => getVisitorId());
   const [referralTracked, setReferralTracked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -46,12 +47,27 @@ export default function SignupPage() {
   const [existingUser, setExistingUser] = useState<{ verified: boolean } | null>(null);
 
   useEffect(() => {
-    if (refCode && !referralTracked) {
+    if (referralTracked) return;
+    if (affiliateLinkId) {
+      supabase.rpc('capture_affiliate_attribution', {
+        p_affiliate_link_id: affiliateLinkId,
+        p_visitor_id: visitorId,
+      })
+        .then(({ error }) => {
+          if (error) throw error;
+          sessionStorage.setItem('affiliate_link_id', affiliateLinkId);
+          sessionStorage.setItem('affiliate_visitor_id', visitorId);
+          setReferralTracked(true);
+        })
+        .catch((err) => console.warn('Affiliate click tracking failed:', err));
+      return;
+    }
+    if (refCode) {
       recordReferralClick(refCode, visitorId)
         .then(() => setReferralTracked(true))
         .catch((err) => console.warn('Referral click tracking failed:', err));
     }
-  }, [refCode, visitorId, referralTracked]);
+  }, [affiliateLinkId, refCode, visitorId, referralTracked]);
 
   useEffect(() => {
     if (!invitationToken) return;
@@ -142,7 +158,7 @@ export default function SignupPage() {
 
       const guestId = getVisitorId();
       const { data, error } = await supabase.functions.invoke('register', {
-        body: { action: 'register', email, password, fullName: name.trim(), referralCode: refCode || undefined, return_to: returnTo || undefined, guestId }
+        body: { action: 'register', email, password, fullName: name.trim(), referralCode: refCode || undefined, affiliateLinkId: affiliateLinkId || undefined, visitorId, return_to: returnTo || undefined, guestId }
       });
       if (error) {
         const { message, body } = await parseFunctionError(error);
@@ -196,6 +212,22 @@ export default function SignupPage() {
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
+    // Google signup uses the shared OAuth flow. Preserve only a safe requested
+    // post-auth destination; never return a successful signup to /signup.
+    if (returnTo) {
+      try {
+        const candidate = new URL(returnTo, window.location.origin);
+        if (candidate.origin === window.location.origin && candidate.pathname !== '/login' && candidate.pathname !== '/signup') {
+          sessionStorage.setItem('post_auth_redirect', candidate.pathname + candidate.search);
+        } else {
+          sessionStorage.setItem('post_auth_redirect', '/');
+        }
+      } catch {
+        sessionStorage.setItem('post_auth_redirect', '/');
+      }
+    } else {
+      sessionStorage.setItem('post_auth_redirect', '/');
+    }
     const { error: authError } = await signInWithGoogle();
     setGoogleLoading(false);
     if (authError) toast.error(authError);
@@ -406,6 +438,17 @@ export default function SignupPage() {
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>Create Free Account</span> <ArrowRight className="w-4 h-4" /></>}
                 </Button>
               </form>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or sign up with</span></div>
+              </div>
+
+              <Button type="button" variant="outline" disabled={googleLoading} onClick={handleGoogle} className="w-full h-11">
+                {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                  <><span className="mr-2 font-semibold">G</span><span>Continue with Google</span></>
+                )}
+              </Button>
 
               <p className="text-sm text-muted-foreground text-center mt-6">
                 Already have an account?{' '}
