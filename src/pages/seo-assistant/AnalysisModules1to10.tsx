@@ -186,7 +186,7 @@ export function OverallScorePanel({
         </div>
       </div>
 
-      {(!isSubscriber || !isAnalyzed) && (
+      {(!isBloggerPreview && (!isSubscriber || !isAnalyzed)) && (
         <div className="pt-2 border-t border-border/50">
           {renderActionButton()}
         </div>
