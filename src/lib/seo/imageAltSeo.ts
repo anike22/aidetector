@@ -47,8 +47,18 @@ function suggestionFor(src: string, keyword: string, existingAlt?: string | null
     ? filename
     : keyword.trim();
   const existing = (existingAlt || '').trim();
-  if (existing && !GENERIC_ALT.test(existing) && existing.split(/\s+/).length >= 3) {
-    return existing.slice(0, 125);
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const existingKeywordOccurrences = normalizedKeyword
+    ? existing.toLowerCase().split(normalizedKeyword).length - 1
+    : 0;
+  if (
+    existing &&
+    !GENERIC_ALT.test(existing) &&
+    existing.split(/\s+/).length >= 3 &&
+    existing.length <= 125 &&
+    existingKeywordOccurrences <= 1
+  ) {
+    return existing;
   }
   if (base) {
     const normalized = base.replace(/\s+/g, ' ').trim();
