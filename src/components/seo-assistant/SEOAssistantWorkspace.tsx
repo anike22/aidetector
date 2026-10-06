@@ -60,6 +60,8 @@ import {
   type CompetitorResult, type ContentGapResult
 } from '@/pages/seo-assistant/analysisEngine';
 import { BloggerWorkflowSteps } from './BloggerWorkflowSteps';
+import { ImageAltSeoPanel } from './ImageAltSeoPanel';
+import { analyzeImageAltSeo, type ImageAltItem } from '@/lib/seo/imageAltSeo';
 import { evaluateBloggerKeywords, type BloggerKeywordEvaluationResult } from '@/lib/seo/bloggerKeywordMetrics';
 import {
   type DiscoveredInternalLink,
@@ -180,6 +182,7 @@ export function SEOAssistantWorkspace({
   const [internalLinkStatusMessage, setInternalLinkStatusMessage] = useState<string>('');
   const [competitors, setCompetitors] = useState<CompetitorResult[]>([]);
   const [contentGap, setContentGap] = useState<ContentGapResult | null>(null);
+  const imageAltResult = useMemo(() => analyzeImageAltSeo(content, keyword), [content, keyword]);
 
   const [aiLinksActive, setAiLinksActive] = useState(false);
   const [aiGrammarActive, setAiGrammarActive] = useState(false);
@@ -774,6 +777,19 @@ export function SEOAssistantWorkspace({
     const safeReturn = window.location.pathname + window.location.search || '/ai-checker-for-bloggers';
     navigate(`${targetRoute}?returnTo=${encodeURIComponent(safeReturn)}`);
   }, [content, keyword, navigate]);
+
+  const handleApplyImageAltFix = useCallback((item: ImageAltItem) => {
+    if (!item.raw || !content.includes(item.raw)) {
+      toast.error('This image markup changed. Re-run the image check and try again.');
+      return;
+    }
+    const next = content.replace(item.raw, item.replacement);
+    setContent(next);
+    editorRef.current?.setContent(next);
+    setWordCount(next.split(/\s+/).filter(Boolean).length);
+    setIsStale(isAnalyzedRef.current);
+    toast.success('ALT attribute updated in the article.');
+  }, [content]);
 
   // Main billable full SEO Analysis execution
   const handleAnalyzeArticle = async () => {
@@ -1932,6 +1948,8 @@ Return ONLY valid JSON:
               <GrammarPanel result={grammarResult} onFix={handleFixGrammar} fixing={fixingGrammar} onNavigateIssue={handleNavigateIssue} />
               <CompetitorIntelligencePanel competitors={competitors} contentGap={contentGap} onAnalyze={handleAnalyzeCompetitors} loading={loadingCompetitors} keyword={keyword} content={content} onInsertKeyword={handleInsertCompetitorKeyword} />
               <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
+          {isBloggerMode && <ImageAltSeoPanel result={imageAltResult} onApplyFix={handleApplyImageAltFix} />}
+              {isBloggerMode && <ImageAltSeoPanel result={imageAltResult} onApplyFix={handleApplyImageAltFix} />}
               <EEATPanel result={eeatResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
               <EngagementPanel result={engagementResult} content={content} keyword={keyword} onInsertHook={handleInsertHook} onNavigateLocation={handleNavigateIssue} />
               <SnippetPanel result={snippetResult} />
