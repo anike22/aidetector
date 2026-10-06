@@ -463,7 +463,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </span>
                   <span className="text-xs text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
-                    30 Credits Charged (Full Session Active)
+                    {paidKeywordGate ? '30 Credits Charged (Full Session Active)' : 'Preview Session Active'}
                   </span>
                   {metrics && (
                     <span className="text-xs text-primary font-medium ml-auto hidden sm:inline-block">
