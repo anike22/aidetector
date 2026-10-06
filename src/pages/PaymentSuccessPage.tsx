@@ -19,6 +19,8 @@ export default function PaymentSuccessPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [meta, setMeta] = useState<any>(null);
   const navigate = useNavigate();
+  const storedReturnTo = typeof window !== 'undefined' ? sessionStorage.getItem('upgrade_return_to') : null;
+  const safeReturnTo = storedReturnTo?.startsWith('/') && !storedReturnTo.startsWith('//') ? storedReturnTo : null;
   const { refreshProfile } = useAuth();
   const { trackEvent } = useCustomerDataPlatform();
 
@@ -91,6 +93,11 @@ export default function PaymentSuccessPage() {
               plan: metadata?.plan || 'pro',
             },
           });
+          if (verified.granted === true && safeReturnTo) {
+            sessionStorage.removeItem('upgrade_return_to');
+            navigate(safeReturnTo, { replace: true });
+            return;
+          }
         } else {
           setErrorMsg('Payment could not be verified or is not yet complete.');
         }
@@ -103,7 +110,7 @@ export default function PaymentSuccessPage() {
     };
 
     verify();
-  }, [sessionId, reference]);
+  }, [sessionId, reference, navigate, refreshProfile, safeReturnTo, trackEvent]);
 
   return (
     <MainLayout>
