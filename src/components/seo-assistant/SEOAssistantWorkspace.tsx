@@ -2024,6 +2024,7 @@ Return ONLY valid JSON:
 
           {/* Modules 11–20 */}
           <HeadingStructurePanel result={headingResult} onNavigateIssue={handleNavigateIssue} />
+          {isBloggerMode && <ImageAltSeoPanel result={imageAltResult} onApplyFix={handleApplyImageAltFix} />}
           <EEATPanel 
             result={eeatResult} 
             content={content}
