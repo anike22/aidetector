@@ -126,6 +126,13 @@ export interface UniquenessResult {
   recommendations: string[];
   wordOccurrences?: WordOccurrenceItem[];
   phraseOccurrences?: PhraseOccurrenceItem[];
+  redundancyScore?: number;
+  vocabularyDiversityScore?: number;
+  originalitySignalScore?: number;
+  repeatedSentenceCount?: number;
+  repeatedParagraphCount?: number;
+  originalitySignals?: string[];
+  scopeNote?: string;
 }
 
 export interface CompetitorResult {
@@ -1070,35 +1077,54 @@ export function analyzeAIRisk(text: string): AIRiskResult {
 
 // ─── Content Uniqueness ───────────────────────────────────────────────────
 
-export function analyzeUniqueness(text: string): UniquenessResult {
+export function analyzeUniqueness(text: string, keyword = ''): UniquenessResult {
   const words = getWords(text.toLowerCase());
   const totalWords = words.length || 1;
-  const freq: Record<string, number> = {};
-  for (const w of words) {
-    if (w.length > 4) freq[w] = (freq[w] || 0) + 1;
-  }
 
-  // Requirement 1: Overused Words measured by 1% to 2% of entire content (max 10 to 20 times per 1000 words)
-  const overusedThreshold = Math.max(4, Math.round(totalWords * 0.018));
+  const STOPWORDS = new Set([
+    'about','after','again','against','because','before','being','below','between','could','every',
+    'first','from','have','into','more','most','other','over','same','should','some','such','than',
+    'that','their','there','these','they','this','those','through','under','very','what','when',
+    'where','which','while','with','would','your'
+  ]);
+  const keywordTokens = new Set(getWords(keyword.toLowerCase()).filter(w => w.length > 3));
+  const contentWords = words.filter(w => w.length > 4 && !STOPWORDS.has(w) && !keywordTokens.has(w));
+
+  const freq: Record<string, number> = {};
+  for (const w of contentWords) freq[w] = (freq[w] || 0) + 1;
+
+  // Adaptive repetition threshold: this is a readability signal, not a Google keyword-density rule.
+  const overusedThreshold = Math.max(6, Math.ceil(totalWords * 0.025));
   const overusedWords = Object.entries(freq)
     .filter(([, count]) => count > overusedThreshold)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 15)
     .map(([word]) => word);
 
-  // Detect duplicate 4-gram phrases
+  // Exact 5-word repetition is a stronger redundancy signal than normal topical keyword reuse.
   const bigrams: string[] = [];
-  for (let i = 0; i < words.length - 3; i++) {
-    bigrams.push(words.slice(i, i + 4).join(' '));
+  for (let i = 0; i < words.length - 4; i++) {
+    bigrams.push(words.slice(i, i + 5).join(' '));
   }
   const bigramFreq: Record<string, number> = {};
-  for (const b of bigrams) { bigramFreq[b] = (bigramFreq[b] || 0) + 1; }
+  for (const phrase of bigrams) bigramFreq[phrase] = (bigramFreq[phrase] || 0) + 1;
   const duplicatePhrases = Object.entries(bigramFreq)
-    .filter(([, c]) => c > 2)
+    .filter(([, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1])
     .map(([phrase]) => phrase)
-    .slice(0, 4);
+    .slice(0, 6);
 
-  // Calculate detailed occurrences with start/end offsets
+  const normalizeBlock = (value: string) => value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const sentences = text.split(/(?<=[.!?])\s+/).map(normalizeBlock).filter(s => s.length >= 25);
+  const sentenceFreq: Record<string, number> = {};
+  for (const sentence of sentences) sentenceFreq[sentence] = (sentenceFreq[sentence] || 0) + 1;
+  const repeatedSentenceCount = Object.values(sentenceFreq).filter(count => count > 1).length;
+
+  const paragraphs = text.split(/\n\s*\n/).map(normalizeBlock).filter(p => p.length >= 80);
+  const paragraphFreq: Record<string, number> = {};
+  for (const paragraph of paragraphs) paragraphFreq[paragraph] = (paragraphFreq[paragraph] || 0) + 1;
+  const repeatedParagraphCount = Object.values(paragraphFreq).filter(count => count > 1).length;
+
   const wordOccurrences: WordOccurrenceItem[] = [];
   for (const word of overusedWords) {
     const occurrences: { start: number; end: number; text: string; index: number }[] = [];
@@ -1107,19 +1133,10 @@ export function analyzeUniqueness(text: string): UniquenessResult {
       let match: RegExpExecArray | null;
       let idx = 0;
       while ((match = regex.exec(text)) !== null) {
-        occurrences.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          text: match[0],
-          index: idx++
-        });
+        occurrences.push({ start: match.index, end: match.index + match[0].length, text: match[0], index: idx++ });
       }
     } catch {}
-    wordOccurrences.push({
-      word,
-      count: occurrences.length || freq[word] || 0,
-      occurrences
-    });
+    wordOccurrences.push({ word, count: occurrences.length || freq[word] || 0, occurrences });
   }
 
   const phraseOccurrences: PhraseOccurrenceItem[] = [];
@@ -1131,38 +1148,56 @@ export function analyzeUniqueness(text: string): UniquenessResult {
       let match: RegExpExecArray | null;
       let idx = 0;
       while ((match = regex.exec(text)) !== null) {
-        occurrences.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          text: match[0],
-          index: idx++
-        });
+        occurrences.push({ start: match.index, end: match.index + match[0].length, text: match[0], index: idx++ });
       }
     } catch {}
-    phraseOccurrences.push({
-      phrase,
-      count: occurrences.length || bigramFreq[phrase] || 0,
-      occurrences
-    });
+    phraseOccurrences.push({ phrase, count: occurrences.length || bigramFreq[phrase] || 0, occurrences });
   }
 
-  const score = Math.max(0, 100 - overusedWords.length * 8 - duplicatePhrases.length * 10);
+  const redundancyPenalty =
+    Math.min(24, overusedWords.length * 3) +
+    Math.min(30, duplicatePhrases.length * 6) +
+    Math.min(24, repeatedSentenceCount * 8) +
+    Math.min(30, repeatedParagraphCount * 15);
+  const redundancyScore = Math.max(0, 100 - redundancyPenalty);
+
+  const uniqueContentWords = new Set(contentWords).size;
+  const lexicalRatio = contentWords.length > 0 ? uniqueContentWords / contentWords.length : 1;
+  const lexicalTarget = contentWords.length < 100 ? 0.55 : contentWords.length < 500 ? 0.45 : 0.35;
+  const vocabularyDiversityScore = Math.max(0, Math.min(100, Math.round((lexicalRatio / lexicalTarget) * 100)));
+
+  const originalitySignals: string[] = [];
+  if (/\b(i|we)\s+(tested|measured|observed|found|reviewed|compared|used|built|analyzed)\b/i.test(text)) originalitySignals.push('First-hand experience or testing language detected');
+  if (/\b(case study|our data|our test|our analysis|experiment|benchmark|survey|interview)\b/i.test(text)) originalitySignals.push('Original research, testing, or evidence language detected');
+  if (/\b\d+(?:\.\d+)?%|\b20\d{2}\b|\b\d+(?:,\d{3})+\b/.test(text)) originalitySignals.push('Concrete data points or dated evidence detected');
+  if (/https?:\/\/|www\./i.test(text)) originalitySignals.push('External sourcing or reference links detected');
+  if (/\b(for example|for instance|in practice|specifically|compared with|compared to)\b/i.test(text)) originalitySignals.push('Specific examples or comparative analysis detected');
+  const originalitySignalScore = Math.min(100, originalitySignals.length * 20);
+
+  // Evidence signals support the score but do not prove web-wide uniqueness.
+  const score = Math.round(redundancyScore * 0.60 + vocabularyDiversityScore * 0.20 + originalitySignalScore * 0.20);
   const recommendations: string[] = [];
-  if (overusedWords.length > 0) {
-    recommendations.push(
-      `Overused words: "${overusedWords.slice(0, 3).join('", "')}" exceed 1%–2% frequency threshold (max 10–20 per 1,000 words) — replace with synonyms.`
-    );
-  }
-  if (duplicatePhrases.length > 0) recommendations.push('Repeated phrases detected — vary your language for originality.');
-  if (recommendations.length === 0) recommendations.push('Content appears unique with varied vocabulary.');
+  if (repeatedParagraphCount > 0) recommendations.push(`${repeatedParagraphCount} repeated paragraph block(s) detected — consolidate them or add new information.`);
+  if (repeatedSentenceCount > 0) recommendations.push(`${repeatedSentenceCount} repeated sentence pattern(s) detected — remove redundant statements where they do not add value.`);
+  if (duplicatePhrases.length > 0) recommendations.push('Repeated exact phrases detected — vary wording only where repetition is unnecessary; keep required technical terminology consistent.');
+  if (overusedWords.length > 0) recommendations.push(`High repetition among non-keyword content terms: "${overusedWords.slice(0, 3).join('", "')}". Review for readability rather than replacing terms mechanically.`);
+  if (originalitySignals.length < 2) recommendations.push('Strengthen original value with first-hand examples, evidence, data, comparisons, or analysis beyond the obvious.');
+  if (recommendations.length === 0) recommendations.push('Low internal redundancy and strong originality signals detected. Confirm external differentiation with Competitor Intelligence and plagiarism checks.');
 
-  return { 
-    score, 
-    duplicatePhrases, 
-    overusedWords, 
+  return {
+    score,
+    duplicatePhrases,
+    overusedWords,
     recommendations,
     wordOccurrences,
-    phraseOccurrences
+    phraseOccurrences,
+    redundancyScore,
+    vocabularyDiversityScore,
+    originalitySignalScore,
+    repeatedSentenceCount,
+    repeatedParagraphCount,
+    originalitySignals,
+    scopeNote: 'This score measures internal redundancy and originality signals. It does not by itself prove that content is unique across the web.'
   };
 }
 
