@@ -736,7 +736,7 @@ export function SEOAssistantWorkspace({
     const eng = analyzeEngagement(text);
     const snip = analyzeSnippetPotential(text);
     const risk = analyzeAIRisk(text);
-    const uniq = analyzeUniqueness(text);
+    const uniq = analyzeUniqueness(text, kw);
     const meta = generateMeta(text, kw);
 
     setKwResult(kwr);
