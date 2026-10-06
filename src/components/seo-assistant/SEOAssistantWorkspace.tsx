@@ -1962,17 +1962,7 @@ Return ONLY valid JSON:
               </div>
             )}
           </div>
-        </>      ) : (
-              <>
-                <h4 className="text-sm font-bold text-foreground mb-1">Full SEO Assistant Analysis (Pro Plan)</h4>
-                <p className="text-xs text-muted-foreground max-w-xs mb-4 text-pretty">Upgrade to Pro to unlock the complete SEO Assistant analysis.</p>
-                <Button onClick={() => openUpgradeModal({ featureName: 'SEO Assistant', trigger: 'pro_feature', remaining: summary?.creditsBalance ?? 0, limit: currentCost })} className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-md">
-                  <Sparkles className="w-4 h-4" /><span>Upgrade to View Full Analysis</span>
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+        </>
       ) : (
         <>
           {/* Modules 3–10 */}
