@@ -2082,6 +2082,7 @@ Return ONLY valid JSON:
         trigger={trigger}
         remaining={remaining}
         limit={limit}
+        returnTo={isBloggerMode ? '/ai-checker-for-bloggers' : undefined}
       />
 
       <SEOAssistantHistoryDialog
