@@ -1662,7 +1662,41 @@ export function UniquenessPanel({
   };
 
   return (
-    <AnalysisModule title="Content Uniqueness" score={result.score} defaultOpen={false}>
+    <AnalysisModule title="Content Originality & Redundancy" score={result.score} defaultOpen={false}>
+      <div className="mb-3 grid grid-cols-3 gap-1.5">
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.redundancyScore ?? result.score}</div>
+          <div className="text-[9px] text-muted-foreground">Low Redundancy</div>
+        </div>
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.vocabularyDiversityScore ?? 0}</div>
+          <div className="text-[9px] text-muted-foreground">Lexical Variety</div>
+        </div>
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.originalitySignalScore ?? 0}</div>
+          <div className="text-[9px] text-muted-foreground">Original Signals</div>
+        </div>
+      </div>
+
+      {result.scopeNote && (
+        <div className="mb-3 rounded border border-border bg-muted/20 p-2 text-[10px] leading-relaxed text-muted-foreground">
+          {result.scopeNote}
+        </div>
+      )}
+
+      {(result.originalitySignals?.length || 0) > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Original Contribution Signals</p>
+          <div className="flex flex-col gap-1">
+            {result.originalitySignals?.map((signal, i) => (
+              <div key={i} className="text-[10px] rounded border border-success/20 bg-success/5 px-2 py-1.5 text-foreground">
+                {signal}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Active Occurrence Navigation Controller */}
       {activeNav && (
         <div className="mb-3 p-2 bg-warning/10 border border-warning/30 rounded flex flex-col gap-1.5 animate-in fade-in duration-150">
@@ -1708,7 +1742,7 @@ export function UniquenessPanel({
       {result.overusedWords.length > 0 && (
         <div className="mb-2">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Overused Words (click to locate)</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">High-Repetition Non-Keyword Terms (click to locate)</p>
           </div>
           <div className="flex flex-wrap gap-1">
             {result.overusedWords.slice(0, 8).map((w) => {
