@@ -1,4 +1,4 @@
-export type ImageAltStatus = 'optimized' | 'missing' | 'decorative' | 'generic' | 'stuffed' | 'weak';
+export type ImageAltStatus = 'optimized' | 'missing' | 'empty' | 'decorative' | 'generic' | 'stuffed' | 'weak';
 
 export interface ImageAltItem {
   index: number;
@@ -61,7 +61,7 @@ function suggestionFor(src: string, keyword: string, existingAlt?: string | null
 function classifyAlt(alt: string | null, keyword: string) {
   if (alt === null) return { status: 'missing' as const, score: 0, issue: 'ALT attribute is missing.' };
   const trimmed = alt.trim();
-  if (!trimmed) return { status: 'decorative' as const, score: 100, issue: 'Empty ALT is valid only when this image is purely decorative.' };
+  if (!trimmed) return { status: 'empty' as const, score: 55, issue: 'ALT text is empty. Keep it empty only if the image is purely decorative.' };
   if (GENERIC_ALT.test(trimmed)) return { status: 'generic' as const, score: 30, issue: 'ALT text is too generic to describe the image.' };
   if (trimmed.length < 8 || trimmed.split(/\s+/).length < 2) return { status: 'weak' as const, score: 50, issue: 'ALT text is too short to be descriptive.' };
   const kw = keyword.trim().toLowerCase();
@@ -96,7 +96,10 @@ export function analyzeImageAltSeo(content: string, keyword = ''): ImageAltSeoRe
   while ((md = markdown.exec(content))) {
     const alt = md[1];
     const src = md[2];
-    const c = classifyAlt(alt, keyword);
+    let c = classifyAlt(alt, keyword);
+    if (alt === '' && (/\srole\s*=\s*(["'])presentation\1/i.test(raw) || /\saria-hidden\s*=\s*(["'])true\1/i.test(raw))) {
+      c = { status: 'decorative' as const, score: 100, issue: 'Image is explicitly marked decorative and correctly uses empty ALT text.' };
+    }
     const suggestion = suggestionFor(src, keyword, alt);
     items.push({
       index: items.length,
