@@ -3,37 +3,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { corsHeaders } from "../_shared/cors.ts";
 import { withBillingGuard } from "../_shared/billing.ts";
 
-function seededRandom(seedStr: string) {
-  let h = 0xdeadbeef;
-  for(let i = 0; i < seedStr.length; i++)
-      h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
-  const hash = ((h ^ h >>> 16) >>> 0);
-  return function() {
-    h = Math.imul(h ^ hash, 2654435761);
-    return ((h ^ h >>> 16) >>> 0) / 4294967296;
-  };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
 
+  // Blogger analysis is a preview operation: authenticate it, but do not reserve credits.
+  // The explicit commit_only request below is the only paid checkpoint.
+  const previewBody = await req.clone().json().catch(() => ({}));
+  if (previewBody?.billing_feature === 'ai_checker_for_bloggers' && previewBody?.analyze_only === true) {
+    // verify_jwt=true already rejects invalid/anonymous bearer tokens at the Edge gateway.
+    // Analysis is read-only/unbilled, so do not perform a second auth.getUser() round-trip here.
+    return runKeywordResearch(previewBody, null, false);
+  }
+
+  return withBillingGuard(req, { featureSlug: (body) => body.billing_feature === 'ai_checker_for_bloggers' ? 'ai_checker_for_bloggers' : 'seo_assistant', corsHeaders }, async (ctx) => {
+    if (ctx.body?.billing_feature === 'ai_checker_for_bloggers' && ctx.body?.commit_only === true) {
+      return new Response(JSON.stringify({ success: true, locked: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    return runKeywordResearch(ctx.body, ctx.userId, true);
+  });
+});
+
+async function runKeywordResearch(body: Record<string, any>, authenticatedUserId: string | null, persistResult: boolean): Promise<Response> {
   try {
-    const { seed_keyword, country, language, project_id } = ctx.body;
+    const { seed_keyword, country, language, project_id, billing_feature } = body;
+    if (billing_feature && !['ai_checker_for_bloggers', 'seo_assistant'].includes(billing_feature)) throw new Error('Invalid billing feature');
     if (!seed_keyword || !country || !language) throw new Error('Missing required fields');
 
-    const authHeader = req.headers.get('Authorization')!;
     const serviceClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const userId = user?.id || null;
+    const userId = authenticatedUserId;
 
     // Check for real API keys
     const { data: keysData } = await serviceClient.from('system_api_keys').select('provider, key_value').in('provider', ['dataforseo_login', 'dataforseo_password']);
@@ -52,112 +51,157 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const rng = seededRandom(seed_keyword + country + language);
-    const randInt = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-
     let dataSourceLabel = "DataForSEO";
     let realKeywords: any[] = [];
-    try {
-      const dfsUrl = 'https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live';
-      const postData = [{
-          "keyword": seed_keyword,
-          "location_code": 2840,
-          "language_code": "en",
-          "limit": 50
-      }];
-      
-      const auth = btoa(`${dfsLogin}:${dfsPassword}`);
-      const res = await fetch(dfsUrl, {
+    let competitors: Array<{ url: string; wordCount: number }> = [];
+    let serpFeatures: string[] = [];
+    let serpWarning: string | null = null;
+    let keywordWarning: string | null = null;
+    const auth = btoa(`${dfsLogin}:${dfsPassword}`);
+
+    const mapKeywordItems = (items: any[]) => items
+      .map((item: any) => ({
+        keyword: item?.keyword_data?.keyword || item?.keyword || '',
+        search_volume: item?.keyword_data?.keyword_info?.search_volume ?? item?.keyword_info?.search_volume ?? null,
+        difficulty: item?.keyword_data?.keyword_properties?.keyword_difficulty ?? item?.keyword_properties?.keyword_difficulty ?? null,
+        cpc: item?.keyword_data?.keyword_info?.cpc ?? item?.keyword_info?.cpc ?? null,
+        intent: item?.keyword_data?.keyword_intent?.label || item?.keyword_intent?.label || null
+      }))
+      .filter((item: any) => item.keyword);
+
+    const requestLabsKeywords = async (path: string, extra: Record<string, any> = {}) => {
+      const res = await fetch(`https://api.dataforseo.com/v3/dataforseo_labs/google/${path}/live`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(postData)
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, limit: 50, ...extra }])
       });
-      
-      if (res.ok) {
-        const dfsData = await res.json();
-        if (dfsData.status_code && dfsData.status_code !== 20000) {
-          dataSourceLabel = `Demo Data (API Error: ${dfsData.status_message})`;
-        } else {
-          const items = dfsData.tasks?.[0]?.result?.[0]?.items;
-          if (items && Array.isArray(items)) {
-            realKeywords = items.map((item: any) => ({
-              keyword: item.keyword_data?.keyword || '',
-              search_volume: item.keyword_data?.keyword_info?.search_volume || 0,
-              difficulty: item.keyword_data?.keyword_properties?.keyword_difficulty || 0,
-              cpc: (item.keyword_data?.keyword_info?.cpc || 0).toFixed(2),
-              intent: item.keyword_data?.keyword_intent?.label || 'Informational',
-              trend: 'Stable', // DataForSEO trends requires monthly data parsing
-              opportunity_score: Math.max(0, 100 - (item.keyword_data?.keyword_properties?.keyword_difficulty || 0))
-            }));
-          }
-        }
-      } else {
-        dataSourceLabel = `Demo Data (HTTP ${res.status})`;
+      if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
+      const data = await res.json();
+      const task = data?.tasks?.[0];
+      if (data?.status_code !== 20000 || task?.status_code !== 20000) {
+        throw new Error(`${path}: ${task?.status_message || data?.status_message || 'unknown DataForSEO error'}`);
       }
-    } catch (e: any) {
-      console.error("DataForSEO Fetch Error:", e);
-      dataSourceLabel = `Demo Data (${e.message})`;
+      return mapKeywordItems(task?.result?.[0]?.items || []);
+    };
+
+    try {
+      // Related Keywords is preferred for semantic relevance.
+      realKeywords = await requestLabsKeywords('related_keywords');
+      // Some valid seeds have no related-keyword rows. Keyword Suggestions is an official
+      // DataForSEO Labs source and provides verified metrics without fabricating values.
+      if (realKeywords.length === 0) {
+        realKeywords = await requestLabsKeywords('keyword_suggestions', { include_seed_keyword: true });
+      }
+    } catch (primaryError: any) {
+      keywordWarning = primaryError?.message || 'Related keyword lookup failed';
+      console.error('DataForSEO related keywords unavailable:', keywordWarning);
+      try {
+        realKeywords = await requestLabsKeywords('keyword_suggestions', { include_seed_keyword: true });
+        dataSourceLabel = 'DataForSEO Keyword Suggestions';
+      } catch (fallbackError: any) {
+        const fallbackMessage = fallbackError?.message || 'Keyword suggestions lookup failed';
+        keywordWarning = `${keywordWarning}; ${fallbackMessage}`;
+        console.error('DataForSEO keyword suggestions unavailable:', fallbackMessage);
+        dataSourceLabel = `DataForSEO unavailable (${keywordWarning})`;
+      }
     }
 
-    const generateKeywords = (type: string, count: number) => {
-      // If we have real keywords, distribute them
-      if (realKeywords.length > 0) {
-        // Simple distribution just to fill the mock categories using real data
-        const shuffled = [...realKeywords].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, Math.min(count, shuffled.length));
-      }
-      
-      const arr = [];
-      for (let i = 0; i < count; i++) {
-        arr.push({
-          keyword: `${type} ${seed_keyword} ${i+1}`,
-          search_volume: randInt(100, 50000),
-          difficulty: randInt(10, 90),
-          cpc: (rng() * 10).toFixed(2),
-          intent: ['Informational', 'Commercial', 'Transactional', 'Navigational'][randInt(0, 3)],
-          trend: ['Rising', 'Stable', 'Declining'][randInt(0, 2)],
-          opportunity_score: randInt(40, 95)
+    // Blogger competitor evidence is supplementary. A provider SERP/OnPage outage must not
+    // discard otherwise verified keyword data; surface the evidence as temporarily unavailable.
+    if (billing_feature === 'ai_checker_for_bloggers') {
+      try {
+        const auth = btoa(`${dfsLogin}:${dfsPassword}`);
+        const serpRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
+          method: 'POST',
+          headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ keyword: seed_keyword, location_name: country, language_code: language, depth: 10, device: 'desktop' }])
         });
+        if (!serpRes.ok) throw new Error(`DataForSEO SERP HTTP ${serpRes.status}`);
+        const serpData = await serpRes.json();
+        if (serpData.status_code !== 20000 || serpData.tasks?.[0]?.status_code !== 20000) {
+          throw new Error(`DataForSEO SERP unavailable: ${serpData.tasks?.[0]?.status_message || serpData.status_message || 'unknown error'}`);
+        }
+        const serpItems = serpData.tasks?.[0]?.result?.[0]?.items || [];
+        serpFeatures = [...new Set(serpItems.map((item: any) => item?.type).filter((type: any) => type && type !== 'organic'))] as string[];
+        const urls = serpItems
+          .filter((item: any) => item?.type === 'organic' && typeof item?.url === 'string' && (item.url.startsWith('https://') || item.url.startsWith('http://')))
+          .map((item: any) => item.url)
+          .filter((url: string) => !/\\.(pdf|jpg|jpeg|png|gif|webp)(?:[?#]|$)/i.test(url))
+          .slice(0, 10);
+
+        if (urls.length) {
+          const pageRes = await fetch('https://api.dataforseo.com/v3/on_page/instant_pages', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(urls.map((url: string) => ({ url })))
+          });
+          if (!pageRes.ok) throw new Error(`DataForSEO OnPage HTTP ${pageRes.status}`);
+          const pageData = await pageRes.json();
+          if (pageData.status_code !== 20000) throw new Error(`DataForSEO OnPage unavailable: ${pageData.status_message || 'unknown error'}`);
+          competitors = (pageData.tasks || []).flatMap((task: any) => task?.result?.[0]?.items || [])
+            .map((item: any) => ({ url: item?.url || '', wordCount: Number(item?.meta?.content?.plain_text_word_count) }))
+            .filter((item: any) => item.url && Number.isFinite(item.wordCount) && item.wordCount >= 250 && item.wordCount <= 25000);
+        }
+      } catch (e: any) {
+        serpWarning = e?.message || 'DataForSEO SERP evidence temporarily unavailable';
+        console.error('Blogger SERP evidence unavailable:', serpWarning);
+        competitors = [];
+        serpFeatures = [];
       }
-      return arr.sort((a, b) => b.search_volume - a.search_volume);
-    };
+    }
+
+    if (realKeywords.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "DataForSEO returned no verified keyword data",
+        data_source: dataSourceLabel,
+        provider_error: keywordWarning
+      }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const byIntent = (label: string, limit: number) => realKeywords
+      .filter((item: any) => String(item.intent || '').toLowerCase() === label.toLowerCase())
+      .slice(0, limit);
 
     const keywordData = {
-      primary: generateKeywords('primary', 5),
-      secondary: generateKeywords('secondary', 10),
-      long_tail: generateKeywords('how to', 15),
-      questions: generateKeywords('what is', 8),
-      commercial: generateKeywords('best', 5),
-      transactional: generateKeywords('buy', 5),
-      informational: generateKeywords('guide', 5),
-      aeo: generateKeywords('ai', 4),
-      data_source: dataSourceLabel
+      primary: realKeywords.slice(0, 5),
+      secondary: realKeywords.slice(5, 15),
+      long_tail: realKeywords.filter((item: any) => item.keyword.split(/\\s+/).length >= 4).slice(0, 15),
+      questions: realKeywords.filter((item: any) => /^(who|what|when|where|why|how|can|does|is|are)\\b/i.test(item.keyword)).slice(0, 8),
+      commercial: byIntent('commercial', 5),
+      transactional: byIntent('transactional', 5),
+      informational: byIntent('informational', 5),
+      aeo: [],
+      data_source: "DataForSEO",
+      competitors,
+      serp_features: serpFeatures,
+      serp_warning: serpWarning,
+      keyword_warning: keywordWarning
     };
 
-    const { data, error: insertError } = await serviceClient
-      .from('keyword_research')
-      .insert({
-        user_id: userId,
-        project_id: project_id || null,
-        seed_keyword,
-        country,
-        language,
-        status: 'Completed',
-        processing_time: randInt(2, 6),
-        total_keywords: 57,
-        keyword_data: keywordData
-      })
-      .select()
-      .single();
+    let persisted: Record<string, any> = {};
+    if (persistResult) {
+      const { data, error: insertError } = await serviceClient
+        .from('keyword_research')
+        .insert({
+          user_id: userId,
+          project_id: project_id || null,
+          seed_keyword,
+          country,
+          language,
+          status: 'Completed',
+          processing_time: null,
+          total_keywords: realKeywords.length,
+          keyword_data: keywordData
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      persisted = data || {};
+    }
 
-    if (insertError) throw insertError;
-
-    return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ...persisted, success: true, keyword_data: keywordData, competitors, serp_features: serpFeatures, serp_warning: serpWarning, data_source: 'DataForSEO' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
   }
-  });
-});
+}

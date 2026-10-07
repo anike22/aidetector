@@ -22,7 +22,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 let browser;
 try {
   browser = await chromium.launch({headless:true, executablePath:await serverChromium.executablePath(), args:serverChromium.args.filter(arg => !['--single-process', '--disable-web-security', '--allow-running-insecure-content'].includes(arg))});
-  async function renderPage(pathname) {
+  async function createPrerenderContext() {
     const context = await browser.newContext();
     // No build-time visitors, lead submissions, usage deductions, ads or analytics.
     await context.route('**/*', async route => {
@@ -32,14 +32,41 @@ try {
       }
       if (!['GET','HEAD'].includes(request.method()) || /googlesyndication|google-analytics|doubleclick/.test(request.url())) return route.abort();
       if (new URL(request.url()).hostname.endsWith('.supabase.co')) {
-        const response = await fetch(request.url(), {headers:request.headers(), signal:AbortSignal.timeout(30000)});
-        return route.fulfill({status:response.status, contentType:response.headers.get('content-type') || 'application/json', headers:{'access-control-allow-origin':'*'}, body:Buffer.from(await response.arrayBuffer())});
+        try {
+          const response = await fetch(request.url(), {headers:request.headers(), signal:AbortSignal.timeout(15000)});
+          return route.fulfill({status:response.status, contentType:response.headers.get('content-type') || 'application/json', headers:{'access-control-allow-origin':'*'}, body:Buffer.from(await response.arrayBuffer())});
+        } catch {
+          // Public prerender content must not depend on a slow external data request.
+          return route.abort();
+        }
       }
       return route.continue();
     });
-    const page = await context.newPage();
-    await page.goto(origin + pathname, {waitUntil:'networkidle',timeout:60000});
-    await page.waitForSelector('h1', {timeout:15000});
+    return context;
+  }
+
+  async function renderPage(pathname) {
+    let context;
+    let page;
+    let lastError;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        context = await createPrerenderContext();
+        page = await context.newPage();
+        // Commit confirms the local route responded; the H1/content checks below prove the app rendered.
+        await page.goto(origin + pathname, {waitUntil:'commit',timeout:45000});
+        await page.waitForSelector('h1', {timeout:20000});
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error;
+        await context?.close().catch(() => {});
+        context = null;
+        page = null;
+      }
+    }
+    if (lastError || !page || !context) throw lastError || new Error('Unable to create prerender page');
+    // Strict content checks below remain authoritative.
     if (new URL(page.url()).pathname !== pathname) throw new Error(`Redirected public page: ${pathname}`);
     const html = await page.evaluate(({pathname}) => {
       const h1 = document.querySelector('h1')?.textContent?.trim();
@@ -69,7 +96,8 @@ try {
     console.log(`Prerendered ${pathname}`);
   }
   let next = 0;
-  await Promise.all(Array.from({length:3}, async () => {
+  // Run one Chromium page at a time on Vercel's 2-core builder. Reliability is more important than parallelism here.
+  await Promise.all(Array.from({length:1}, async () => {
     while (next < paths.length) {
       const pathname = paths[next++];
       try { await renderPage(pathname); } catch (error) { throw new Error(`Prerender failed for ${pathname}: ${error.message}`, {cause:error}); }

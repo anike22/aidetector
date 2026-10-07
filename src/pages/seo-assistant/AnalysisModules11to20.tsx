@@ -152,10 +152,34 @@ export function CompetitorIntelligencePanel({
                 <div className="text-xs font-medium text-navy truncate">{comp.title}</div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                   <span className="truncate flex-1 max-w-[70%] font-mono text-primary/70">{comp.url}</span>
-                  <span className="shrink-0 font-medium">{comp.wordCount} words</span>
+                  <span className="shrink-0 font-medium">{typeof comp.wordCount === 'number' ? `${comp.wordCount} words` : 'Word count unavailable'}</span>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {contentGap && ((contentGap.missingSubtopics?.length || 0) > 0 || (contentGap.recommendedH2s?.length || 0) > 0 || contentGap.targetWordCountRange) && (
+          <div className="mt-1 p-2.5 bg-muted/20 border border-border rounded flex flex-col gap-2">
+            {contentGap.targetWordCountRange && (
+              <div className="text-[11px]"><span className="font-semibold">Competitor content range:</span> {contentGap.targetWordCountRange} words</div>
+            )}
+            {(contentGap.missingSubtopics?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Missing Subtopics</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.missingSubtopics!.map((topic, i) => <li key={i}>{topic}</li>)}
+                </ul>
+              </div>
+            )}
+            {(contentGap.recommendedH2s?.length || 0) > 0 && (
+              <div>
+                <div className="text-[10px] text-muted-foreground font-semibold mb-1">Recommended H2s</div>
+                <ul className="text-[11px] list-disc pl-3.5 flex flex-col gap-1">
+                  {contentGap.recommendedH2s!.map((heading, i) => <li key={i}>{heading}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -1638,7 +1662,41 @@ export function UniquenessPanel({
   };
 
   return (
-    <AnalysisModule title="Content Uniqueness" score={result.score} defaultOpen={false}>
+    <AnalysisModule title="Content Originality & Redundancy" score={result.score} defaultOpen={false}>
+      <div className="mb-3 grid grid-cols-3 gap-1.5">
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.redundancyScore ?? result.score}</div>
+          <div className="text-[9px] text-muted-foreground">Low Redundancy</div>
+        </div>
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.vocabularyDiversityScore ?? 0}</div>
+          <div className="text-[9px] text-muted-foreground">Lexical Variety</div>
+        </div>
+        <div className="rounded border border-border bg-muted/20 p-2 text-center">
+          <div className="text-sm font-bold text-foreground">{result.originalitySignalScore ?? 0}</div>
+          <div className="text-[9px] text-muted-foreground">Original Signals</div>
+        </div>
+      </div>
+
+      {result.scopeNote && (
+        <div className="mb-3 rounded border border-border bg-muted/20 p-2 text-[10px] leading-relaxed text-muted-foreground">
+          {result.scopeNote}
+        </div>
+      )}
+
+      {(result.originalitySignals?.length || 0) > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Original Contribution Signals</p>
+          <div className="flex flex-col gap-1">
+            {result.originalitySignals?.map((signal, i) => (
+              <div key={i} className="text-[10px] rounded border border-success/20 bg-success/5 px-2 py-1.5 text-foreground">
+                {signal}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Active Occurrence Navigation Controller */}
       {activeNav && (
         <div className="mb-3 p-2 bg-warning/10 border border-warning/30 rounded flex flex-col gap-1.5 animate-in fade-in duration-150">
@@ -1684,7 +1742,7 @@ export function UniquenessPanel({
       {result.overusedWords.length > 0 && (
         <div className="mb-2">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Overused Words (click to locate)</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">High-Repetition Non-Keyword Terms (click to locate)</p>
           </div>
           <div className="flex flex-wrap gap-1">
             {result.overusedWords.slice(0, 8).map((w) => {

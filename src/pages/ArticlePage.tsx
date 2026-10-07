@@ -85,6 +85,16 @@ export default function ArticlePage() {
         return;
       }
 
+      // Render bundled published articles immediately instead of blocking their
+      // first paint on a remote Supabase lookup. The database request below may
+      // still replace the bundled copy when a published override exists.
+      const hasBundledPost = BLOG_POSTS.some(
+        (p) => p.id === resolvedSlug && (!hub || p.hub === resolvedHub)
+      );
+      if (hasBundledPost) {
+        setLoading(false);
+      }
+
       if (resolvedHub === 'blog' && isNumericSlug(resolvedSlug)) {
         try {
           const { data } = await supabase

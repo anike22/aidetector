@@ -62,8 +62,8 @@ export default function AdminPayoutsPage() {
                   <TableCell className="text-muted-foreground text-sm">{formatDistanceToNow(new Date(p.requested_at), { addSuffix: true })}</TableCell>
                   <TableCell className="text-right space-x-1">
                     {p.status === 'Pending' && <Button size="sm" onClick={() => update(p.id, 'Approved')}>Approve</Button>}
-                    {p.status === 'Approved' && <Button size="sm" onClick={() => update(p.id, 'Paid')}>Mark Paid</Button>}
-                    {p.status === 'Processing' && <Button size="sm" onClick={() => update(p.id, 'Failed')}>Mark Failed</Button>}
+                    {p.status === 'Approved' && <Button size="sm" onClick={() => update(p.id, 'Processing')}>Start Processing</Button>}
+                    {(p.status === 'Approved' || p.status === 'Processing') && <Button size="sm" variant="outline" onClick={() => update(p.id, 'Failed')}>Mark Failed</Button>}
                   </TableCell>
                 </TableRow>
               ))}

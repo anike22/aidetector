@@ -186,10 +186,10 @@ export const RATE_TABLE: Record<string, FeatureRateInfo> = {
     featureSlug: 'ai_checker_for_bloggers',
     name: 'AI Checker for Bloggers (SEO Analysis)',
     trialEligible: false,
-    baseCreditCost: 5,
-    billingUnit: 'words_500',
+    baseCreditCost: 30,
+    billingUnit: 'fixed',
     minPlan: 'pro',
-    description: '5 credits per started 500 words for full blog SEO & publishing report (Pro plan required)',
+    description: '30 credits per complete Blogger SEO analysis, including provider-backed keyword research (Pro plan required)',
   },
   text_detect_balanced: {
     featureSlug: 'text_detect_balanced',
@@ -379,12 +379,11 @@ for (const [alias, canonical] of Object.entries({
 
 /**
  * Calculate exact credit cost for /ai-checker-for-bloggers main analysis:
- * 5 credits for every started block of up to 500 words.
- * Math.ceil(wordCount / 500) * 5
+ * Fixed 30-credit charge per complete Blogger analysis.
  */
 export function calculateBloggerAnalysisCost(wordCount: number): number {
-  const words = Math.max(1, wordCount || 1);
-  return Math.ceil(words / 500) * 5;
+  void wordCount;
+  return 30;
 }
 
 /**

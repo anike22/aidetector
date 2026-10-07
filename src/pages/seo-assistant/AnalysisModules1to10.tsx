@@ -1,5 +1,5 @@
 import { AnalysisModule, CheckItem, MiniScoreBar, Rec, ScoreRing } from './AnalysisShared';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
@@ -38,6 +38,8 @@ export function OverallScorePanel({
   onUpgrade,
   onAnalyze,
 }: OverallScorePanelProps) {
+  const isBloggerPreview = isBloggerMode && !isSubscriber;
+
   // Gating CTA button component based on subscription tier
   const renderActionButton = () => {
     if (isGuest) {
@@ -141,15 +143,25 @@ export function OverallScorePanel({
             {scores.overall}<span className="text-sm font-normal text-muted-foreground">/100</span>
           </div>
           <div className="text-xs text-muted-foreground">Overall SEO Score</div>
-          <div className={`text-xs font-semibold mt-0.5 ${scores.readyToPublish ? 'text-success' : 'text-warning'}`}>
-            {scores.readyToPublish ? '✓ Ready to Publish' : '⚠ Needs Improvement'}
-          </div>
+          {isBloggerPreview ? (
+            <div className="text-xs font-semibold mt-0.5 text-muted-foreground flex items-center gap-1">
+              <Lock className="w-3 h-3" /> Publishing Verdict Locked
+            </div>
+          ) : (
+            <div className={`text-xs font-semibold mt-0.5 ${scores.readyToPublish ? 'text-success' : 'text-warning'}`}>
+              {scores.readyToPublish ? '✓ Ready to Publish' : '⚠ Needs Improvement'}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="pt-1 border-t border-border/50">
         <div className="text-xs font-semibold text-foreground mb-2">
-          Publishing Readiness · <span className={scores.publishingScore >= 70 ? 'text-success' : 'text-warning'}>{scores.publishingScore}/100</span>
+          Publishing Readiness · {isBloggerPreview ? (
+            <span className="inline-flex items-center gap-1 text-muted-foreground"><Lock className="w-3 h-3" /> Locked</span>
+          ) : (
+            <span className={scores.publishingScore >= 70 ? 'text-success' : 'text-warning'}>{scores.publishingScore}/100</span>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <MiniScoreBar score={scores.seo} label="SEO (25%)" />
@@ -161,7 +173,7 @@ export function OverallScorePanel({
         </div>
       </div>
 
-      {(!isSubscriber || !isAnalyzed) && (
+      {(!isBloggerPreview && (!isSubscriber || !isAnalyzed)) && (
         <div className="pt-2 border-t border-border/50">
           {renderActionButton()}
         </div>
