@@ -90,7 +90,7 @@ function aidetector_settings_page() {
 
                 <script>
                 jQuery(document).ready(function($) {
-                    const apiUrl = 'https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1';
+                    const apiUrl = 'https://opivtrfgurwndilnbfmm.supabase.co/functions/v1';
 
                     $('input[name="auth_mode_toggle"]').on('change', function() {
                         if (this.value === 'api_key') {
@@ -377,7 +377,7 @@ function aidetector_run_weekly_scan() {
         $content = wp_strip_all_tags($post->post_content);
         if (empty($content)) continue;
 
-        $response = wp_remote_post('https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1/plugin-seo-analyzer', array(
+        $response = wp_remote_post('https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/plugin-seo-analyzer', array(
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
                 'Content-Type' => 'application/json'
@@ -439,7 +439,7 @@ function aidetector_ajax_process_single_seo() {
     
     $seo_service = get_option('aidetector_seo_service', 'default');
 
-    $response = wp_remote_post('https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1/plugin-seo-analyzer', array(
+    $response = wp_remote_post('https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/plugin-seo-analyzer', array(
         'headers' => array(
             'Authorization' => 'Bearer ' . $api_key,
             'Content-Type' => 'application/json'
@@ -486,7 +486,7 @@ function aidetector_enqueue_gutenberg_assets() {
     
     wp_localize_script('aidetector-gutenberg', 'aidetectorData', array(
         'apiKey' => get_option('aidetector_api_key'),
-        'apiUrl' => 'https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1',
+        'apiUrl' => 'https://opivtrfgurwndilnbfmm.supabase.co/functions/v1',
         'detectorService' => get_option('aidetector_detector_service', 'default'),
         'humanizerService' => get_option('aidetector_humanizer_service', 'default'),
         'seoService' => get_option('aidetector_seo_service', 'default')
@@ -520,7 +520,7 @@ function aidetector_enqueue_classic_assets($hook) {
         
         wp_localize_script('aidetector-classic', 'aidetectorData', array(
             'apiKey' => get_option('aidetector_api_key'),
-            'apiUrl' => 'https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1',
+            'apiUrl' => 'https://opivtrfgurwndilnbfmm.supabase.co/functions/v1',
             'detectorService' => get_option('aidetector_detector_service', 'default'),
             'humanizerService' => get_option('aidetector_humanizer_service', 'default'),
             'seoService' => get_option('aidetector_seo_service', 'default')
