@@ -54,7 +54,7 @@ const FEATURES = [
   { icon: Languages, title: 'Multilingual Support', desc: 'Language-aware detection across 19+ languages with explicit calibration status per language.' },
   { icon: Zap, title: 'Fast Analysis', desc: 'Results are returned quickly for most document lengths. API access supports higher-volume workflows.' },
   { icon: BarChart3, title: 'Signal Breakdown', desc: 'Results include readability, burstiness, perplexity, and complexity indicators for further review.' },
-  { icon: Lock, title: 'Privacy-Conscious', desc: 'Text is analyzed for detection purposes. No unnecessary data retention or use for model training.' },
+  { icon: Lock, title: 'Privacy-Conscious', desc: 'Text is analyzed to provide the requested result and is not used to train or fine-tune detection models. Saved history can be deleted from your account.' },
   { icon: RefreshCw, title: 'Dual Detection Modes', desc: 'Balanced and High-Sensitivity engines run independently on every analysis.' },
   { icon: Bot, title: 'Broad Model Coverage', desc: 'Analyses patterns associated with major generative models including ChatGPT, Claude, Gemini, and others.' },
   { icon: Shield, title: 'Responsible Use Design', desc: 'Results are probabilistic signals, not verdicts. Confidence levels and false-positive context are surfaced throughout.' },

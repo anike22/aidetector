@@ -13,7 +13,7 @@ const sections = [
       },
       {
         subtitle: 'Usage Data',
-        text: 'We collect information about how you use our services — pages visited, features used, analysis inputs and outputs, and time spent on the platform. This data is used to improve our models and user experience.',
+        text: 'We collect information about how you use our services — such as pages visited, features used, analysis activity, and time spent on the platform. Analysis inputs and outputs may be retained when an account feature such as saved history or reports requires it.',
       },
       {
         subtitle: 'Payment Information',
@@ -31,7 +31,7 @@ const sections = [
     content: [
       {
         subtitle: 'Providing and Improving Services',
-        text: 'We use your data to operate AIDetector.cx, personalize your experience, and improve our AI models. Analysis text may be used in anonymized, aggregated form to train detection models unless you opt out in your account settings.',
+        text: 'We use account, technical, and product-usage data to operate AIDetector.cx, personalize your experience, secure the service, and improve product reliability. Submitted analysis text is not used to train or fine-tune our detection models.',
       },
       {
         subtitle: 'Communications',
@@ -88,8 +88,8 @@ const sections = [
         text: 'You may request a machine-readable export of your personal data at any time.',
       },
       {
-        subtitle: 'Opt-Out of Model Training',
-        text: 'Enterprise and Professional plan users can opt out of having their analysis data used for model improvement in account settings.',
+        subtitle: 'Model Training',
+        text: 'Submitted analysis text is not used to train or fine-tune our detection models on any plan, so a plan-specific training opt-out is not required. Product telemetry and feedback may be used to improve service reliability without using submitted text as training data.',
       },
     ],
   },

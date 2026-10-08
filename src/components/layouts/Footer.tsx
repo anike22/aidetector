@@ -218,7 +218,7 @@ export default function Footer() {
           </p>
           <div className="flex flex-wrap items-center gap-6">
             <span className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-emerald-500" /> SOC-2 Type II Certified
+              <Shield className="w-3.5 h-3.5 text-emerald-500" /> Security controls in place
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> GDPR & CCPA Compliant
