@@ -1,3 +1,4 @@
+import { authorizeWorker } from '../_shared/workerAuth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.103.1';
 
 const corsHeaders = {
@@ -246,7 +247,8 @@ async function dailyBatch(supabase: ReturnType<typeof createServiceClient>, user
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = authorizeWorker(req);
+  if (denied) return denied;
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405);
 
   let body: { action?: string; user_id?: string; events?: any[]; user_ids?: string[] } = {};

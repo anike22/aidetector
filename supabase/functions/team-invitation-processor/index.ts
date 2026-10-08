@@ -1,7 +1,9 @@
+import { authorizeWorker } from '../_shared/workerAuth.ts';
 import { createServiceClient, corsHeaders } from '../_shared/automation.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = authorizeWorker(req);
+  if (denied) return denied;
 
   try {
     const supabase = createServiceClient();

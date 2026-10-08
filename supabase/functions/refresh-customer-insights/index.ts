@@ -1,4 +1,5 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { authorizeWorker } from '../_shared/workerAuth.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2.103.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -372,7 +373,8 @@ async function processBatch(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = authorizeWorker(req);
+  if (denied) return denied;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';

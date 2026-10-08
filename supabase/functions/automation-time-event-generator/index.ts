@@ -1,3 +1,4 @@
+import { authorizeWorker } from '../_shared/workerAuth.ts';
 import { createServiceClient, corsHeaders } from '../_shared/automation.ts';
 
 interface TimeEventRule {
@@ -29,11 +30,13 @@ const RULES: TimeEventRule[] = [
 ];
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = authorizeWorker(req);
+  if (denied) return denied;
 
   try {
     const supabase = createServiceClient();
     let generated = 0;
+    let failed = 0;
 
     for (const rule of RULES) {
       try {
@@ -57,21 +60,16 @@ Deno.serve(async (req) => {
           if (error) throw error;
           candidates = (data ?? []) as { user_id: string }[];
         } else if (rule.source === 'customer_profiles') {
-          const { data, error } = await supabase.rpc('run_sql', {
-            query: `SELECT user_id FROM public.customer_profiles WHERE user_id IS NOT NULL AND ${rule.filterSql}`,
-          });
-          if (error) {
-            // Fallback simple query if run_sql not available
-            const { data: fallback, error: fallbackError } = await supabase
-              .from('customer_profiles')
-              .select('user_id')
-              .not('user_id', 'is', null)
-              .lt('last_login_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-            if (fallbackError) throw fallbackError;
-            candidates = (fallback ?? []) as { user_id: string }[];
-          } else {
-            candidates = (data ?? []) as { user_id: string }[];
-          }
+          const days = rule.eventType === 'days_inactive_30' ? 30 : 7;
+          const upper = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+          const lower = new Date(Date.now() - (days + 1) * 24 * 60 * 60 * 1000).toISOString();
+          const { data, error } = await supabase
+            .from('customer_profiles')
+            .select('user_id')
+            .not('user_id', 'is', null)
+            .or(`and(last_login_at.lt.${upper},last_login_at.gte.${lower}),and(last_login_at.is.null,signup_at.lt.${upper},signup_at.gte.${lower})`);
+          if (error) throw error;
+          candidates = (data ?? []) as { user_id: string }[];
         }
 
         const inserts = candidates
@@ -89,11 +87,13 @@ Deno.serve(async (req) => {
           generated += inserts.length;
         }
       } catch (e) {
+        failed += 1;
         console.error(`Failed to generate ${rule.eventType}:`, e);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, generated }), {
+    return new Response(JSON.stringify({ success: failed === 0, generated, failed }), {
+      status: failed ? 500 : 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

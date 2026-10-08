@@ -1,3 +1,4 @@
+import { authorizeWorker } from '../_shared/workerAuth.ts';
 import { createServiceClient, executeSingleExecution, corsHeaders } from '../_shared/automation.ts';
 
 interface ExecutionRow {
@@ -10,7 +11,8 @@ interface ExecutionRow {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = authorizeWorker(req);
+  if (denied) return denied;
 
   try {
     const supabase = createServiceClient();
@@ -41,10 +43,17 @@ Deno.serve(async (req) => {
           p_credits_cost: 1,
           p_unit_quantity: 1,
           p_timezone: 'UTC',
+          p_idempotency_key: `automation-execution:${execution.id}`,
           p_metadata: { execution_id: execution.id },
         });
         const entRow = (entRows || [])[0];
-        if (entErr || !entRow?.allowed) {
+        if (entErr) throw entErr;
+        if (entRow?.error_code === 'OPERATION_ALREADY_SUBMITTED') {
+          // The billing RPC intentionally rejects duplicate submissions.
+          // Do not mark the original execution failed or reserve again.
+          continue;
+        }
+        if (!entRow?.allowed) {
           await supabase.rpc('mark_execution_status', {
             p_execution_id: execution.id,
             p_status: 'failed',
@@ -57,16 +66,18 @@ Deno.serve(async (req) => {
         let settled = false;
         const settleRun = async (outcome: 'success' | 'failed', reason?: string) => {
           if (settled) return;
-          settled = true;
-          await supabase.rpc('finalize_credit_reservation', {
+          const { error: settlementError } = await supabase.rpc('finalize_credit_reservation', {
             p_reservation_id: reservationId,
             p_outcome: outcome,
             p_error_reason: reason ?? null,
-          }).catch(() => {});
+          });
+          if (settlementError) throw settlementError;
+          settled = true;
         };
 
         if (execution.status === 'delayed') {
-          await supabase.rpc('resume_execution', { p_execution_id: execution.id });
+          const { error: resumeError } = await supabase.rpc('resume_execution', { p_execution_id: execution.id });
+          if (resumeError) throw resumeError;
         }
 
         const { data: wfData, error: wfError } = await supabase
