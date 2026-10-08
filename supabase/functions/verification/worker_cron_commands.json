@@ -1,0 +1,14 @@
+[
+  {
+    "jobname": "automation-event-processor",
+    "schedule": "* * * * *",
+    "active": true,
+    "command": "select net.http_post(url:='https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/automation-event-processor', headers:=jsonb_build_object('Content-Type','application/json','x-background-worker-token',(select decrypted_secret from vault.decrypted_secrets where name='aidetector_background_worker_token')),body:='{}'::jsonb,timeout_milliseconds:=30000);"
+  },
+  {
+    "jobname": "automation-scheduler",
+    "schedule": "* * * * *",
+    "active": true,
+    "command": "select net.http_post(url:='https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/automation-scheduler', headers:=jsonb_build_object('Content-Type','application/json','x-background-worker-token',(select decrypted_secret from vault.decrypted_secrets where name='aidetector_background_worker_token')),body:='{}'::jsonb,timeout_milliseconds:=30000);"
+  }
+]

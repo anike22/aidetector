@@ -1,0 +1,14 @@
+{
+  "status": "not_verified",
+  "probe": [
+    {
+      "concurrency_test": {
+        "result": {
+          "reason": "no_active_workflows",
+          "processed": false
+        },
+        "lock_owner_observed": false
+      }
+    }
+  ]
+}

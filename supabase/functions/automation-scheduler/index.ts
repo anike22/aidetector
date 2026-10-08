@@ -1,134 +1,31 @@
-import { authorizeWorker } from '../_shared/workerAuth.ts';
-import { createServiceClient, executeSingleExecution, corsHeaders } from '../_shared/automation.ts';
-
-interface ExecutionRow {
-  id: string;
-  workflow_id: string;
-  user_id: string;
-  current_node_id: string | null;
-  status: string;
-  context: Record<string, unknown>;
+import { createClient } from 'npm:@supabase/supabase-js@2.103.1';
+const expectedHash = "65b14c45e215e3ce17328a5314c32047368399ad2a1ef40f943c040f05045f61";
+async function authorize(req: Request) {
+ if(req.method!=='POST') return Response.json({error:'Method not allowed'},{status:405});
+ const token=req.headers.get('x-background-worker-token')||'';
+ if(token.length<32||token.length>256) return Response.json({error:'Unauthorized'},{status:401});
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));
+ const actual=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+ let mismatch=0;for(let i=0;i<actual.length;i++) mismatch|=actual.charCodeAt(i)^expectedHash.charCodeAt(i);
+ return mismatch?Response.json({error:'Unauthorized'},{status:401}):null;
+}
+function client(){
+ const url=Deno.env.get('SUPABASE_URL')!;
+ if(new URL(url).hostname!=='opivtrfgurwndilnbfmm.supabase.co') throw Error('Destination project mismatch');
+ return createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
 }
 
-Deno.serve(async (req) => {
-  const denied = authorizeWorker(req);
-  if (denied) return denied;
-
-  try {
-    const supabase = createServiceClient();
-
-    const now = new Date().toISOString();
-    const { data: dueRows, error } = await supabase
-      .from('automation_executions')
-      .select('id, workflow_id, user_id, current_node_id, status, context')
-      .or(`and(status.eq.delayed,scheduled_resume_at.lte.${now}),status.eq.running`)
-      .order('created_at', { ascending: true })
-      .limit(100);
-    if (error) throw error;
-
-    const executions = Array.isArray(dueRows) ? (dueRows as ExecutionRow[]) : [];
-    let processed = 0;
-    let failed = 0;
-
-    for (const execution of executions) {
-      let reservationId: string | null = null;
-      try {
-        // Background automation obeys the owner's entitlement: reserve one
-        // credit-backed run per execution; stop new work when the budget
-        // is exhausted.
-        const { data: entRows, error: entErr } = await supabase.rpc('reserve_entitlement_and_credits', {
-          p_user_id: execution.user_id,
-          p_guest_id: null,
-          p_feature_slug: 'automation_run',
-          p_credits_cost: 1,
-          p_unit_quantity: 1,
-          p_timezone: 'UTC',
-          p_idempotency_key: `automation-execution:${execution.id}`,
-          p_metadata: { execution_id: execution.id },
-        });
-        const entRow = (entRows || [])[0];
-        if (entErr) throw entErr;
-        if (entRow?.error_code === 'OPERATION_ALREADY_SUBMITTED') {
-          // The billing RPC intentionally rejects duplicate submissions.
-          // Do not mark the original execution failed or reserve again.
-          continue;
-        }
-        if (!entRow?.allowed) {
-          await supabase.rpc('mark_execution_status', {
-            p_execution_id: execution.id,
-            p_status: 'failed',
-            p_error_message: entRow?.reason || 'Insufficient credits for automation run',
-          }).catch(() => {});
-          failed += 1;
-          continue;
-        }
-        reservationId = entRow.reservation_id;
-        let settled = false;
-        const settleRun = async (outcome: 'success' | 'failed', reason?: string) => {
-          if (settled) return;
-          const { error: settlementError } = await supabase.rpc('finalize_credit_reservation', {
-            p_reservation_id: reservationId,
-            p_outcome: outcome,
-            p_error_reason: reason ?? null,
-          });
-          if (settlementError) throw settlementError;
-          settled = true;
-        };
-
-        if (execution.status === 'delayed') {
-          const { error: resumeError } = await supabase.rpc('resume_execution', { p_execution_id: execution.id });
-          if (resumeError) throw resumeError;
-        }
-
-        const { data: wfData, error: wfError } = await supabase
-          .from('automation_workflows')
-          .select('workflow_definition')
-          .eq('id', execution.workflow_id)
-          .maybeSingle();
-        if (wfError) throw wfError;
-
-        const workflowDefinition = (wfData as { workflow_definition: Record<string, unknown> } | null)?.workflow_definition;
-
-        await executeSingleExecution(supabase, {
-          ...execution,
-          workflow_definition: workflowDefinition as {
-            nodes: { id: string; type: 'trigger' | 'condition' | 'action' | 'delay' | 'end'; data: Record<string, unknown> }[];
-            edges: { source: string; target: string; sourceHandle?: 'yes' | 'no' }[];
-          },
-        });
-        await settleRun('success');
-        processed += 1;
-      } catch (e) {
-        console.error('Failed to execute', execution.id, e);
-        if (reservationId) {
-          await supabase.rpc('finalize_credit_reservation', {
-            p_reservation_id: reservationId,
-            p_outcome: 'failed',
-            p_error_reason: e instanceof Error ? e.message : String(e),
-          }).catch(() => {});
-        }
-        failed += 1;
-        try {
-          await supabase.rpc('mark_execution_status', {
-            p_execution_id: execution.id,
-            p_status: 'failed',
-            p_error_message: e instanceof Error ? e.message : String(e),
-          });
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, processed, failed }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('automation-scheduler error:', message);
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+Deno.serve(async(req)=>{
+ const denied=await authorize(req);if(denied)return denied;
+ try{
+ const db=client(),now=new Date().toISOString();
+ const {data,error}=await db.from('automation_executions').select('id').or(`and(status.eq.delayed,scheduled_resume_at.lte.${now}),status.eq.running`).order('created_at').limit(100);
+ if(error)throw error;
+ let processed=0,failed=0;
+ for(const execution of data||[]){
+ try{const {data:result,error}=await db.rpc('advance_automation_execution',{p_execution_id:execution.id});if(error)throw error;if(result?.processed)processed++;else if(result?.status==='failed')failed++;}
+ catch{failed++;}
+ }
+ return Response.json({success:failed===0,processed,failed},{status:failed?500:200});
+ }catch{return Response.json({success:false,error:'Worker operation failed'},{status:500});}
 });

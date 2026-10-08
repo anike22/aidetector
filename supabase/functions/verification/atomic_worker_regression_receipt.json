@@ -1,0 +1,9 @@
+[
+  {
+    "result": {
+      "tests": 15,
+      "status": "passed",
+      "fixture_changes": "rolled_back"
+    }
+  }
+]

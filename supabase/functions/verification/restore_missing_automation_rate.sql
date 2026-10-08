@@ -1,0 +1,1 @@
+INSERT INTO public.credit_rate_table(feature_slug,feature_name,trial_eligible,base_credit_cost,billing_unit,min_plan,details) VALUES('automation_run','Automation Workflow Run',false,1,'operation','business','{"description":"1 credit per scheduled automation execution"}'::jsonb) ON CONFLICT(feature_slug) DO NOTHING;

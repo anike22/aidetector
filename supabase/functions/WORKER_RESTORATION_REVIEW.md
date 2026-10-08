@@ -1,22 +1,38 @@
-# Scheduled worker restoration: work in progress
+# Atomic automation restoration — 2026-10-08
+Destination: aidetector-repair-test (opivtrfgurwndilnbfmm).
 
-Baseline: anike22/aidetector master 45cf716730b67e5c98fd9cf35e4524fbd7830c8a (2026-10-07 release). Destination: aidetector-repair-test / opivtrfgurwndilnbfmm. Candidates are not deployed or enabled.
+## Restored and active
+automation-event-processor and automation-scheduler are deployed at version 1 and connected to their existing one-minute schedules. Requests authenticate with a dedicated random server-only token kept in Vault; only its SHA-256 digest is in source. Invalid credentials return HTTP 401. The endpoints are restricted to this destination project.
 
-Completed preparation:
-- Seven worker candidates require a server-only BACKGROUND_WORKER_TOKEN of at least 32 characters via x-background-worker-token before constructing a privileged client. Missing credentials/configuration fail closed. The shared npm Supabase dependency is pinned to 2.103.1, the version already used by current personalization source.
-- Event processing checks RPC errors, keeps processed rows as audit history, holds work when no active workflows exist, and requires an explicit AUTOMATION_EVENT_PROCESSING_START_AT cutoff to protect migrated historical events.
-- Inactivity candidates use distinct bounded 7–8 day and 30–31 day windows, including signup_at when last_login_at is null. The absent run_sql RPC is no longer needed. Query failures are reported as failed responses.
-- The scheduler candidate includes an execution-specific billing idempotency key, skips duplicate-submission responses rather than failing the original execution, and checks successful settlement and resume errors.
+The event processor holds all work when no active workflows exist, and filters events using the fixed deployment cutoff 2026-10-08 08:00:49.329441+00. The 246 migrated pending events remain held. No historical replay was enabled.
 
-13 focused regression cases pass using the actual candidate handlers with injected clients. They cover all seven authorization gates, event retention on failure/success, history cutoff, absent workflows, inactivity windows/signup fallback, and query failure status. They are local handler tests, not live full-stack certification. Run: node supabase/functions/worker_regressions.mjs.
+Two new SECURITY INVOKER RPCs are granted only to service_role: process_queued_automation_event and advance_automation_execution. Each claims its row with FOR UPDATE SKIP LOCKED. Queued-event processing creates executions against the original event ID and acknowledges the event in the same transaction, retaining the audit row. Workflow advancement includes database action writes, logs, billing and durable progress in one transaction; a crash rolls the transaction back. Completed and future-delayed executions are not claimable.
 
-Activation blockers:
-1. The event processor still needs atomic database claim/process/acknowledgment. Its current two-call processing/acknowledgment sequence can duplicate execution after a crash, concurrent invocation, or acknowledgement failure. The existing process_automation_event RPC creates a new event rather than operating on a queued event ID.
-2. Scheduler progress needs a durable claim/lease and a persisted reservation across delayed resumes. The billing RPC intentionally rejects repeated idempotency keys; merely passing a stable key prevents double reservation but does not recover/resume an existing reservation. Shared executeSingleExecution also returns normally after some failed statuses, and can misreport settlement success. Failure-side settlement/status errors are still suppressed. Do not activate it.
-3. Destination credit_rate_table has no automation_run row. Source migration/export specifies Business minimum, one credit per operation, no trial. Restore only this missing row after reviewing against current policy; do not overwrite current billing rates.
-4. Background authentication must be provisioned into both server secrets and Vault, and cron headers must be changed. No secret values are included here. Existing cron commands send only a missing publishable key.
-5. Personalization also serves action=process and must be checked for authenticated frontend callers. The staged service-only gate is suitable for daily/aggregate jobs but may block valid user processing; separate authenticated-user handling is required before deployment.
-6. Team-invitation processing automatically accepts invitations for matching accounts in the current database RPC. Preserve intended consent and onboarding behavior before activation. There are currently zero active pending invitations.
-7. Customer refresh and personalization contain additional unchecked database writes/RPC results. Verify partial-failure handling before calling their jobs healthy.
+The scheduler saves the billing reservation ID with execution context. It charges at the first successful advancement, including a delayed chunk, as the previous worker did, and reuses that reservation on resume. A failed first chunk rolls back new reservation and balance changes. Prior successful chunks remain committed if a later chunk fails. Delayed resumes recheck active Business entitlement. This is one credit per execution, not one credit per resume.
 
-Current destination state: 246 unprocessed events, zero workflow definitions and executions, no Vault entries. Event checksum b650ff817d49ae8c31e1bbd7d0e4e538. All existing cron jobs and deployed functions remain unchanged in this phase. Production cutover and automated message delivery are outside this preparation step.
+Only transaction-local database actions are supported. Email sending, webhooks and other external delivery are rejected until a transactional outbox is implemented; there is no external message delivery in this repair.
+
+The missing automation_run rate was restored from current master migration 00142: one credit per operation, Business minimum, no trial. ON CONFLICT DO NOTHING preserves any existing rate. All other rates retain checksum 07b4a06e2b154c55670e8f8062bd4a54.
+
+## Verification
+15 live database regression cases passed in a transaction that rolled back all fixture changes. These covered history cutoff, absent workflows, event creation/replay/audit retention, initial charge, delay progress, not-yet-due execution, resume/replay/reservation reuse, malformed workflow rollback, unsupported-action rollback, a real internal-note action, Free-plan rejection and expired-plan rejection. Tests temporarily changed one profile only inside the rollback transaction; no fixture edits were committed.
+
+Four live HTTP checks passed: both authorized endpoint calls returned 200, and both invalid-token calls returned 401. The event response held work for no active workflows; the scheduler reported zero executions.
+
+A two-session MCP concurrency probe did not observe overlapping sessions, so it was not counted as a passing concurrency test. Row-lock behavior follows the PostgreSQL transaction implementation; simultaneous end-to-end load verification remains pending. Earlier local candidate-handler tests do not certify the final standalone deployed handlers.
+
+Final preserved checksums:
+- Profiles: 025a901c546bc141382d2b5c2d40f14a
+- Events: b650ff817d49ae8c31e1bbd7d0e4e538
+- Reservations: e4da6b43da7324d56e336b452ec742fd
+- Ledger: 4a096a3204cc5efb59d0953856709576
+- Pending events: 246; workflow definitions: 0; executions: 0.
+
+Only the two repaired cron commands changed. They now call the repair project explicitly and read the dedicated token from Vault; their original one-minute frequency is preserved. Existing application Edge Functions, account balances and production connections remain unchanged.
+
+## Remaining
+Five missing worker services still require restoration: refresh-customer-insights, automation-time-event-generator, personalization (two schedules), team-invitation-processor and team-analytics-aggregator. Their staged candidates are not deployed; their old cron configuration has not been repaired. Review unchecked customer writes, preserve valid authenticated personalization callers and invitation consent, and finish generator deduplication before activation.
+
+The WordPress download URL fix remains draft PR #13. Full frontend build, sign-in/payment/credit/isolation verification, held history exclusions and separate production cutover approval remain outstanding.
+
+The local workspace runtime disconnected after database tests, before endpoint setup. Work continued through connected Supabase and GitHub services; applied migration history and deployed source are preserved in this branch.
