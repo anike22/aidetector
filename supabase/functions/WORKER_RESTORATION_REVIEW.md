@@ -36,3 +36,9 @@ Five missing worker services still require restoration: refresh-customer-insight
 The WordPress download URL fix remains draft PR #13. Full frontend build, sign-in/payment/credit/isolation verification, held history exclusions and separate production cutover approval remain outstanding.
 
 The local workspace runtime disconnected after database tests, before endpoint setup. Work continued through connected Supabase and GitHub services; applied migration history and deployed source are preserved in this branch.
+
+## Scheduled readback
+Two consecutive minute ticks ran both repaired jobs successfully, and their subsequent HTTP responses returned 200 with zero work. Profiles and all 246 held events retained their checksums after those scheduled calls. See verification/scheduled_worker_verification.json.
+
+## Existing security notices
+The new invoker RPCs are not among the security advisor's public privileged-function findings. Existing notices remain for [pg_net in public](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public), [anonymous privileged RPC access](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable), [authenticated privileged RPC access](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable), and [leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Those existing application interfaces were not changed in this repair.

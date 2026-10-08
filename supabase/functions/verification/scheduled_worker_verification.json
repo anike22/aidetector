@@ -1,0 +1,65 @@
+[
+  {
+    "scheduled_verification": {
+      "cron_runs": [
+        {
+          "status": "succeeded",
+          "jobname": "automation-event-processor",
+          "start_time": "2026-10-08T08:04:00.505896+00:00",
+          "return_message": "1 row"
+        },
+        {
+          "status": "succeeded",
+          "jobname": "automation-scheduler",
+          "start_time": "2026-10-08T08:04:00.365326+00:00",
+          "return_message": "1 row"
+        },
+        {
+          "status": "succeeded",
+          "jobname": "automation-event-processor",
+          "start_time": "2026-10-08T08:03:00.56828+00:00",
+          "return_message": "1 row"
+        },
+        {
+          "status": "succeeded",
+          "jobname": "automation-scheduler",
+          "start_time": "2026-10-08T08:03:00.53319+00:00",
+          "return_message": "1 row"
+        }
+      ],
+      "pending_events": 246,
+      "events_checksum": "b650ff817d49ae8c31e1bbd7d0e4e538",
+      "profiles_checksum": "025a901c546bc141382d2b5c2d40f14a",
+      "worker_http_responses": [
+        {
+          "id": 44395,
+          "content": "{\"success\":true,\"processed\":0,\"held\":\"no_active_workflows\"}",
+          "error_msg": null,
+          "timed_out": false,
+          "status_code": 200
+        },
+        {
+          "id": 44394,
+          "content": "{\"success\":true,\"processed\":0,\"failed\":0}",
+          "error_msg": null,
+          "timed_out": false,
+          "status_code": 200
+        },
+        {
+          "id": 44393,
+          "content": "{\"success\":true,\"processed\":0,\"held\":\"no_active_workflows\"}",
+          "error_msg": null,
+          "timed_out": false,
+          "status_code": 200
+        },
+        {
+          "id": 44392,
+          "content": "{\"success\":true,\"processed\":0,\"failed\":0}",
+          "error_msg": null,
+          "timed_out": false,
+          "status_code": 200
+        }
+      ]
+    }
+  }
+]
