@@ -42,10 +42,9 @@ const cookieCategories: { id: string; title: string; required: boolean; descript
     id: 'payment',
     title: 'Payment Processing Cookies',
     required: false,
-    description: 'These cookies are set by our payment provider Stripe when you access the billing or upgrade pages. They are required to process payments securely.',
+    description: 'Self-service payments are processed through Paystack, a Stripe company. Paystack or its authorized infrastructure providers may set strictly necessary cookies during checkout for security, fraud prevention, and payment processing. The cookies actually used can vary by payment method and checkout session.',
     cookies: [
-      { name: '__stripe_mid', provider: 'Stripe', purpose: 'Fraud prevention and secure payment processing', duration: '1 year' },
-      { name: '__stripe_sid', provider: 'Stripe', purpose: 'Session identifier for Stripe checkout', duration: '30 minutes' },
+      { name: 'Paystack checkout cookies', provider: 'Paystack and authorized infrastructure providers', purpose: 'Checkout security, fraud prevention, and payment processing', duration: 'Varies by checkout session and payment method' },
     ],
   },
 ];
@@ -64,7 +63,7 @@ const sections = [
   {
     id: 'third-party',
     title: '3. Third-Party Cookies',
-    content: 'Some cookies are set by third-party services we use — specifically Cloudflare (security), Stripe (payments), and Supabase (backend). These providers have their own privacy policies and we do not control the cookies they set beyond what is described in this policy.',
+    content: 'Some cookies are set by third-party services we use — specifically Cloudflare (security), Paystack and its authorized infrastructure providers (payments), and Supabase (backend). Paystack is a Stripe company. These providers have their own privacy policies, and we do not control the cookies they set beyond what is described in this policy.',
   },
   {
     id: 'managing',
@@ -75,7 +74,7 @@ Browser Settings: Most browsers allow you to view, block, or delete cookies thro
 
 Consent Banner: When you first visit AIDetector.cx, a cookie consent banner allows you to accept or reject non-essential cookies. You can change your preferences at any time via the "Cookie Settings" link in the footer.
 
-Opt-Out Links: For Stripe, visit stripe.com/privacy. For Cloudflare, visit cloudflare.com/privacypolicy.`,
+Provider Privacy Information: For Paystack, visit paystack.com/privacy. For Cloudflare, visit cloudflare.com/privacypolicy.`,
   },
   {
     id: 'updates',
@@ -97,7 +96,7 @@ export default function CookiePolicyPage() {
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           <Badge className="bg-primary/20 text-primary border-primary/30 mb-5">Legal</Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-3 text-balance">Cookie Policy</h1>
-          <p className="text-white/60 text-sm">Last Updated: June 1, 2026 · Effective: June 1, 2026</p>
+          <p className="text-white/60 text-sm">Last Updated: October 9, 2026 · Effective: October 9, 2026</p>
         </div>
       </section>
 
