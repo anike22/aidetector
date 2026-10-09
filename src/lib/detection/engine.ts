@@ -26,7 +26,7 @@ import { analyzeSemanticConsistency } from './layers/semanticConsistency.ts';
 import { detectHumanEdits } from './layers/humanEditDetection.ts';
 import { analyzeDocumentConsistency } from './layers/documentConsistency.ts';
 
-export const DETECTOR_VERSION = '2.5.1';
+export const DETECTOR_VERSION = '2.5.2';
 export const MODEL_VERSION = 'ensemble-v4-classifier-v2';
 export const LANGUAGE_PIPELINE_VERSION = 'lang-v3';
 export const CALIBRATION_VERSION = 'cal-v3-five-class';
@@ -193,12 +193,13 @@ function classifyVerdict(
   sentenceSignals: ReturnType<typeof aggregateSentenceSignals>,
   documentConsistencyScore: number,
   humanization: { detected: boolean; confidence: number },
+  weakHumanAuthorshipEvidence: boolean,
 ): Verdict {
   // Evidence required before claiming a text has been human-edited or is a mix
   // of human and AI authorship. Small mixed probability (likely noise) or
   // non-zero human probability alone does not justify an edited/mixed label.
   const hasHumanEditingEvidence =
-    humanization.detected && humanization.confidence >= 0.35;
+    humanization.detected && humanization.confidence >= 35;
 
   if (!sufficient) return 'insufficient-text';
 
@@ -225,6 +226,15 @@ function classifyVerdict(
   const humanLeadsRaw = human >= ai - 3 && human > mixed;
   const genuineAmbiguity = documentConsistencyScore < 0.45 && mixed >= thresholds.mixed;
   if (riskMargin < thresholds.margin && confidenceScore < 50 && !humanLeadsRaw && !genuineAmbiguity) {
+    return 'inconclusive';
+  }
+
+  // A very strong Human probability is unsafe when it comes only from the
+  // character n-gram model and easily imitated surface style. In this specific
+  // out-of-distribution pattern there is no first-person voice, concrete
+  // attribution, or conventional AI marker. Report uncertainty instead of a
+  // high-confidence false Human verdict.
+  if (weakHumanAuthorshipEvidence && human >= thresholds.likelyHuman && adjustedAiRisk < 30) {
     return 'inconclusive';
   }
 
@@ -852,6 +862,15 @@ export async function analyzeAdvancedText(
     humanEdit.humanEditProbability,
   );
 
+  const weakHumanAuthorshipEvidence =
+    classifierResult.available &&
+    classifierResult.aiProbability <= 10 &&
+    wordCount >= MIN_RECOMMENDED_WORDS &&
+    linguisticResult.profile.personalVoiceScore < 0.08 &&
+    linguisticResult.profile.specificityScore < 0.10 &&
+    linguisticResult.profile.aiBoilerplateScore < 0.08 &&
+    linguisticResult.profile.contextualCoherence < 0.10;
+
   const ensemble = runEnsemble(
     languageCode,
     contentType,
@@ -940,15 +959,17 @@ export async function analyzeAdvancedText(
     sentenceSignals,
     documentConsistency.consistencyScore,
     ensemble.humanization,
+    weakHumanAuthorshipEvidence,
   );
-  const confidenceLevelVal = confidenceLevel(ensemble.scores.confidence);
   const riskLevelVal = riskLevel(verdict, adjusted.ai);
 
   // Apply uncertainty penalty to confidence: high epistemic uncertainty (short
   // text, feature disagreement, boundary ambiguity) reduces displayed confidence
   // without affecting Mixed probability. Max penalty is 12 points at uncertainty=100.
   const uncertaintyPenalty = Math.round(uncertaintyScore * 0.12);
-  const calibratedConfidence = Math.max(0, ensemble.scores.confidence - uncertaintyPenalty);
+  const evidencePenalty = weakHumanAuthorshipEvidence ? 25 : 0;
+  const calibratedConfidence = Math.max(0, ensemble.scores.confidence - uncertaintyPenalty - evidencePenalty);
+  const confidenceLevelVal = confidenceLevel(calibratedConfidence);
 
   const highlights = buildHighlights(sentenceVerdicts, paragraphVerdicts);
 
