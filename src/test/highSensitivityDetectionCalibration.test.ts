@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAIRisk } from '@/pages/seo-assistant/analysisEngine';
 import { runAggressiveDetector } from '@/lib/detection/aggressiveDetectorService';
+import { analyzeAdvancedText } from '@/lib/detection/engine';
 
 describe('High-Sensitivity Analysis — Strict: Calibration & False Positive Elimination', () => {
   it('correctly classifies third-person human article as human text (no false 72% AI score)', () => {
@@ -53,8 +54,25 @@ In conclusion, we must harness the power of ethical governance to unlock the ful
 Generations succeed one another along the journey, with no single insect completing the round trip.
 Scientists still study how these fragile creatures orient themselves using the angle of the sun and the Earth's magnetic field.`;
 
+    const [advanced, heuristic] = await Promise.all([
+      analyzeAdvancedText(humanSample),
+      Promise.resolve(analyzeAIRisk(humanSample)),
+    ]);
     const aggressiveResult = await runAggressiveDetector(humanSample);
-
+    console.info('[strict-false-positive-diagnostic]', JSON.stringify({
+      heuristicAi: heuristic.aiScore,
+      baseAi: advanced.overall.aiProbability,
+      baseHuman: advanced.overall.humanProbability,
+      baseVerdict: advanced.overall.verdict,
+      confidence: advanced.overall.confidence,
+      classProbabilities: advanced.metadata.classProbabilities,
+      humanization: advanced.humanization,
+      profile: {
+        specificity: advanced.linguisticProfile.specificityScore,
+        personalVoice: advanced.linguisticProfile.personalVoiceScore,
+      },
+      aggressiveAi: aggressiveResult.ai,
+    }));
     expect(aggressiveResult.ai).toBeLessThan(35);
     expect(aggressiveResult.human).toBeGreaterThan(65);
     expect(aggressiveResult.risk).not.toBe('High');
