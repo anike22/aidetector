@@ -15,7 +15,9 @@ interface Record {
 
 function loadJsonl(split: string, lang: string): Record[] {
   const file = path.join(SPLITS_DIR, split, `${lang}.jsonl`);
-  if (!fs.existsSync(file)) return [];
+  if (!fs.existsSync(file)) {
+    throw new Error(`Detector benchmark data missing: ${file}. Supply independently labelled, held-out samples before reporting accuracy.`);
+  }
   const lines = fs.readFileSync(file, 'utf-8').split('\n').filter(Boolean);
   const records = lines.map((l) => JSON.parse(l)) as Record[];
   return records.filter((r) => r.origin === 'human' || r.origin === 'ai').slice(0, MAX_PER_SPLIT);
@@ -118,12 +120,19 @@ async function evaluateRobustness(aiRecords: Record[], lang: string) {
 describe('Detector benchmark suite', () => {
   it('benchmarks en/es/ar holdout and validation splits', { timeout: 180000 }, async () => {
     const languages = ['en', 'es', 'ar'];
+    // A benchmark without both known-origin classes cannot validate false
+    // positives and false negatives. Do not treat empty or one-class data as a pass.
     const allResults: Record<string, Awaited<ReturnType<typeof evaluate>>> = {};
     for (const lang of languages) {
       const records = [
         ...loadJsonl('holdout', lang),
         ...loadJsonl('validation', lang),
       ];
+      const aiExamples = records.filter((r) => r.origin === 'ai').length;
+      const humanExamples = records.filter((r) => r.origin === 'human').length;
+      if (aiExamples < 10 || humanExamples < 10) {
+        throw new Error(`Insufficient labelled benchmark data for ${lang}: AI=${aiExamples}, human=${humanExamples} (minimum 10 each).`);
+      }
       const metrics = await evaluate(records, lang);
       allResults[lang] = metrics;
       // eslint-disable-next-line no-console
