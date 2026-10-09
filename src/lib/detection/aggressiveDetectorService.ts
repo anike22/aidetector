@@ -74,6 +74,34 @@ export async function runAggressiveDetector(
           100
       )
     : 0;
+  const humanEditedAi = classProbs
+    ? Math.round((classProbs['human-edited-ai'] ?? 0) * 100)
+    : 0;
+
+  const humanization = fullResult?.humanization;
+  const linguistic = fullResult?.linguisticProfile;
+  const statistical = fullResult?.statisticalProfile;
+  const weakGroundedAuthorship = Boolean(
+    linguistic &&
+      linguistic.specificityScore < 0.08 &&
+      linguistic.personalVoiceScore < 0.08
+  );
+
+  // A common evasion case is a classifier that leans strongly human after an
+  // AI passage has been paraphrased. Do not let that high human probability
+  // automatically exempt the text when the independent humanization layer,
+  // weak authorship grounding, and editing/coherence signals agree.
+  const hasHumanizationEvasionEvidence = Boolean(
+    balanced &&
+      baseAi <= 20 &&
+      balanced.human >= 75 &&
+      humanization?.detected &&
+      humanization.confidence >= 20 &&
+      weakGroundedAuthorship &&
+      (humanEditedAi >= 5 ||
+        (statistical?.editingSignalScore ?? 0) >= 0.15 ||
+        (linguistic?.contextualCoherence ?? 1) < 0.08)
+  );
 
   // Sentence-level AI verification
   const sentences = fullResult?.sentences || [];
@@ -96,16 +124,21 @@ export async function runAggressiveDetector(
 
   // Check if balanced detector or linguistic engine verified natural human writing
   const isVerifiedHuman =
-    (balanced &&
+    !hasHumanizationEvasionEvidence &&
+    ((balanced &&
       (verdict === 'likely-human' ||
         verdict === 'mostly-human' ||
         (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15)) &&
       classifierAi < 25) ||
+      (balanced &&
+        confidence < 40 &&
+        raw.aiScore < 30 &&
+        classifierAi < 35) ||
     (!balanced &&
       raw.aiScore < 30 &&
       raw.recommendations.some((r) =>
         r.includes('align with natural human writing')
-      ));
+      )));
 
   // High-Sensitivity Strict Mode:
   // Designed as an aggressive screen to decisively detect and score AI text high.
@@ -113,7 +146,8 @@ export async function runAggressiveDetector(
   // Preserves genuine human prose when verified natural human writing is detected.
   const isStrictAi =
     !isVerifiedHuman &&
-    (raw.aiScore >= 65 ||
+    (hasHumanizationEvasionEvidence ||
+      raw.aiScore >= 65 ||
       (isHighConfidence &&
         (classifierAi >= 35 ||
           baseAi >= 22 ||
@@ -143,7 +177,16 @@ export async function runAggressiveDetector(
       classifierAi > 0 ? Math.round(classifierAi * 1.15 + 10) : 0,
       Math.round(baseAi * 1.5 + mixedSignal * 0.9 + 20)
     );
-    strictAi = Math.min(98, Math.max(86, candidate));
+    strictAi = hasHumanizationEvasionEvidence
+      ? Math.min(
+          98,
+          Math.max(
+            90,
+            candidate,
+            90 + Math.round(humanization!.confidence / 5 + humanEditedAi / 2)
+          )
+        )
+      : Math.min(98, Math.max(86, candidate));
   } else if (isModerateAi) {
     // Moderate/hybrid AI signals are strictly elevated to 52%–84%
     const candidate = Math.max(
@@ -161,8 +204,9 @@ export async function runAggressiveDetector(
       : Math.round(raw.aiScore * (1 - baseWeight) + baseAi * baseWeight);
   }
 
-  // Ensure invariant: strict AI can never be lower than verified balanced AI
-  if (balancedResult) {
+  // Preserve the strict-mode floor unless the two engines conflict at low
+  // confidence and the independent heuristic supports genuine human prose.
+  if (balancedResult && !isVerifiedHuman) {
     strictAi = Math.max(strictAi, baseAi);
   }
   strictAi = Math.min(98, Math.max(4, strictAi));
@@ -171,7 +215,14 @@ export async function runAggressiveDetector(
   const finalRisk: 'Low' | 'Medium' | 'High' =
     strictAi >= 65 ? 'High' : strictAi >= 35 ? 'Medium' : 'Low';
 
-  const recommendations = [...raw.recommendations];
+  const recommendations = hasHumanizationEvasionEvidence
+    ? []
+    : [...raw.recommendations];
+  if (hasHumanizationEvasionEvidence) {
+    recommendations.unshift(
+      'Humanization/evasion patterns detected: the text reads naturally, but independent editing and weak-authorship signals remain consistent with rewritten AI content.'
+    );
+  }
   if (
     strictAi >= 35 &&
     mixedSignal > 10 &&
