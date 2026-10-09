@@ -138,6 +138,84 @@ Scientists still study how these fragile creatures orient themselves using the a
     expect(result.human).toBeLessThanOrEqual(15);
   });
 
+  it('classifies humanized AI as high-risk AI when evasion evidence conflicts with a human-leaning classifier', async () => {
+    const humanizedAi = `AI is basically reshaping how companies operate these days. Like, they can process huge amounts of data in no time. But honestly, the wildest part is the natural language side — it can crank out articles that actually sound like a person wrote them. Some businesses are saving serious money and moving a lot faster. Anyway, long story short, it's a big deal for pretty much every industry.`;
+    const balancedHumanized: any = {
+      ai: 9,
+      human: 91,
+      mixed: 0,
+      verdict: 'likely-human',
+      risk: 'Low',
+      confidence: 67,
+      confidenceLevel: 'High',
+      language: 'English',
+      full: {
+        metadata: { classProbabilities: { human: 0.922, ai: 0.008, 'human-edited-ai': 0.07, mixed: 0 } },
+        humanization: { detected: true, confidence: 20, signals: ['paraphrase pattern'], explanation: 'Possible automated paraphrasing.' },
+        linguisticProfile: { specificityScore: 0.06, personalVoiceScore: 0.01, contextualCoherence: 0.052 },
+        statisticalProfile: { editingSignalScore: 0.154 },
+        sentences: [],
+      },
+    };
+
+    const result = await runAggressiveDetector(humanizedAi, balancedHumanized);
+
+    expect(result.ai).toBeGreaterThanOrEqual(90);
+    expect(result.human).toBeLessThanOrEqual(10);
+    expect(result.risk).toBe('High');
+    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(true);
+  });
+
+  it('classifies natural-sounding AI as high risk when editing and weak-authorship signals agree', async () => {
+    const naturalAi = `The city library stays open late on Thursdays, which has quietly changed how people use the building. Parents arrive after work, students spread notebooks across the upstairs tables, and retirees join the weekly history discussion. The change seemed minor when it was announced, but attendance has climbed steadily. Staff members now say Thursday is their busiest evening, even though Saturday still brings more children through the doors.`;
+    const balancedNaturalAi: any = {
+      ai: 12,
+      human: 88,
+      mixed: 0,
+      verdict: 'likely-human',
+      risk: 'Low',
+      confidence: 68,
+      confidenceLevel: 'High',
+      language: 'English',
+      full: {
+        metadata: { classProbabilities: { human: 0.987, ai: 0.011, 'human-edited-ai': 0, mixed: 0 } },
+        humanization: { detected: true, confidence: 20, signals: ['coherence mismatch'], explanation: 'Possible automated rewriting.' },
+        linguisticProfile: { specificityScore: 0.06, personalVoiceScore: 0, contextualCoherence: 0.057 },
+        statisticalProfile: { editingSignalScore: 0.158 },
+        sentences: [],
+      },
+    };
+
+    const result = await runAggressiveDetector(naturalAi, balancedNaturalAi);
+    expect(result.ai).toBeGreaterThanOrEqual(90);
+    expect(result.risk).toBe('High');
+  });
+
+  it('does not turn a low-confidence formal-human conflict into high-risk AI', async () => {
+    const formalHuman = `The Roman aqueducts stand among the greatest engineering achievements of the ancient world. Engineers harnessed gravity alone to transport water across hundreds of kilometers into bustling urban centers. While modern cities rely heavily on pressurized pipes and mechanical pumps, ancient municipal builders achieved comparable flow rates through meticulous slope gradients and massive stone arches. Some systems, like the Aqua Claudia, remained in active operation for centuries. Archaeologists continue uncovering hidden distribution basins beneath the streets of Rome today.`;
+    const balancedFormalHuman: any = {
+      ai: 58,
+      human: 42,
+      mixed: 0,
+      verdict: 'likely-ai',
+      risk: 'High',
+      confidence: 34,
+      confidenceLevel: 'Low',
+      language: 'English',
+      full: {
+        metadata: { classProbabilities: { human: 0.727, ai: 0.142, 'human-edited-ai': 0.064, 'translated-ai': 0.067 } },
+        humanization: { detected: true, confidence: 20, signals: ['coherence mismatch'], explanation: 'Possible automated rewriting.' },
+        linguisticProfile: { specificityScore: 0.06, personalVoiceScore: 0, contextualCoherence: 0.038 },
+        statisticalProfile: { editingSignalScore: 0.139 },
+        sentences: [],
+      },
+    };
+
+    const result = await runAggressiveDetector(formalHuman, balancedFormalHuman);
+    expect(result.ai).toBeLessThan(35);
+    expect(result.risk).toBe('Low');
+  });
+
   it('correctly flags modern AI text with connectors without dropping to floor 4%', () => {
     const modernAiText = `Artificial intelligence has seen rapid advancements in recent years, transforming various industries across the globe.
 From healthcare to finance, organizations are adopting machine learning systems to optimize workflows and enhance decision-making capabilities.
