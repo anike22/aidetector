@@ -74,6 +74,11 @@ export async function runAggressiveDetector(
           100
       )
     : 0;
+  const pureClassifierAi = classProbs
+    ? Math.round(
+        ((classProbs.ai ?? 0) + (classProbs['translated-ai'] ?? 0)) * 100
+      )
+    : 0;
   const humanEditedAi = classProbs
     ? Math.round((classProbs['human-edited-ai'] ?? 0) * 100)
     : 0;
@@ -131,6 +136,12 @@ export async function runAggressiveDetector(
         (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15)) &&
       classifierAi < 25) ||
       (balanced &&
+        verdict === 'mostly-human-ai-assisted' &&
+        balanced.human >= 60 &&
+        baseAi <= 30 &&
+        confidence >= 50 &&
+        raw.aiScore < 38) ||
+      (balanced &&
         confidence < 40 &&
         raw.aiScore < 30 &&
         classifierAi < 35) ||
@@ -149,11 +160,13 @@ export async function runAggressiveDetector(
     (hasHumanizationEvasionEvidence ||
       raw.aiScore >= 65 ||
       (isHighConfidence &&
-        (classifierAi >= 35 ||
-          baseAi >= 22 ||
-          combinedAiSignal >= 24 ||
+        (pureClassifierAi >= 35 ||
+          baseAi >= 35 ||
+          combinedAiSignal >= 45 ||
           (hasVerifiableAiAssistance &&
-            (baseAi >= 16 || classifierAi >= 25 || mixedSignal >= 8)) ||
+            (verdict === 'likely-ai' ||
+              verdict === 'mostly-ai-human-edited') &&
+            (baseAi >= 22 || pureClassifierAi >= 25 || mixedSignal >= 15)) ||
           sentenceAiRatio >= 20 ||
           verdict === 'likely-ai' ||
           verdict === 'mostly-ai-human-edited')));
@@ -174,7 +187,7 @@ export async function runAggressiveDetector(
     // Clear AI or assisted text is aggressively detected and scored high (86%–98% AI, High Risk)
     const candidate = Math.max(
       raw.aiScore,
-      classifierAi > 0 ? Math.round(classifierAi * 1.15 + 10) : 0,
+      pureClassifierAi > 0 ? Math.round(pureClassifierAi * 1.15 + 10) : 0,
       Math.round(baseAi * 1.5 + mixedSignal * 0.9 + 20)
     );
     strictAi = hasHumanizationEvasionEvidence
