@@ -101,11 +101,12 @@ export async function runAggressiveDetector(
       baseAi <= 20 &&
       balanced.human >= 75 &&
       humanization?.detected &&
-      humanization.confidence >= 20 &&
+      // A low-confidence paraphrasing/coherence hint is common in ordinary
+      // human editing. Do not treat it as near-certain AI authorship.
+      humanization.confidence >= 65 &&
       weakGroundedAuthorship &&
-      (humanEditedAi >= 5 ||
-        (statistical?.editingSignalScore ?? 0) >= 0.15 ||
-        (linguistic?.contextualCoherence ?? 1) < 0.08)
+      humanEditedAi >= 25 &&
+      (statistical?.editingSignalScore ?? 0) >= 0.15
   );
 
   // Sentence-level AI verification
