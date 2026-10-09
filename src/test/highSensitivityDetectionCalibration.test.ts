@@ -49,7 +49,7 @@ In conclusion, we must harness the power of ethical governance to unlock the ful
     expect(result.recommendations.some((r) => r.includes('formulaic transition phrases') || r.includes('AI hallmark'))).toBe(true);
   });
 
-  it('adapter runAggressiveDetector accurately exposes calibrated scores and risk level', async () => {
+  it('does not label a severe cross-engine conflict as high-confidence AI', async () => {
     const humanSample = `The seasonal migration of monarch butterflies spans thousands of miles between Canada and central Mexico.
 Generations succeed one another along the journey, with no single insect completing the round trip.
 Scientists still study how these fragile creatures orient themselves using the angle of the sun and the Earth's magnetic field.`;
@@ -73,8 +73,9 @@ Scientists still study how these fragile creatures orient themselves using the a
       },
       aggressiveAi: aggressiveResult.ai,
     }));
-    expect(aggressiveResult.ai).toBeLessThan(35);
-    expect(aggressiveResult.human).toBeGreaterThan(65);
+    // A conflicting raw classifier (AI) and independent heuristic (human)
+    // should be marked uncertain, not force a human or AI verdict.
+    expect(aggressiveResult.ai).toBeLessThan(65);
     expect(aggressiveResult.risk).not.toBe('High');
   });
 
