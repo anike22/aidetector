@@ -226,6 +226,19 @@ export async function runAggressiveDetector(
   if (balancedResult && !isVerifiedHuman) {
     strictAi = Math.max(strictAi, baseAi);
   }
+  // A low-confidence disagreement between the heuristic and ensemble is
+  // uncertainty, not evidence of near-certain AI authorship. Preserve a
+  // moderate, review-needed score rather than amplifying a disputed verdict.
+  const hasSevereCrossEngineConflict =
+    Boolean(balanced) &&
+    raw.aiScore <= 25 &&
+    baseAi >= 45 &&
+    pureClassifierAi >= 55 &&
+    confidence <= 50 &&
+    (humanization?.confidence ?? 0) < 35;
+  if (hasSevereCrossEngineConflict) {
+    strictAi = Math.min(strictAi, 64);
+  }
   strictAi = Math.min(98, Math.max(4, strictAi));
 
   const finalHumanScore = 100 - strictAi;
