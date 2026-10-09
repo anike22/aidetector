@@ -8,6 +8,10 @@ const HIGH_AI_TEXT = `Artificial intelligence has revolutionized the way busines
 
 const HIGH_HUMAN_TEXT = `I wrote this last night at my kitchen table while my cat knocked pens off the desk. The prompt asked us to reflect on a childhood memory, and I picked the afternoon my grandmother taught me to make dumplings.\n\nIt was hot, the kitchen smelled like scallions, and I kept complaining that the wrappers were sticking to my fingers. She didn't say much, just dusted more flour on the board and handed me another one. I tore three before she stopped me. "Gentle," she said. "The dough is listening."\n\nThat phrase stuck with me because I rush everything—emails, conversations, even meals. My brother says I eat like someone is going to steal my plate. I trimmed the opening twice because I kept starting with "I remember" and it sounded too generic. Anyway, that's the story. Not perfect, but it's mine.`;
 
+// Generated with a natural narrative prompt. It deliberately avoids the
+// boilerplate and uniformity found in older benchmark samples.
+const NATURAL_STYLE_AI_TEXT = `The meeting went sideways before anyone noticed. Maya had built a tidy slide deck, but the first question from finance exposed the problem: nobody could explain where the savings figure came from. For ten uncomfortable minutes, the team searched old spreadsheets and half-finished notes. Then Luis found it—a formula that counted the same vendor credit twice. The mistake was embarrassing, though useful. They postponed the launch, rebuilt the forecast, and added a review step that should have existed months earlier. By Friday, the numbers were smaller, clearer, and finally believable.`;
+
 const FORMAL_HUMAN_TEXT = `The proliferation of artificial intelligence in contemporary legal practice presents both opportunities and challenges for attorneys and their clients. This article examines the ethical implications of deploying predictive algorithms in criminal sentencing and bail determinations. Drawing on the doctrinal frameworks of due process and equal protection, it argues that opaque risk-assessment tools may perpetuate historical biases while simultaneously offering efficiencies that the adversarial system cannot easily replicate.\n\nThe analysis proceeds in three parts. First, it surveys the landscape of algorithmic decision-making tools currently used by state and federal courts. Second, it evaluates the dominant critiques in the scholarly literature, including concerns about accuracy, transparency, and accountability. Third, it proposes a limited framework for audibility and contestability that balances institutional competence with individual rights.\n\nThe conclusion suggests that regulation should focus on process rather than outcomes, ensuring that defendants have meaningful opportunities to challenge the inputs and assumptions underlying automated recommendations. Such an approach preserves the dignity interests central to procedural fairness without requiring courts to abandon useful analytical tools.`;
 
 const SPANISH_TEXT = `La inteligencia artificial ha transformado profundamente la manera en que las empresas operan en la era moderna. La implementación de algoritmos de aprendizaje automático permite a las compañías procesar grandes cantidades de datos con una eficiencia sin precedentes. Las organizaciones de diversas industrias aprovechan herramientas impulsadas por la inteligencia artificial para automatizar tareas rutinarias, mejorar la toma de decisiones y mejorar la experiencia de los clientes. A medida que la tecnología continúa evolucionando, las empresas deben adaptar sus estrategias para mantenerse competitivas en un panorama digital cada vez más complejo. En conclusión, el impacto transformador de la inteligencia artificial en las operaciones empresariales modernas es innegable, y las organizaciones que adoptan estas innovaciones probablemente lograrán ventajas significativas en los próximos años.`;
@@ -40,6 +44,24 @@ Deno.test('English informal human text returns human-side verdict', async () => 
   assertEquals(r.language.primary?.code, 'en');
   assertNotEquals(r.overall.verdict, 'likely-ai');
   assertNotEquals(r.overall.verdict, 'mostly-ai-human-edited');
+});
+
+Deno.test('Natural-style AI is not reported as high-confidence human', async () => {
+  const r = await analyzeAdvancedText(NATURAL_STYLE_AI_TEXT, {});
+  assertNotEquals(r.overall.verdict, 'likely-human');
+  assertNotEquals(r.overall.verdict, 'mostly-human-ai-assisted');
+  assertEquals(r.overall.verdict, 'inconclusive');
+  if (r.overall.confidence > 50) {
+    throw new Error(`Expected low/medium confidence for out-of-distribution prose, got ${r.overall.confidence}`);
+  }
+});
+
+Deno.test('Personal human prose produces direct personal-voice evidence', async () => {
+  const r = await analyzeAdvancedText(HIGH_HUMAN_TEXT, {});
+  if (r.linguisticProfile.personalVoiceScore < 0.08) {
+    throw new Error(`Expected personal voice >= 0.08, got ${r.linguisticProfile.personalVoiceScore}`);
+  }
+  assertEquals(r.overall.verdict, 'likely-human');
 });
 
 Deno.test('English formal text does not imply human editing without evidence', async () => {
