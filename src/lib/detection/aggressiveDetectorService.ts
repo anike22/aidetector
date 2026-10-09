@@ -159,7 +159,10 @@ export async function runAggressiveDetector(
   const isStrictAi =
     !isVerifiedHuman &&
     (hasHumanizationEvasionEvidence ||
-      raw.aiScore >= 65 ||
+      // A heuristic score by itself is insufficient to declare high-risk AI:
+      // the screenshots show that natural human text can trip those rules.
+      (raw.aiScore >= 65 &&
+        (pureClassifierAi >= 35 || (baseAi >= 45 && confidence >= 60))) ||
       (isHighConfidence &&
         (pureClassifierAi >= 35 ||
           baseAi >= 35 ||
