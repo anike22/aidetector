@@ -138,7 +138,7 @@ Scientists still study how these fragile creatures orient themselves using the a
     expect(result.human).toBeLessThanOrEqual(15);
   });
 
-  it('classifies humanized AI as high-risk AI when evasion evidence conflicts with a human-leaning classifier', async () => {
+  it('does not inflate low-confidence paraphrase evidence into near-certain AI', async () => {
     const humanizedAi = `AI is basically reshaping how companies operate these days. Like, they can process huge amounts of data in no time. But honestly, the wildest part is the natural language side — it can crank out articles that actually sound like a person wrote them. Some businesses are saving serious money and moving a lot faster. Anyway, long story short, it's a big deal for pretty much every industry.`;
     const balancedHumanized: any = {
       ai: 9,
@@ -160,13 +160,11 @@ Scientists still study how these fragile creatures orient themselves using the a
 
     const result = await runAggressiveDetector(humanizedAi, balancedHumanized);
 
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.human).toBeLessThanOrEqual(10);
-    expect(result.risk).toBe('High');
-    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(true);
+    expect(result.ai).toBeLessThan(90);
+    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(false);
   });
 
-  it('classifies natural-sounding AI as high risk when editing and weak-authorship signals agree', async () => {
+  it('does not mark natural-sounding prose near-certain AI based only on weak coherence and editing signals', async () => {
     const naturalAi = `The city library stays open late on Thursdays, which has quietly changed how people use the building. Parents arrive after work, students spread notebooks across the upstairs tables, and retirees join the weekly history discussion. The change seemed minor when it was announced, but attendance has climbed steadily. Staff members now say Thursday is their busiest evening, even though Saturday still brings more children through the doors.`;
     const balancedNaturalAi: any = {
       ai: 12,
@@ -187,8 +185,7 @@ Scientists still study how these fragile creatures orient themselves using the a
     };
 
     const result = await runAggressiveDetector(naturalAi, balancedNaturalAi);
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.risk).toBe('High');
+    expect(result.ai).toBeLessThan(90);
   });
 
   it('does not turn a low-confidence formal-human conflict into high-risk AI', async () => {
