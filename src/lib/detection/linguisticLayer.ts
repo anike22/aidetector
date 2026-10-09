@@ -435,6 +435,14 @@ function personalVoiceScore(text: string, sentences: string[]): number {
   }
   score = Math.min(0.5, score);
 
+  // General first-person voice. The previous implementation only recognised a
+  // small set of phrases (for example, "I found"), so ordinary personal prose
+  // such as "I wrote this last night" incorrectly received a score of zero.
+  // Count first-person pronouns conservatively and cap the contribution so an
+  // AI prompt written in first person cannot dominate the authorship decision.
+  const firstPersonMatches = text.match(/\b(?:I|me|my|mine|myself|we|us|our|ours|ourselves)\b/gi) || [];
+  score += Math.min(0.24, (firstPersonMatches.length / Math.max(1, totalSents)) * 0.06);
+
   // Contradictions and counterarguments: strong human critical-thinking signal
   const counterArgPatterns = [
     /however,?\s+(?:this|these|the|our|my)/i,
