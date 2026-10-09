@@ -124,7 +124,7 @@ Deno.test('Mixed = 0 with absent humanization does not claim human editing', asy
   assert(r.overall.mixedProbability < 10, `Expected mixed ≈ 0, got ${r.overall.mixedProbability}`);
   if (r.overall.verdict === 'mostly-ai-human-edited') {
     assert(r.humanization?.detected === true, 'Human-edited verdict with mixed=0 requires humanization evidence');
-    assert((r.humanization?.confidence ?? 0) >= 0.35, 'Humanization confidence below evidence gate');
+    assert((r.humanization?.confidence ?? 0) >= 35, 'Humanization confidence below evidence gate');
   }
 });
 
