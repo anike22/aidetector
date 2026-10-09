@@ -216,6 +216,32 @@ Scientists still study how these fragile creatures orient themselves using the a
     expect(result.risk).toBe('Low');
   });
 
+  it('does not convert a mostly-human assisted result into near-certain AI', async () => {
+    const humanText = `I drafted the introduction on Tuesday after reviewing my interview notes. The first version sounded stiff, so I moved the personal example to the opening and cut two paragraphs that repeated the same point. My editor suggested a shorter conclusion, but the observations and wording are mine.`;
+    const balancedHuman: any = {
+      ai: 26,
+      human: 62,
+      mixed: 12,
+      verdict: 'mostly-human-ai-assisted',
+      risk: 'Medium',
+      confidence: 54,
+      confidenceLevel: 'Medium',
+      language: 'English',
+      full: {
+        metadata: { classProbabilities: { human: 0.62, ai: 0.08, 'human-edited-ai': 0.26, mixed: 0.04 } },
+        humanization: { detected: false, confidence: 0, signals: [], explanation: 'No strong humanization signal.' },
+        linguisticProfile: { specificityScore: 0.12, personalVoiceScore: 0.22, contextualCoherence: 0.14 },
+        statisticalProfile: { editingSignalScore: 0.08 },
+        sentences: [],
+      },
+    };
+
+    const result = await runAggressiveDetector(humanText, balancedHuman);
+    expect(result.ai).toBeLessThan(35);
+    expect(result.human).toBeGreaterThan(65);
+    expect(result.risk).toBe('Low');
+  });
+
   it('correctly flags modern AI text with connectors without dropping to floor 4%', () => {
     const modernAiText = `Artificial intelligence has seen rapid advancements in recent years, transforming various industries across the globe.
 From healthcare to finance, organizations are adopting machine learning systems to optimize workflows and enhance decision-making capabilities.
