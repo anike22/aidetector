@@ -30,8 +30,18 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::error::Missing public Supabase build configuration. Set repository variable VITE_SUPABASE_URL and Actions secret VITE_SUPABASE_ANON_KEY (publishable/anon key only, never service_role)."
-            exit 1
+          missing=0
+          if [ -z "$VITE_SUPABASE_URL" ]; then
+            echo "::error::MISSING repository variable VITE_SUPABASE_URL (Actions > Variables)."
+            missing=1
+          else
+            echo "Repository variable VITE_SUPABASE_URL is present."
           fi
+          if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::MISSING repository secret VITE_SUPABASE_ANON_KEY (Actions > Secrets)."
+            missing=1
+          else
+            echo "Repository secret VITE_SUPABASE_ANON_KEY is present."
+          fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
           npm run build:production
