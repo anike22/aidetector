@@ -372,9 +372,12 @@ export function runEnsemble(
     ] as number[];
     const elevatedAiSignalCount = independentAiSignals.reduce((a, b) => a + b, 0);
     if (elevatedAiSignalCount < 3) {
-      aiScore *= 0.65; // strong attenuation: almost no independent AI signals
+      // Absence of stereotypical AI markers is not affirmative human evidence.
+      // Modern generators can avoid boilerplate and repetition, so retain most
+      // of the underlying score instead of discarding 35% of it.
+      aiScore *= 0.80;
     } else if (elevatedAiSignalCount < 5) {
-      aiScore *= 0.82; // moderate attenuation: only 3-4 independent signals
+      aiScore *= 0.90;
     }
 
     if (humanization.detected && humanization.confidence >= 35) {
