@@ -29,7 +29,7 @@ describe('Balanced detector discrimination diagnostic', () => {
         )) / 10,
         chunkCount: classifier.chunkScores.length,
         chunkBinaryAi: classifier.chunkScores.map(chunk => chunk.aiProbability),
-        wordCount: sample.text.trim().split(/\\s+/).length,
+        wordCount: sample.text.trim().split(/\s+/).length,
         calibratedAi: full.overall.aiProbability,
         calibratedHuman: full.overall.humanProbability,
         mixed: full.overall.mixedProbability,
