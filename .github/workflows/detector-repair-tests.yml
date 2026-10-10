@@ -1,0 +1,47 @@
+name: Detector Repair Regression Tests
+
+on:
+  push:
+    branches:
+      - repair/detector-separation-audit-2026-10-09
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detector-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run detector regression and diagnostic tests
+        run: npx vitest run src/test/detectorScreenshotSeparationRegression.test.ts src/test/balancedDetectorDiscriminationDiagnostic.test.ts src/test/highSensitivityDetectionCalibration.test.ts --reporter=verbose
+      - name: Verify Vercel production build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          if [ -z "$VITE_SUPABASE_URL" ]; then
+            echo "::error::MISSING repository variable VITE_SUPABASE_URL (Actions > Variables)."
+            missing=1
+          else
+            echo "Repository variable VITE_SUPABASE_URL is present."
+          fi
+          if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::MISSING repository secret VITE_SUPABASE_ANON_KEY (Actions > Secrets)."
+            missing=1
+          else
+            echo "Repository secret VITE_SUPABASE_ANON_KEY is present."
+          fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
+          npm run build:production

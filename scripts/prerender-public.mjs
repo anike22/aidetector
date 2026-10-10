@@ -49,16 +49,29 @@ try {
     let context;
     let page;
     let lastError;
+    let browserErrors = [];
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         context = await createPrerenderContext();
         page = await context.newPage();
+        browserErrors = [];
+        page.on('pageerror', error => browserErrors.push(String(error).slice(0, 600)));
+        page.on('console', message => {
+          if (message.type() === 'error') browserErrors.push(message.text().slice(0, 600));
+        });
         // Commit confirms the local route responded; the H1/content checks below prove the app rendered.
         await page.goto(origin + pathname, {waitUntil:'commit',timeout:45000});
         await page.waitForSelector('h1', {timeout:20000});
         lastError = null;
         break;
       } catch (error) {
+        const bodyPreview = await page?.locator('body').innerText({timeout:1500}).catch(() => '') || '';
+        const title = await page?.title().catch(() => '') || '';
+        console.error('[prerender-debug]', JSON.stringify({
+          path: pathname, attempt, error: String(error),
+          url: page?.url(), title, bodyPreview: bodyPreview.slice(0, 450),
+          browserErrors: browserErrors.slice(0, 8),
+        }));
         lastError = error;
         await context?.close().catch(() => {});
         context = null;

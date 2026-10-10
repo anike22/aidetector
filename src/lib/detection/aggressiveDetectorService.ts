@@ -101,11 +101,12 @@ export async function runAggressiveDetector(
       baseAi <= 20 &&
       balanced.human >= 75 &&
       humanization?.detected &&
-      humanization.confidence >= 20 &&
+      // A low-confidence paraphrasing/coherence hint is common in ordinary
+      // human editing. Do not treat it as near-certain AI authorship.
+      humanization.confidence >= 65 &&
       weakGroundedAuthorship &&
-      (humanEditedAi >= 5 ||
-        (statistical?.editingSignalScore ?? 0) >= 0.15 ||
-        (linguistic?.contextualCoherence ?? 1) < 0.08)
+      humanEditedAi >= 25 &&
+      (statistical?.editingSignalScore ?? 0) >= 0.15
   );
 
   // Sentence-level AI verification
@@ -158,7 +159,10 @@ export async function runAggressiveDetector(
   const isStrictAi =
     !isVerifiedHuman &&
     (hasHumanizationEvasionEvidence ||
-      raw.aiScore >= 65 ||
+      // A heuristic score by itself is insufficient to declare high-risk AI:
+      // the screenshots show that natural human text can trip those rules.
+      (raw.aiScore >= 65 &&
+        (pureClassifierAi >= 35 || (baseAi >= 45 && confidence >= 60))) ||
       (isHighConfidence &&
         (pureClassifierAi >= 35 ||
           baseAi >= 35 ||
@@ -221,6 +225,19 @@ export async function runAggressiveDetector(
   // confidence and the independent heuristic supports genuine human prose.
   if (balancedResult && !isVerifiedHuman) {
     strictAi = Math.max(strictAi, baseAi);
+  }
+  // A low-confidence disagreement between the heuristic and ensemble is
+  // uncertainty, not evidence of near-certain AI authorship. Preserve a
+  // moderate, review-needed score rather than amplifying a disputed verdict.
+  const hasSevereCrossEngineConflict =
+    Boolean(balanced) &&
+    raw.aiScore <= 25 &&
+    baseAi >= 45 &&
+    pureClassifierAi >= 55 &&
+    confidence <= 50 &&
+    (humanization?.confidence ?? 0) < 35;
+  if (hasSevereCrossEngineConflict) {
+    strictAi = Math.min(strictAi, 64);
   }
   strictAi = Math.min(98, Math.max(4, strictAi));
 

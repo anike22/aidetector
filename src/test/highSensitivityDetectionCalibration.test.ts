@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAIRisk } from '@/pages/seo-assistant/analysisEngine';
 import { runAggressiveDetector } from '@/lib/detection/aggressiveDetectorService';
+import { analyzeAdvancedText } from '@/lib/detection/engine';
 
 describe('High-Sensitivity Analysis — Strict: Calibration & False Positive Elimination', () => {
   it('correctly classifies third-person human article as human text (no false 72% AI score)', () => {
@@ -48,15 +49,33 @@ In conclusion, we must harness the power of ethical governance to unlock the ful
     expect(result.recommendations.some((r) => r.includes('formulaic transition phrases') || r.includes('AI hallmark'))).toBe(true);
   });
 
-  it('adapter runAggressiveDetector accurately exposes calibrated scores and risk level', async () => {
+  it('does not label a severe cross-engine conflict as high-confidence AI', async () => {
     const humanSample = `The seasonal migration of monarch butterflies spans thousands of miles between Canada and central Mexico.
 Generations succeed one another along the journey, with no single insect completing the round trip.
 Scientists still study how these fragile creatures orient themselves using the angle of the sun and the Earth's magnetic field.`;
 
+    const [advanced, heuristic] = await Promise.all([
+      analyzeAdvancedText(humanSample),
+      Promise.resolve(analyzeAIRisk(humanSample)),
+    ]);
     const aggressiveResult = await runAggressiveDetector(humanSample);
-
-    expect(aggressiveResult.ai).toBeLessThan(35);
-    expect(aggressiveResult.human).toBeGreaterThan(65);
+    console.info('[strict-false-positive-diagnostic]', JSON.stringify({
+      heuristicAi: heuristic.aiScore,
+      baseAi: advanced.overall.aiProbability,
+      baseHuman: advanced.overall.humanProbability,
+      baseVerdict: advanced.overall.verdict,
+      confidence: advanced.overall.confidence,
+      classProbabilities: advanced.metadata.classProbabilities,
+      humanization: advanced.humanization,
+      profile: {
+        specificity: advanced.linguisticProfile.specificityScore,
+        personalVoice: advanced.linguisticProfile.personalVoiceScore,
+      },
+      aggressiveAi: aggressiveResult.ai,
+    }));
+    // A conflicting raw classifier (AI) and independent heuristic (human)
+    // should be marked uncertain, not force a human or AI verdict.
+    expect(aggressiveResult.ai).toBeLessThan(65);
     expect(aggressiveResult.risk).not.toBe('High');
   });
 
@@ -138,7 +157,7 @@ Scientists still study how these fragile creatures orient themselves using the a
     expect(result.human).toBeLessThanOrEqual(15);
   });
 
-  it('classifies humanized AI as high-risk AI when evasion evidence conflicts with a human-leaning classifier', async () => {
+  it('does not inflate low-confidence paraphrase evidence into near-certain AI', async () => {
     const humanizedAi = `AI is basically reshaping how companies operate these days. Like, they can process huge amounts of data in no time. But honestly, the wildest part is the natural language side — it can crank out articles that actually sound like a person wrote them. Some businesses are saving serious money and moving a lot faster. Anyway, long story short, it's a big deal for pretty much every industry.`;
     const balancedHumanized: any = {
       ai: 9,
@@ -160,13 +179,11 @@ Scientists still study how these fragile creatures orient themselves using the a
 
     const result = await runAggressiveDetector(humanizedAi, balancedHumanized);
 
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.human).toBeLessThanOrEqual(10);
-    expect(result.risk).toBe('High');
-    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(true);
+    expect(result.ai).toBeLessThan(90);
+    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(false);
   });
 
-  it('classifies natural-sounding AI as high risk when editing and weak-authorship signals agree', async () => {
+  it('does not mark natural-sounding prose near-certain AI based only on weak coherence and editing signals', async () => {
     const naturalAi = `The city library stays open late on Thursdays, which has quietly changed how people use the building. Parents arrive after work, students spread notebooks across the upstairs tables, and retirees join the weekly history discussion. The change seemed minor when it was announced, but attendance has climbed steadily. Staff members now say Thursday is their busiest evening, even though Saturday still brings more children through the doors.`;
     const balancedNaturalAi: any = {
       ai: 12,
@@ -187,8 +204,7 @@ Scientists still study how these fragile creatures orient themselves using the a
     };
 
     const result = await runAggressiveDetector(naturalAi, balancedNaturalAi);
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.risk).toBe('High');
+    expect(result.ai).toBeLessThan(90);
   });
 
   it('does not turn a low-confidence formal-human conflict into high-risk AI', async () => {
