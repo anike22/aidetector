@@ -168,3 +168,29 @@ describe('Paragraph score unit regression', () => {
     expect(buildHighlights(sentences, [paragraph]).some(h => h.verdict === 'likely-human')).toBe(true);
   });
 });
+
+describe('Classifier topic sensitivity audit (diagnostic; not a verified benchmark)', () => {
+  it('reports topic-word dependence and independent score changes without changing predictions', async () => {
+    const topical = `ClearScop is an SEO tool for researching, writing, optimizing and monitoring. It is an AI powered workflow for content creation and visibility. Just like the name sound, clearScop gives clear SEO direction for bloggers and agencies. When it comes to multilayered architecture, ClearScop is a tested business growth hube. Its best for bloggers who wish to optimize for chatGPT, google AI overviews, and other AI srarch. More so, the platform focused on AEO and SEO content strategies, it builds scalable growth engines for consumer.`;
+    // This is a topic perturbation probe, NOT confirmed authorship evidence.
+    const neutral = topical
+      .replace(/SEO/g, 'editing')
+      .replace(/AI/g, 'digital')
+      .replace(/chatGPT/g, 'readers')
+      .replace(/google/g, 'public')
+      .replace(/AEO/g, 'quality')
+      .replace(/srarch/g, 'reading');
+    const topicalClassifier = await classifyWithClassifier(topical, 'en');
+    const neutralClassifier = await classifyWithClassifier(neutral, 'en');
+    const topicalResult = await analyzeAdvancedText(topical);
+    const neutralResult = await analyzeAdvancedText(neutral);
+    console.info('[topic-sensitivity-audit]', JSON.stringify({
+      topical: { binaryAi: topicalClassifier.aiProbability, calibratedAi: topicalResult.overall.aiProbability, verdict: topicalResult.overall.verdict },
+      neutral: { binaryAi: neutralClassifier.aiProbability, calibratedAi: neutralResult.overall.aiProbability, verdict: neutralResult.overall.verdict },
+      binaryDelta: topicalClassifier.aiProbability - neutralClassifier.aiProbability,
+      calibratedDelta: topicalResult.overall.aiProbability - neutralResult.overall.aiProbability,
+    }));
+    expect(topicalClassifier.available).toBe(true);
+    expect(neutralClassifier.available).toBe(true);
+  });
+});
