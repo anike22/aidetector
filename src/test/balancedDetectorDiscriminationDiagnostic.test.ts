@@ -26,7 +26,9 @@ describe('Balanced detector discrimination diagnostic', () => {
       if (sample.name === 'clearscop-user-reported-human') {
         const { runAggressiveDetector } = await import('@/lib/detection/aggressiveDetectorService');
         const strict = await runAggressiveDetector(sample.text);
-        console.info('[user-human-case-strict]', JSON.stringify({ strictAi: strict.ai, strictRisk: strict.risk, warnings: full.warnings, sentences: full.sentences.map(s => ({verdict:s.verdict, ai:s.aiProbability, human:s.humanProbability})) }));
+        const { analyzeAIRisk } = await import('@/pages/seo-assistant/analysisEngine');
+        const raw = analyzeAIRisk(sample.text);
+        console.info('[user-human-case-strict]', JSON.stringify({ strictAi: strict.ai, strictRisk: strict.risk, heuristicAi: raw.aiScore, balancedAi: full.overall.aiProbability, balancedConfidence: full.overall.confidence, humanization: full.humanization, warnings: full.warnings, sentences: full.sentences.map(s => ({verdict:s.verdict, ai:s.aiProbability, human:s.humanProbability})) }));
         // When all local evidence is inconclusive, the strict screen should
         // report review-needed uncertainty, never near-certain AI authorship.
         if (full.sentences.length >= 3 && full.sentences.every(s => s.verdict === 'inconclusive')) {
