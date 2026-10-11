@@ -46,8 +46,19 @@ describe('Balanced detector discrimination diagnostic', () => {
         mixed: full.overall.mixedProbability,
         verdict: full.overall.verdict,
         confidence: full.overall.confidence,
+        localVerdicts: full.sentences.map(s => s.verdict),
+        highlights: full.highlights.map(h => ({verdict:h.verdict, confidence:h.confidence})),
+        warnings: full.warnings,
         detectorVersion: full.metadata.detectorVersion,
       }));
+      if (sample.name === 'clearscop-user-reported-human') {
+        // Regression for an actual UI contradiction: AI-leaning local sentences
+        // used to be assembled into a green "Likely Human" highlight.
+        const aiSentences = full.sentences.filter(s => s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited');
+        if (aiSentences.length === full.sentences.length) {
+          expect(full.highlights.some(h => h.verdict === 'likely-human')).toBe(false);
+        }
+      }
       expect(classifier.available).toBe(true);
       expect(full.overall.aiProbability).toBeGreaterThanOrEqual(0);
       expect(full.overall.aiProbability).toBeLessThanOrEqual(100);
