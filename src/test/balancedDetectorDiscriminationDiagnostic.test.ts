@@ -26,7 +26,7 @@ describe('Balanced detector discrimination diagnostic', () => {
       if (sample.name === 'clearscop-user-reported-human') {
         const { runAggressiveDetector } = await import('@/lib/detection/aggressiveDetectorService');
         const strict = await runAggressiveDetector(sample.text);
-        console.info('[user-human-case-strict]', JSON.stringify({ strictAi: strict.ai, strictRisk: strict.risk }));
+        console.info('[user-human-case-strict]', JSON.stringify({ strictAi: strict.ai, strictRisk: strict.risk, warnings: full.warnings, sentences: full.sentences.map(s => ({verdict:s.verdict, ai:s.aiProbability, human:s.humanProbability})) }));
       }
       console.info('[detector-diagnostic]', JSON.stringify({
         sample: sample.name,
