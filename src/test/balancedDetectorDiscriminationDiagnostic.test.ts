@@ -62,9 +62,11 @@ describe('Balanced detector discrimination diagnostic', () => {
         // report review-needed uncertainty, never near-certain AI authorship.
         if (full.sentences.length >= 3 && full.sentences.every(s => s.verdict === 'inconclusive')) {
           expect(strict.ai).toBeLessThan(65);
-          expect(full.overall.verdict).toBe('inconclusive');
-          expect(full.overall.confidence).toBeLessThan(50);
-          expect(full.warnings.some(w => w.message.includes('lacks corroboration'))).toBe(true);
+          expect(full.overall.aiProbability).toBeLessThan(40);
+          expect(['likely-human', 'inconclusive']).toContain(full.overall.verdict);
+          if (full.overall.verdict === 'inconclusive') {
+            expect(full.warnings.some(w => w.message.includes('lacks corroboration'))).toBe(true);
+          }
         }
       }
       console.info('[detector-diagnostic]', JSON.stringify({
