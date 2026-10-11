@@ -13,6 +13,10 @@ describe('Balanced detector discrimination diagnostic', () => {
       { name: 'human-draft', text: humanDraft },
       { name: 'natural-ai-style', text: naturalAiCandidate },
       { name: 'formulaic-ai-style', text: formulaicAiCandidate },
+      // Length sensitivity: these are stress probes, not verified authorship labels.
+      { name: 'natural-ai-style-repeated-context', text: [naturalAiCandidate, naturalAiCandidate, naturalAiCandidate, naturalAiCandidate].join('\\n\\n') },
+      { name: 'human-draft-repeated-context', text: [humanDraft, humanDraft, humanDraft, humanDraft].join('\\n\\n') },
+      { name: 'formulaic-ai-style-repeated-context', text: [formulaicAiCandidate, formulaicAiCandidate, formulaicAiCandidate, formulaicAiCandidate].join('\\n\\n') },
     ];
     for (const sample of samples) {
       const classifier = await classifyWithClassifier(sample.text, 'en');
