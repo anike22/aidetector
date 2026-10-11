@@ -491,7 +491,7 @@ function buildParagraphVerdicts(
   });
 }
 
-function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: ParagraphVerdict[], minRun = 2): PassageHighlight[] {
+export function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: ParagraphVerdict[], minRun = 2): PassageHighlight[] {
   const highlights: PassageHighlight[] = [];
   // Strong human passages are as useful as AI passages. Group consecutive
   // *supported* local verdicts; never infer authorship from low absolute scores.
