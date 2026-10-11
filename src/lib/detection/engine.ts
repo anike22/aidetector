@@ -963,11 +963,27 @@ export async function analyzeAdvancedText(
   );
   const riskLevelVal = riskLevel(verdict, adjusted.ai);
 
+  // Independent local evidence may contradict a high document AI score.
+  // Do not relabel or manipulate the displayed probability: flag the disagreement
+  // and lower confidence until a held-out calibration set can resolve it.
+  const localHumanCount = sentenceVerdicts.filter(s =>
+    s.verdict === 'likely-human' || s.verdict === 'mostly-human-ai-assisted'
+  ).length;
+  const localAiCount = sentenceVerdicts.filter(s =>
+    s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited'
+  ).length;
+  const strongLocalHumanConflict =
+    sentenceVerdicts.length >= 3 &&
+    adjusted.ai >= 60 &&
+    localHumanCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
+    localAiCount <= Math.floor(sentenceVerdicts.length * 0.2) &&
+    !ensemble.humanization.detected;
+
   // Apply uncertainty penalty to confidence: high epistemic uncertainty (short
   // text, feature disagreement, boundary ambiguity) reduces displayed confidence
   // without affecting Mixed probability. Max penalty is 12 points at uncertainty=100.
   const uncertaintyPenalty = Math.round(uncertaintyScore * 0.12);
-  const evidencePenalty = weakHumanAuthorshipEvidence ? 25 : 0;
+  const evidencePenalty = (weakHumanAuthorshipEvidence ? 25 : 0) + (strongLocalHumanConflict ? 20 : 0);
   const calibratedConfidence = Math.max(0, ensemble.scores.confidence - uncertaintyPenalty - evidencePenalty);
   const confidenceLevelVal = confidenceLevel(calibratedConfidence);
 
@@ -1013,6 +1029,13 @@ export async function analyzeAdvancedText(
     ...languageResult.warnings,
     ...statisticalResult.warnings,
   ];
+  if (strongLocalHumanConflict) {
+    warnings.push({
+      type: 'low-context',
+      severity: 'warning',
+      message: 'Document-level AI classification conflicts with mostly human-leaning sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.',
+    });
+  }
   if (wordCount < 40) {
     if (!warnings.some((w) => w.type === 'short-text')) {
       warnings.push({
