@@ -12,6 +12,10 @@ export interface StyleEvidence {
   personalExperienceDensity: number;
   namedConcreteExampleDensity: number;
   uniformity: number;
+  sectionTemplateRepetition: number;
+  paragraphSimilarity: number;
+  originalEvidenceDensity: number;
+  toneConsistency: number;
   score: number;
   supportingCues: string[];
 }
@@ -20,6 +24,14 @@ const advice = /\b(?:before|consider|check|calculate|compare|research|estimate|a
 const firsthand = /\b(?:i |we |my |our |i've |i.ve |i tested|we tested|my experience|i wrote|i noticed|we found)\b/gi;
 const concrete = /(?:\$\s?\d|\b\d+(?:[.,]\d+)?\s?(?:TH\/s|kWh|watts|months|days|years|%|BTC)\b|https?:\/\/|\b(?:ASIC|SHA-256|Google|Semrush|Surfer|MiningLegit)\b)/gi;
 const matches=(s:string,re:RegExp)=>[...s.matchAll(re)].length;
+const evidence = /\\b(?:according to (?:our|my) (?:research|test|data)|in (?:our|my) (?:tests?|experiments?|measurements?)|we (?:measured|observed|recorded|interviewed)|i (?:measured|observed|recorded|interviewed)|our (?:dataset|survey|results)|i (?:personally|tested)|we (?:personally|tested))\\b/gi;
+const stop = new Set(['this','that','with','from','there','these','their','they','have','will','which','when','your','what','about','just','then','more','also','into','than','only','does','must','should','could','would','were','been','because','while','them','those','much','some','very','each','over','under']);
+const wordsOf=(s:string)=>new Set((s.toLowerCase().match(/[a-z]{4,}/g)||[]).filter(w=>!stop.has(w)));
+const jaccard=(a:Set<string>,b:Set<string>)=>{
+  let intersection=0;for(const w of a)if(b.has(w))intersection++;
+  return intersection/Math.max(1,a.size+b.size-intersection);
+};
+const cap=(x:number)=>Math.max(0,Math.min(1,x));
 export function analyzeDocumentStyle(text:string):StyleEvidence {
   const sections=text.split(/^#{1,3}\s+.+$/m).map(s=>s.trim()).filter(s=>s.split(/\s+/).length>=35);
   const paragraphs=text.split(/\n\s*\n/).map(s=>s.trim()).filter(s=>s.length>35&&!s.startsWith('#'));
@@ -40,15 +52,37 @@ export function analyzeDocumentStyle(text:string):StyleEvidence {
   const avg=sectionLengths.reduce((a,b)=>a+b,0)/Math.max(1,sectionLengths.length);
   const cv=sectionLengths.length<5?1:Math.sqrt(sectionLengths.reduce((sum,n)=>sum+(n-avg)**2,0)/sectionLengths.length)/Math.max(1,avg);
   const uniformity=Math.max(0,1-cv);
+  // Overlap across nearby content paragraphs can reveal recycled explanations.
+  // Use content words rather than headings or generic SEO keywords alone.
+  const paragraphSets=paragraphs.filter(p=>p.split(/\\s+/).length>=25).map(wordsOf);
+  const similarities=paragraphSets.slice(1).map((set,i)=>jaccard(set,paragraphSets[i]));
+  const paragraphSimilarity=similarities.length?similarities.reduce((a,b)=>a+b,0)/similarities.length:0;
+  const originalEvidenceDensity=1000*matches(text,evidence)/words;
+  const templates=sectionSignals.map(s=>s.caution>0&&s.advice>0?'caution-and-advice':s.advice>0?'advice':s.caution>0?'caution':'descriptive');
+  const templateCount=templates.filter(t=>t==='caution-and-advice').length;
+  const sectionTemplateRepetition=templates.length>=5?templateCount/templates.length:0;
+  const toneMarkers=paragraphs.map(p=>({
+    personal:matches(p,firsthand)>0,
+    caution:matches(p,caution)>0,
+    imperative:matches(p,advice)>0,
+  }));
+  const toneDominant=toneMarkers.length
+    ?Math.max(...['personal','caution','imperative'].map(k=>toneMarkers.filter(p=>p[k as keyof typeof p]).length))/toneMarkers.length
+    :0;
+  const toneConsistency=cap(toneDominant);
   const supportingCues:string[]=[];
   if(words>=600&&formulaicSectionRatio>=0.45) supportingCues.push('recurring explanatory-and-caution section pattern');
   if(words>=600&&cautionDensity>=4) supportingCues.push('frequent repeated qualification language');
   if(words>=600&&repeatedAdviceRatio>=0.42) supportingCues.push('repeated generic advice across paragraphs');
   if(words>=600&&personalExperienceDensity<1) supportingCues.push('limited first-person experience');
   if(words>=600&&sectionLengths.length>=7&&uniformity>=0.45) supportingCues.push('uniform section progression');
+  if(words>=600&&paragraphSimilarity>=0.26&&paragraphSets.length>=10) supportingCues.push('recurring content vocabulary in adjacent paragraphs');
+  if(words>=600&&sectionTemplateRepetition>=0.6&&sections.length>=7) supportingCues.push('repeated section-level explanation template');
+  // Original research and detailed examples are mitigating context, not definitive human markers.
+  // Neither their presence nor their absence establishes authorship.
   // Concrete specificity is reported but cannot in itself establish authorship.
-  const score=Math.min(100,Math.round(100*supportingCues.length/5));
+  const score=Math.min(100,Math.round(100*supportingCues.length/7));
   return {sectionCount:sections.length,paragraphs:paragraphs.length,formulaicSectionRatio,
     cautionDensity,repeatedAdviceRatio,personalExperienceDensity,namedConcreteExampleDensity,
-    uniformity,score,supportingCues};
+    uniformity,sectionTemplateRepetition,paragraphSimilarity,originalEvidenceDensity,toneConsistency,score,supportingCues};
 }
