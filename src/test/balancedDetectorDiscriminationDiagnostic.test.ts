@@ -41,6 +41,8 @@ describe('Balanced detector discrimination diagnostic', () => {
         classifierAvailable: classifier.available,
         binaryClassifierAi: classifier.aiProbability,
         multiClass: classifier.classProbabilities,
+        translationLikelihood: full.language.translationLikelihood,
+        linguistic: { aiBoilerplateScore: full.linguisticProfile.aiBoilerplateScore, formulaicStartScore: full.linguisticProfile.formulaicStartScore, formulaicEndScore: full.linguisticProfile.formulaicEndScore, sentenceLengthVariance: full.linguisticProfile.sentenceLengthVariance, stylisticVariationScore: full.linguisticProfile.stylisticVariationScore },
         multiClassAiFamily: Math.round(1000 * (
           (classifier.classProbabilities.ai ?? 0) +
           (classifier.classProbabilities['human-edited-ai'] ?? 0) +
