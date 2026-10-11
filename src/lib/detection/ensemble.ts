@@ -442,6 +442,21 @@ export function runEnsemble(
       weight *= 0.25;
     }
 
+    // A character n-gram model can saturate to 100% on topical vocabulary.
+    // If the independently computed linguistic/statistical score strongly
+    // disagrees, do not allow one classifier to dominate the final percentage.
+    // Keep both scores in the blend; disagreement warrants less classifier
+    // weight, not an automatic human verdict.
+    const strongUncorroboratedClassifierAi =
+      classifierAiProbability >= 0.85 &&
+      calibratedAi <= 0.40 &&
+      !humanization.detected &&
+      linguistic.aiBoilerplateScore < 0.12 &&
+      (linguistic.formulaicStartScore + linguistic.formulaicEndScore) < 1.0;
+    if (strongUncorroboratedClassifierAi) {
+      weight = Math.min(weight, 0.25);
+    }
+
     calibratedAi = calibratedAi * (1 - weight) + classifierAiProbability * weight;
     calibratedAi = Math.min(1, Math.max(0, calibratedAi));
   }
