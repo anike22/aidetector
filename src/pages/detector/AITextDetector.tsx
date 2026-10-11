@@ -1060,7 +1060,7 @@ export default function AITextDetector() {
                 </Card>
 
                 {/* Flagged Passages */}
-                {result.highlights.length > 0 && (
+                {(
                   <Card className="border-border/50 shadow-premium rounded-2xl bg-card">
                     <CardHeader className="pb-3 pt-4 sm:pt-5 px-5 sm:px-6 border-b border-border/50 bg-background/50">
                       <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -1077,6 +1077,12 @@ export default function AITextDetector() {
                           <p className="line-clamp-3">{h.text}</p>
                         </div>
                       ))}
+                      {result.highlights.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          No passages have sufficiently strong local evidence to highlight confidently.
+                          The sentence and paragraph analysis remains available above.
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 )}
