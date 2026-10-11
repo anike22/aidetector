@@ -438,7 +438,7 @@ function buildSentenceVerdicts(
   });
 }
 
-function buildParagraphVerdicts(
+export function buildParagraphVerdicts(
   text: string,
   sentenceVerdicts: SentenceVerdict[],
   paragraphAiSignals: number[],
