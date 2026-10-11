@@ -987,7 +987,7 @@ export async function analyzeAdvancedText(
   // predominantly inconclusive evidence is not a basis for high certainty.
   const weakLocalCorroboration =
     sentenceVerdicts.length >= 3 &&
-    adjusted.ai >= 60 &&
+    adjusted.ai >= 40 &&
     localAiCount === 0 &&
     inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
     !ensemble.humanization.detected;
