@@ -182,6 +182,9 @@ export async function runAggressiveDetector(
       // the screenshots show that natural human text can trip those rules.
       (raw.aiScore >= 65 &&
         (pureClassifierAi >= 35 || (baseAi >= 45 && confidence >= 60))) ||
+      // Strong independent heuristic evidence with a supporting ensemble
+      // signal remains actionable after English classifier normalization.
+      (raw.aiScore >= 70 && (baseAi >= 25 || sentenceAiRatio >= 10)) ||
       (isHighConfidence &&
         (pureClassifierAi >= 35 ||
           baseAi >= 35 ||
