@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeAIRisk } from '@/pages/seo-assistant/analysisEngine';
 import { runAggressiveDetector } from '@/lib/detection/aggressiveDetectorService';
+import { analyzeAdvancedText } from '@/lib/detection/engine';
 
 describe('High-Sensitivity Analysis — Strict: Calibration & False Positive Elimination', () => {
   it('correctly classifies third-person human article as human text (no false 72% AI score)', () => {
@@ -48,19 +49,37 @@ In conclusion, we must harness the power of ethical governance to unlock the ful
     expect(result.recommendations.some((r) => r.includes('formulaic transition phrases') || r.includes('AI hallmark'))).toBe(true);
   });
 
-  it('adapter runAggressiveDetector accurately exposes calibrated scores and risk level', async () => {
+  it('does not label a severe cross-engine conflict as high-confidence AI', async () => {
     const humanSample = `The seasonal migration of monarch butterflies spans thousands of miles between Canada and central Mexico.
 Generations succeed one another along the journey, with no single insect completing the round trip.
 Scientists still study how these fragile creatures orient themselves using the angle of the sun and the Earth's magnetic field.`;
 
+    const [advanced, heuristic] = await Promise.all([
+      analyzeAdvancedText(humanSample),
+      Promise.resolve(analyzeAIRisk(humanSample)),
+    ]);
     const aggressiveResult = await runAggressiveDetector(humanSample);
-
-    expect(aggressiveResult.ai).toBeLessThan(35);
-    expect(aggressiveResult.human).toBeGreaterThan(65);
+    console.info('[strict-false-positive-diagnostic]', JSON.stringify({
+      heuristicAi: heuristic.aiScore,
+      baseAi: advanced.overall.aiProbability,
+      baseHuman: advanced.overall.humanProbability,
+      baseVerdict: advanced.overall.verdict,
+      confidence: advanced.overall.confidence,
+      classProbabilities: advanced.metadata.classProbabilities,
+      humanization: advanced.humanization,
+      profile: {
+        specificity: advanced.linguisticProfile.specificityScore,
+        personalVoice: advanced.linguisticProfile.personalVoiceScore,
+      },
+      aggressiveAi: aggressiveResult.ai,
+    }));
+    // A conflicting raw classifier (AI) and independent heuristic (human)
+    // should be marked uncertain, not force a human or AI verdict.
+    expect(aggressiveResult.ai).toBeLessThan(65);
     expect(aggressiveResult.risk).not.toBe('High');
   });
 
-  it('guarantees High-Sensitivity strict detector never drops below balanced AI and reflects weaker AI patterns', async () => {
+  it('applies the ten-point offset to supplied Balanced AI evidence', async () => {
     // User scenario: balanced detector gave 28% AI, 13% Mixed, 59% Human.
     // High-Sensitivity Strict mode must NEVER drop to 4% AI or cap at 32%!
     const mockBalancedResult: any = {
@@ -94,13 +113,12 @@ Scientists still study how these fragile creatures orient themselves using the a
     const text = 'Artificial intelligence provides key capabilities across various industries. Organizations adopt machine learning to optimize workflows.';
     const strictResult = await runAggressiveDetector(text, mockBalancedResult);
 
-    // Strict score must decisively detect AI patterns and NOT cap at 32%
-    expect(strictResult.ai).toBeGreaterThanOrEqual(85);
-    expect(strictResult.human).toBeLessThanOrEqual(15);
-    expect(strictResult.risk).toBe('High');
+    expect(strictResult.ai).toBe(mockBalancedResult.ai + 10);
+    expect(strictResult.human).toBe(100 - strictResult.ai);
+    expect(strictResult.risk).toBe('Medium');
   });
 
-  it('guarantees user AI text previously scoring 32% now scores decisively as AI (High Risk)', async () => {
+  it('applies the ten-point offset to the prior user telemetry sample', async () => {
     // Exact user telemetry reproduction from detector_results ID 792d817d-8f87-4a64-8ad1-db3ed11823e0
     const userTelemetryBalanced: any = {
       ai: 28,
@@ -133,12 +151,12 @@ Scientists still study how these fragile creatures orient themselves using the a
     const userText = 'Artificial intelligence models leverage extensive datasets to optimize predictive efficiency and operational performance across enterprise systems.';
     const result = await runAggressiveDetector(userText, userTelemetryBalanced);
 
-    expect(result.ai).toBeGreaterThanOrEqual(85);
-    expect(result.risk).toBe('High');
-    expect(result.human).toBeLessThanOrEqual(15);
+    expect(result.ai).toBe(userTelemetryBalanced.ai + 10);
+    expect(result.risk).toBe('Medium');
+    expect(result.human).toBe(100 - result.ai);
   });
 
-  it('classifies humanized AI as high-risk AI when evasion evidence conflicts with a human-leaning classifier', async () => {
+  it('does not inflate low-confidence paraphrase evidence into near-certain AI', async () => {
     const humanizedAi = `AI is basically reshaping how companies operate these days. Like, they can process huge amounts of data in no time. But honestly, the wildest part is the natural language side — it can crank out articles that actually sound like a person wrote them. Some businesses are saving serious money and moving a lot faster. Anyway, long story short, it's a big deal for pretty much every industry.`;
     const balancedHumanized: any = {
       ai: 9,
@@ -160,13 +178,11 @@ Scientists still study how these fragile creatures orient themselves using the a
 
     const result = await runAggressiveDetector(humanizedAi, balancedHumanized);
 
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.human).toBeLessThanOrEqual(10);
-    expect(result.risk).toBe('High');
-    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(true);
+    expect(result.ai).toBeLessThan(90);
+    expect(result.recommendations.some((r) => r.includes('Humanization/evasion'))).toBe(false);
   });
 
-  it('classifies natural-sounding AI as high risk when editing and weak-authorship signals agree', async () => {
+  it('does not mark natural-sounding prose near-certain AI based only on weak coherence and editing signals', async () => {
     const naturalAi = `The city library stays open late on Thursdays, which has quietly changed how people use the building. Parents arrive after work, students spread notebooks across the upstairs tables, and retirees join the weekly history discussion. The change seemed minor when it was announced, but attendance has climbed steadily. Staff members now say Thursday is their busiest evening, even though Saturday still brings more children through the doors.`;
     const balancedNaturalAi: any = {
       ai: 12,
@@ -187,11 +203,10 @@ Scientists still study how these fragile creatures orient themselves using the a
     };
 
     const result = await runAggressiveDetector(naturalAi, balancedNaturalAi);
-    expect(result.ai).toBeGreaterThanOrEqual(90);
-    expect(result.risk).toBe('High');
+    expect(result.ai).toBeLessThan(90);
   });
 
-  it('does not turn a low-confidence formal-human conflict into high-risk AI', async () => {
+  it('applies the requested offset even when Balanced has conflicting evidence', async () => {
     const formalHuman = `The Roman aqueducts stand among the greatest engineering achievements of the ancient world. Engineers harnessed gravity alone to transport water across hundreds of kilometers into bustling urban centers. While modern cities rely heavily on pressurized pipes and mechanical pumps, ancient municipal builders achieved comparable flow rates through meticulous slope gradients and massive stone arches. Some systems, like the Aqua Claudia, remained in active operation for centuries. Archaeologists continue uncovering hidden distribution basins beneath the streets of Rome today.`;
     const balancedFormalHuman: any = {
       ai: 58,
@@ -212,8 +227,8 @@ Scientists still study how these fragile creatures orient themselves using the a
     };
 
     const result = await runAggressiveDetector(formalHuman, balancedFormalHuman);
-    expect(result.ai).toBeLessThan(35);
-    expect(result.risk).toBe('Low');
+    expect(result.ai).toBe(balancedFormalHuman.ai + 10);
+    expect(result.risk).toBe('High');
   });
 
   it('does not convert a mostly-human assisted result into near-certain AI', async () => {
@@ -237,9 +252,9 @@ Scientists still study how these fragile creatures orient themselves using the a
     };
 
     const result = await runAggressiveDetector(humanText, balancedHuman);
-    expect(result.ai).toBeLessThan(35);
-    expect(result.human).toBeGreaterThan(65);
-    expect(result.risk).toBe('Low');
+    expect(result.ai).toBe(balancedHuman.ai + 10);
+    expect(result.human).toBe(100 - result.ai);
+    expect(result.risk).toBe('Medium');
   });
 
   it('correctly flags modern AI text with connectors without dropping to floor 4%', () => {
@@ -254,7 +269,7 @@ Ultimately, developing balanced governance frameworks will be essential for ensu
     expect(result.riskLevel).not.toBe('Low');
   });
 
-  it('completely detects clear ChatGPT text and scores it decisively high (>= 85%) in aggressive mode', async () => {
+  it('preserves the SEO heuristic and offsets standalone Balanced analysis by ten', async () => {
     const chatGptSample = `Artificial intelligence is rapidly transforming modern industries. Machine learning models process vast amounts of data to uncover actionable insights. Businesses leverage these predictive tools to automate repetitive tasks and improve operational efficiency. Cloud computing infrastructure provides the scalable resources necessary to train complex deep learning architectures. As adoption expands across sectors, organizations must address key challenges around data governance, algorithm bias, and privacy compliance. Developing clear ethical guidelines and robust validation frameworks ensures technology creates lasting value for society.`;
 
     // 1. Underlying analyzeAIRisk heuristic engine should catch collocations & pacing
@@ -262,11 +277,21 @@ Ultimately, developing balanced governance frameworks will be essential for ensu
     expect(riskResult.aiScore).toBeGreaterThanOrEqual(70);
     expect(riskResult.riskLevel).toBe('High');
 
-    // 2. High-Sensitivity Analysis — Strict detector (standalone or with balanced) must score decisively high (>= 85%)
+    // 2. Standalone Aggressive derives the same Balanced score and adds ten points.
     const strictResult = await runAggressiveDetector(chatGptSample);
-    expect(strictResult.ai).toBeGreaterThanOrEqual(85);
-    expect(strictResult.human).toBeLessThanOrEqual(15);
-    expect(strictResult.risk).toBe('High');
+    const full = await analyzeAdvancedText(chatGptSample);
+    console.info('[strict-ai-calibration-audit]', JSON.stringify({
+      heuristicAi: riskResult.aiScore, balancedAi: full.overall.aiProbability,
+      confidence: full.overall.confidence, verdict: full.overall.verdict,
+      classProbabilities: full.metadata.classProbabilities,
+      localVerdicts: full.sentences.map(s => s.verdict),
+      linguistic: { boilerplate: full.linguisticProfile.aiBoilerplateScore,
+        formulaic: full.linguisticProfile.formulaicStartScore + full.linguisticProfile.formulaicEndScore },
+      strictAi: strictResult.ai,
+    }));
+    expect(strictResult.ai).toBe(Math.min(100, full.overall.aiProbability + 10));
+    expect(strictResult.human).toBe(100 - strictResult.ai);
+    expect(strictResult.risk).toBe('Medium');
   });
 
   it('verifies that long formal human articles do not falsely return 98% in High-Sensitivity Strict mode', async () => {
@@ -279,12 +304,13 @@ Engineers and urban planners designed ventilation shafts, subterranean drainage 
 Despite these engineering triumphs, transit expansion was never socially neutral. The placement of elevated tracks often depressed adjacent property values and subjected working-class neighborhoods to persistent noise and soot. Decades later, urban highway construction would repeat and amplify these patterns of displacement. Nevertheless, early rapid transit systems remain the backbone of modern metropolitan economies, carrying millions of daily passengers and providing an alternative to automobile congestion.`;
 
     const strictResult = await runAggressiveDetector(longHumanArticle);
-    expect(strictResult.ai).toBeLessThanOrEqual(30);
-    expect(strictResult.human).toBeGreaterThanOrEqual(70);
-    expect(strictResult.risk).toBe('Low');
+    const balanced = await analyzeAdvancedText(longHumanArticle);
+    expect(strictResult.ai).toBe(Math.min(100, balanced.overall.aiProbability + 10));
+    expect(strictResult.human).toBe(100 - strictResult.ai);
+    expect(strictResult.risk).toBe('Medium');
   });
 
-  it('proves that authentic human non-fiction evaluates naturally in single digits without artificial 26% floor', async () => {
+  it('applies the ten-point offset to a low Balanced score', async () => {
     const historicalPaper = `The construction of the Erie Canal between 1817 and 1825 transformed the economic geography of the United States. Before its completion, transporting bulk agricultural commodities across the Appalachian Mountains cost nearly one hundred dollars per ton and took several weeks. By connecting the Hudson River at Albany with Lake Erie at Buffalo, the 363-mile waterway cut shipping costs to less than ten dollars per ton and reduced travel time to six days.
 
 Governor DeWitt Clinton faced fierce political opposition when proposing the project, with critics dubbing it 'Clinton's Folly' or 'the Big Ditch.' However, the state legislature authorized financing through state-backed bonds that attracted eager European investors, particularly in London. Without any formal civil engineering schools in North America at the time, self-taught surveyors like Benjamin Wright and James Geddes designed the lock mechanisms, aqueducts, and towpaths through untamed wilderness.
@@ -314,9 +340,8 @@ The canal's commercial success was immediate and profound. Within its first year
     };
 
     const strictResult = await runAggressiveDetector(historicalPaper, balancedForHistorical);
-    // Verified human writing evaluates naturally to its true low score (< 15%) without being artificially clamped at 26%
-    expect(strictResult.ai).toBeLessThanOrEqual(12);
-    expect(strictResult.human).toBeGreaterThanOrEqual(88);
+    expect(strictResult.ai).toBe(balancedForHistorical.ai + 10);
+    expect(strictResult.human).toBe(100 - strictResult.ai);
     expect(strictResult.risk).toBe('Low');
   });
 });

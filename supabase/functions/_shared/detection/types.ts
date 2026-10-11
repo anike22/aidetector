@@ -1,3 +1,4 @@
+import type { ReadingEvidence } from './readingEvidence.ts';
 export type ContentType =
   | 'academic'
   | 'research'
@@ -180,6 +181,9 @@ export interface AnalysisMetadata {
 export interface DevDiagnostics {
   rawEnsembleScores: { ai: number; human: number; mixed: number; confidence: number };
   adjustedScores: { ai: number; human: number; mixed: number };
+  preStyleScores: { ai: number; human: number; mixed: number };
+  styleEvidence: { eligible: boolean; supportingCues: string[]; requestedContribution: number; appliedContribution: number };
+  classifierAi: number;
   adjustedAiRisk: number;
   mixedAiContribution: number;
   /** Epistemic uncertainty (0–100): low confidence + feature disagreement + short text.
@@ -203,6 +207,7 @@ export interface DevDiagnostics {
 }
 
 export interface AdvancedTextAnalysisResult {
+  readingEvidence?: ReadingEvidence & { baseAi: number; requestedContribution: number; appliedContribution: number; finalAi: number };
   overall: {
     aiProbability: number;
     humanProbability: number;

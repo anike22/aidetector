@@ -388,26 +388,26 @@ function specificityScore(text: string, sentences: string[]): number {
   // Numbers and measurements (percentages, years, quantities)
   const numberPattern = /\b\d{1,3}(?:[,.]\d+)*\s*(?:%|percent|kg|km|ml|mb|gb|tb|ms|px|°|degrees?)?\b/gi;
   const numberMatches = text.match(numberPattern) || [];
-  score += Math.min(0.4, numberMatches.length / Math.max(1, totalSents) * 0.12);
+  score += numberMatches.length / Math.max(1, totalSents) * 0.12;
 
   // Proper nouns: capitalized words not at sentence start
   const properNounMatches = text.match(/(?<=[.!?]\s{1,3}|\n|^)(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+|[A-Z]{2,}/g) || [];
-  score += Math.min(0.3, properNounMatches.length / Math.max(1, totalSents) * 0.06);
+  score += properNounMatches.length / Math.max(1, totalSents) * 0.06;
 
   // Citations and references (academic human signal)
   const citationPattern = /\(\s*[A-Z][a-z]+(?:\s+(?:et al\.?|&|and)\s+[A-Z][a-z]+)?\s*,?\s*\d{4}\s*\)|(?:\[\d+\])/g;
   const citationMatches = text.match(citationPattern) || [];
-  score += Math.min(0.3, citationMatches.length * 0.1);
+  score += citationMatches.length * 0.1;
 
   // Specific dates
   const datePattern = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b|\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/gi;
   const dateMatches = text.match(datePattern) || [];
-  score += Math.min(0.2, dateMatches.length * 0.08);
+  score += dateMatches.length * 0.08;
 
   // URLs, DOIs, file paths (specific references)
   const refPattern = /https?:\/\/\S+|doi:\S+|\/[a-z]+\/[a-z]/gi;
   const refMatches = text.match(refPattern) || [];
-  score += Math.min(0.2, refMatches.length * 0.07);
+  score += refMatches.length * 0.07;
 
   return Math.min(1, score);
 }
@@ -433,15 +433,13 @@ function personalVoiceScore(text: string, sentences: string[]): number {
   for (const phrase of researchVoice) {
     if (lower.includes(phrase)) score += 0.08;
   }
-  score = Math.min(0.5, score);
 
   // General first-person voice. The previous implementation only recognised a
   // small set of phrases (for example, "I found"), so ordinary personal prose
   // such as "I wrote this last night" incorrectly received a score of zero.
-  // Count first-person pronouns conservatively and cap the contribution so an
-  // AI prompt written in first person cannot dominate the authorship decision.
+  // Weight first-person pronouns by sentence count before final normalization.
   const firstPersonMatches = text.match(/\b(?:I|me|my|mine|myself|we|us|our|ours|ourselves)\b/gi) || [];
-  score += Math.min(0.24, (firstPersonMatches.length / Math.max(1, totalSents)) * 0.06);
+  score += (firstPersonMatches.length / Math.max(1, totalSents)) * 0.06;
 
   // Contradictions and counterarguments: strong human critical-thinking signal
   const counterArgPatterns = [
@@ -455,7 +453,6 @@ function personalVoiceScore(text: string, sentences: string[]): number {
   for (const p of counterArgPatterns) {
     if (p.test(text)) score += 0.06;
   }
-  score = Math.min(0.7, score);
 
   // Specific technical hedging (academic, not generic AI hedging)
   const academicHedge = [
@@ -466,17 +463,16 @@ function personalVoiceScore(text: string, sentences: string[]): number {
   for (const phrase of academicHedge) {
     if (lower.includes(phrase)) score += 0.05;
   }
-  score = Math.min(0.8, score);
 
   // Personal anecdotes or experiential language
   const experiential = /\b(?:when\s+I|after\s+I|before\s+I|once\s+I|as\s+I|while\s+I)\b/gi;
   const expMatches = text.match(experiential) || [];
-  score += Math.min(0.2, expMatches.length * 0.08);
+  score += expMatches.length * 0.08;
 
   // Contractions suggest natural human writing
   const contractionPattern = /\b(?:don't|doesn't|didn't|can't|couldn't|won't|wouldn't|isn't|aren't|wasn't|weren't|I'm|I've|I'd|I'll|we're|we've|we'd|that's|it's|there's)\b/gi;
   const contractionMatches = text.match(contractionPattern) || [];
-  score += Math.min(0.15, contractionMatches.length / Math.max(1, totalSents) * 0.05);
+  score += contractionMatches.length / Math.max(1, totalSents) * 0.05;
 
   return Math.min(1, score);
 }
@@ -530,25 +526,21 @@ function sentenceSignals(sentence: string, docProfile: LinguisticProfile): { aiS
   let humanSignal = 0;
   let mixedSignal = 0;
 
-  // Length uniformity — cap contribution to avoid dominating the signal.
+  // Length uniformity has a fixed evidence weight.
   if (docProfile.avgSentenceLength > 0) {
     const z = Math.abs(length - docProfile.avgSentenceLength) / Math.sqrt(docProfile.sentenceLengthVariance + 1);
     if (z < 0.5) aiSignal += 0.08; // unusually uniform
     else if (z > 1.5) humanSignal += 0.06;
   }
 
-  // Transition words — cap at one hit per sentence (0.12 max).
-  // Previously was unbounded: a sentence with 3 transitions would add 0.45.
-  // Formal human writing uses transitions legitimately; cap prevents over-flagging.
-  let transitionHit = false;
+  // Count all distinct transition patterns before final unit-range normalization.
   for (const t of AI_TRANSITIONS) {
-    if (lower.includes(t)) { transitionHit = true; break; }
+    if (lower.includes(t)) aiSignal += 0.12;
   }
-  if (transitionHit) aiSignal += 0.12;
 
   // Formulaic starts within sentence
   for (const p of FORMULAIC_STARTS) {
-    if (lower.startsWith(p)) { aiSignal += 0.15; break; } // cap at one match
+    if (lower.startsWith(p)) { aiSignal += 0.15; }
   }
 
   // Personal markers — expanded to cover research voice
@@ -579,7 +571,7 @@ function sentenceSignals(sentence: string, docProfile: LinguisticProfile): { aiS
 
   // AI boilerplate phrases
   for (const phrase of AI_BOILERPLATE) {
-    if (lower.includes(phrase)) { aiSignal += 0.12; break; } // cap at one match
+    if (lower.includes(phrase)) { aiSignal += 0.12; }
   }
 
   // Mixed signal only when BOTH strong AI and human patterns clearly coexist
@@ -601,7 +593,7 @@ function paragraphSignals(paragraph: string, docProfile: LinguisticProfile): { a
 
   const localTransition = transitionPredictability(paragraph);
   // Cap transition contribution: formal humans also use transitions.
-  aiSignal += Math.min(0.15, localTransition * 0.25); // was 0.3 (no cap)
+  aiSignal += localTransition * 0.25;
 
   const localStart = formulaicScore(paragraph.slice(0, 150), FORMULAIC_STARTS);
   const localEnd = formulaicScore(paragraph.slice(-150), FORMULAIC_ENDS);

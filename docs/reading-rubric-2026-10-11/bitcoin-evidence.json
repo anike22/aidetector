@@ -1,0 +1,237 @@
+{
+  "sha256": "b297a5efc3c5c63f849817b7c07df663a2377606c40104ddf3f58e535b6c8d1d",
+  "fixture": "src/test/fixtures/userAttestedAiBitcoinMining.md",
+  "balanced": {
+    "aiProbability": 42,
+    "humanProbability": 58,
+    "mixedProbability": 0,
+    "verdict": "inconclusive",
+    "verdictLabel": "Inconclusive",
+    "confidence": 44,
+    "confidenceLevel": "Medium",
+    "riskLevel": "Low",
+    "adjustedAiRisk": 42
+  },
+  "aggressive": {
+    "ai": 42,
+    "human": 58,
+    "risk": "Medium",
+    "recommendations": [
+      "Review needed: document-level authorship is inconclusive because most local sentences provide no decisive AI or Human evidence. A low AI score does not prove human authorship.",
+      "Conflicting evidence: review the score alongside the sentence-level findings; accumulated evidence has not been capped.",
+      "Sentence rhythm, burstiness, and vocabulary variation align with natural human writing."
+    ],
+    "scoreTrace": {
+      "balancedAi": 42,
+      "heuristicAi": 0,
+      "branch": "natural",
+      "candidateBeforeBounds": 42,
+      "finalAi": 42,
+      "readingContribution": 23,
+      "readingVersion": "reading-rubric-v1"
+    }
+  },
+  "readingEvidence": {
+    "version": "reading-rubric-v1",
+    "applicable": true,
+    "eligible": true,
+    "checks": [
+      {
+        "id": "organization",
+        "label": "Overall organization",
+        "value": 27,
+        "weight": 0,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "27 headings and 20 substantial sections. Organization alone is neutral.",
+        "excerpts": []
+      },
+      {
+        "id": "section-pattern",
+        "label": "Explanation → example → qualification",
+        "value": 0.15,
+        "weight": 24,
+        "points": 3.6,
+        "candidatePoints": 3.6,
+        "finding": "3/20 sections have an illustration followed by a later qualification.",
+        "excerpts": [
+          {
+            "text": "Hashrate tells you how much computing power your miner contributes.\n\nFor example, a machine producing 200 TH/s contributes roughly twice the raw hashing power of a 100 TH/s machine, assuming both are running under simila",
+            "start": 2007,
+            "end": 2227
+          },
+          {
+            "text": "There’s no fixed answer.\n\nA large mining farm can statistically generate the equivalent of one BTC far faster than someone running a single ASIC at home.\n\nWhat really matters is how much hashrate you control relative to ",
+            "start": 8083,
+            "end": 8303
+          },
+          {
+            "text": "Return on investment is another number worth looking at before buying hardware.\n\nA simple calculation is:\n\n**ROI period = Initial investment ÷ estimated net mining profit**\n\nSuppose your complete setup costs $4,000 and y",
+            "start": 10922,
+            "end": 11142
+          }
+        ]
+      },
+      {
+        "id": "repeated-ideas",
+        "label": "Repeated claims across sections",
+        "value": 0,
+        "weight": 20,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "0/94 substantive sentences closely overlap earlier sentences in another section. This is lexical similarity, not full semantic understanding.",
+        "excerpts": []
+      },
+      {
+        "id": "hypothetical-examples",
+        "label": "Hypothetical rather than attributed examples",
+        "value": 4.66893039049236,
+        "weight": 3,
+        "points": 14.01,
+        "candidatePoints": 14.01,
+        "finding": "11 illustration markers, 0 attribution markers and 0 firsthand-observation claims. Hypotheticals are weak supporting evidence only when other families concur.",
+        "excerpts": [
+          {
+            "text": "uch computing power your miner contributes.\n\nFor example, a machine producing 200 TH/s contributes roughly twice the raw hashing power of a 1",
+            "start": 2031,
+            "end": 2172
+          },
+          {
+            "text": "the raw hashing power of a 100 TH/s machine, assuming both are running under similar conditions and have comparable uptime.\n\n### Bitcoin N",
+            "start": 2144,
+            "end": 2282
+          },
+          {
+            "text": "e will generally produce less BTC over time, assuming other factors remain unchanged.\n\n### Block Reward and Transaction Fees\n\nMining reven",
+            "start": 2780,
+            "end": 2918
+          }
+        ]
+      },
+      {
+        "id": "firsthand-experience",
+        "label": "Firsthand operational or testing claims",
+        "value": 0,
+        "weight": -3,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "0 claimed firsthand observations; their truth is not verified. Absence contributes zero AI points.",
+        "excerpts": []
+      },
+      {
+        "id": "grounding",
+        "label": "Specificity and source attribution",
+        "value": 0.15,
+        "weight": 8,
+        "points": 1.2,
+        "candidatePoints": 1.2,
+        "finding": "0 source markers and 0 dated-record markers. Only an existing repeated hypothetical pattern receives support; missing sources alone contribute zero.",
+        "excerpts": []
+      },
+      {
+        "id": "attributed-evidence",
+        "label": "Attributed evidence countercheck",
+        "value": 0,
+        "weight": -2,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "Attributed sources and dates connected to firsthand claims mitigate style suspicion; they are not authenticated.",
+        "excerpts": []
+      },
+      {
+        "id": "voice",
+        "label": "Consistency of explanatory presentation",
+        "value": 0.6097754138247689,
+        "weight": 4,
+        "points": 2.44,
+        "candidatePoints": 2.44,
+        "finding": "Section-length regularity is 0.61. This is a presentation proxy; polish or grammar alone is not AI evidence.",
+        "excerpts": []
+      },
+      {
+        "id": "qualifications",
+        "label": "Repeated qualification language",
+        "value": 7.6400679117147705,
+        "weight": 0.75,
+        "points": 5.73,
+        "candidatePoints": 5.73,
+        "finding": "18 qualification matches (7.64 per 1,000 words).",
+        "excerpts": [
+          {
+            "text": " it.\n\nHow much Bitcoin you can actually mine depends on your hardware, electricity rate, network difficulty, hashrate, pool fees, uptime, an",
+            "start": 245,
+            "end": 385
+          },
+          {
+            "text": "al share of the network’s mining work.\n\nThat doesn’t mean a powerful miner is guaranteed to discover a block, though. Mining is probabilistic,",
+            "start": 1403,
+            "end": 1545
+          },
+          {
+            "text": "o every Bitcoin miner.\n\nYour expected output depends on several factors.\n\n### Your Miner’s Hashrate\n\nHashrate tells you how much computing p",
+            "start": 1906,
+            "end": 2046
+          }
+        ]
+      },
+      {
+        "id": "seo",
+        "label": "SEO framing and promotional closing",
+        "value": 7,
+        "weight": 0,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "7 question headings. Keyword framing and promotion are neutral, not authorship evidence.",
+        "excerpts": []
+      },
+      {
+        "id": "conclusion",
+        "label": "Conclusion repetition",
+        "value": 0,
+        "weight": 2,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "0 near-duplicate concluding claims; vocabulary recap coverage 0.75. Ordinary summarization contributes zero.",
+        "excerpts": []
+      },
+      {
+        "id": "counter-evidence",
+        "label": "Rhythm, conversational phrasing and arithmetic",
+        "value": 2,
+        "weight": -2,
+        "points": -4,
+        "candidatePoints": -4,
+        "finding": "Sentence-length CV 0.54, 22 contractions, 4/4 checked arithmetic expressions correct. These are compatible with either origin, so mitigation is modest.",
+        "excerpts": []
+      },
+      {
+        "id": "prior-knowledge",
+        "label": "Prior knowledge and provenance",
+        "value": 0,
+        "weight": 0,
+        "points": 0,
+        "candidatePoints": 0,
+        "finding": "Prior conversation, user authorship labels, filenames, website names and expected scores are excluded from this calculation.",
+        "excerpts": []
+      }
+    ],
+    "positivePoints": 26.98,
+    "counterPoints": -4,
+    "netPoints": 22.98,
+    "corroboratingFamilies": [
+      "structure",
+      "illustration",
+      "qualification"
+    ],
+    "limitations": [
+      "Rule weights are provisional and have not been calibrated on an independent labelled holdout.",
+      "English long-form rubric; short and other-language inputs receive no reading adjustment.",
+      "Lexical similarity and marker checks approximate contextual reading; sources and firsthand claims are not verified.",
+      "No target-score override, topic-specific authorship rule or provenance shortcut is used."
+    ],
+    "baseAi": 19,
+    "requestedContribution": 23,
+    "appliedContribution": 23,
+    "finalAi": 42
+  }
+}
