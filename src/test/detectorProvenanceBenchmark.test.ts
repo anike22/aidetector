@@ -1,3 +1,4 @@
+import { classifyWithClassifier } from '@/lib/detection/classifier';
 import aiBitcoinMining from './fixtures/userAttestedAiBitcoinMining.md?raw';
 import { describe, expect, it } from 'vitest';
 import { analyzeAdvancedText } from '@/lib/detection/engine';
@@ -25,6 +26,7 @@ describe('Provenance-aware detector regression benchmark', () => {
     ];
     const results = [];
     for (const sample of samples) {
+      const classifier = await classifyWithClassifier(sample.text, 'en');
       const balanced = await analyzeAdvancedText(sample.text);
       const strict = await runAggressiveDetector(sample.text, {
         ai: balanced.overall.aiProbability,
@@ -37,6 +39,25 @@ describe('Provenance-aware detector regression benchmark', () => {
         language: balanced.language.primary?.name || 'English',
         full: balanced,
       } as Parameters<typeof runAggressiveDetector>[1]);
+      if (sample.origin === 'ai') {
+        console.info('[long-ai-layer-audit]', JSON.stringify({
+          wordCount: sample.text.trim().split(/\\s+/).length,
+          classifierAi: classifier.aiProbability,
+          classProbabilities: classifier.classProbabilities,
+          chunkScores: classifier.chunkScores.map(c => c.aiProbability),
+          chunkCount: classifier.chunkScores.length,
+          localSentenceVerdicts: balanced.sentences.reduce<Record<string, number>>((counts, sentence) => {
+            counts[sentence.verdict] = (counts[sentence.verdict] || 0) + 1; return counts;
+          }, {}),
+          localParagraphVerdicts: balanced.paragraphs.reduce<Record<string, number>>((counts, paragraph) => {
+            counts[paragraph.verdict] = (counts[paragraph.verdict] || 0) + 1; return counts;
+          }, {}),
+          linguistic: balanced.linguisticProfile,
+          statistical: balanced.statisticalProfile,
+          humanization: balanced.humanization,
+          overall: balanced.overall,
+        }));
+      }
       results.push({
         id: sample.id, origin: sample.origin, provenance: sample.provenance,
         balancedAi: balanced.overall.aiProbability, balancedVerdict: balanced.overall.verdict,
