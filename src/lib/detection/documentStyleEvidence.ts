@@ -28,7 +28,7 @@ const advice = /\b(?:before|consider|check|calculate|compare|research|estimate|a
 const firsthand = /\b(?:i |we |my |our |i've |i.ve |i tested|we tested|my experience|i wrote|i noticed|we found)\b/gi;
 const concrete = /(?:\$\s?\d|\b\d+(?:[.,]\d+)?\s?(?:TH\/s|kWh|watts|months|days|years|%|BTC)\b|https?:\/\/|\b(?:ASIC|SHA-256|Google|Semrush|Surfer|MiningLegit)\b)/gi;
 const matches=(s:string,re:RegExp)=>[...s.matchAll(re)].length;
-const evidence = /\bb(?:according to (?:our|my) (?:research|test|data)|in (?:our|my) (?:tests?|experiments?|measurements?)|we (?:measured|observed|recorded|interviewed)|i (?:measured|observed|recorded|interviewed)|our (?:dataset|survey|results)|i (?:personally|tested)|we (?:personally|tested))\bb/gi;
+const evidence = /\b(?:according to (?:our|my) (?:research|test|data)|in (?:our|my) (?:tests?|experiments?|measurements?)|we (?:measured|observed|recorded|interviewed)|i (?:measured|observed|recorded|interviewed)|our (?:dataset|survey|results)|i (?:personally|tested)|we (?:personally|tested))\b/gi;
 const stop = new Set(['this','that','with','from','there','these','their','they','have','will','which','when','your','what','about','just','then','more','also','into','than','only','does','must','should','could','would','were','been','because','while','them','those','much','some','very','each','over','under']);
 const wordsOf=(s:string)=>new Set((s.toLowerCase().match(/[a-z]{4,}/g)||[]).filter(w=>!stop.has(w)));
 const jaccard=(a:Set<string>,b:Set<string>)=>{
