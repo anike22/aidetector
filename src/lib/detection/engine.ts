@@ -493,40 +493,46 @@ function buildParagraphVerdicts(
 
 function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: ParagraphVerdict[], minRun = 2): PassageHighlight[] {
   const highlights: PassageHighlight[] = [];
-  let run: SentenceVerdict[] = [];
-
-  const pushRun = () => {
-    if (run.length >= minRun) {
-      const start = run[0].start;
-      const end = run[run.length - 1].end;
-      const text = run.map((s) => s.text).join(' ');
-      const avgAi = run.reduce((sum, s) => sum + s.aiProbability, 0) / run.length;
-      // A run assembled from AI-leaning sentences must never be relabelled
-      // human solely because its average *absolute* score is low.
-      // Below 40, the evidence is insufficient to highlight confidently.
-      const verdict = avgAi >= 40 ? 'likely-ai' : 'inconclusive';
-      if (verdict !== 'inconclusive') highlights.push({
-        start,
-        end,
-        text,
-        verdict,
-        confidence: Math.round(run.reduce((sum, s) => sum + s.confidence, 0) / run.length),
-        reason: `${run.length} consecutive ${verdict.replace(/-/g, ' ')} sentences.`,
-      });
+  // Strong human passages are as useful as AI passages. Group consecutive
+  // *supported* local verdicts; never infer authorship from low absolute scores.
+  const kinds: Array<{ verdict: Verdict; matches: (s: SentenceVerdict) => boolean; probability: (s: SentenceVerdict) => number }> = [
+    {
+      verdict: 'likely-ai',
+      matches: s => (s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited') && s.aiProbability >= 40,
+      probability: s => s.aiProbability,
+    },
+    {
+      verdict: 'likely-human',
+      matches: s => s.verdict === 'likely-human' && s.humanProbability >= 50 && s.humanProbability > s.aiProbability + 20,
+      probability: s => s.humanProbability,
+    },
+  ];
+  for (const kind of kinds) {
+    let run: SentenceVerdict[] = [];
+    const pushRun = () => {
+      if (run.length >= minRun) {
+        const confidence = Math.round(run.reduce((sum, s) => sum + s.confidence, 0) / run.length);
+        const probability = run.reduce((sum, s) => sum + kind.probability(s), 0) / run.length;
+        if (confidence >= 35 && probability >= (kind.verdict === 'likely-human' ? 50 : 40)) {
+          highlights.push({
+            start: run[0].start,
+            end: run[run.length - 1].end,
+            text: run.map(s => s.text).join(' '),
+            verdict: kind.verdict,
+            confidence,
+            reason: `${run.length} consecutive ${kind.verdict.replace(/-/g, ' ')} sentences with corroborating evidence.`,
+          });
+        }
+      }
+      run = [];
+    };
+    for (const sentence of sentenceVerdicts) {
+      if (kind.matches(sentence)) run.push(sentence);
+      else pushRun();
     }
-    run = [];
-  };
-
-  for (const s of sentenceVerdicts) {
-    if (s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited') {
-      run.push(s);
-    } else {
-      pushRun();
-    }
+    pushRun();
   }
-  pushRun();
 
-  // Add paragraph-level highlights where the whole paragraph strongly matches one verdict.
   for (const p of paragraphs) {
     if (p.confidence >= 80 && (p.verdict === 'likely-ai' || p.verdict === 'likely-human')) {
       const sents = sentenceVerdicts.slice(p.sentenceRange[0], p.sentenceRange[1] + 1);
@@ -534,7 +540,7 @@ function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: Paragr
         highlights.push({
           start: sents[0].start,
           end: sents[sents.length - 1].end,
-          text: sents.map((s) => s.text).join(' '),
+          text: sents.map(s => s.text).join(' '),
           verdict: p.verdict,
           confidence: p.confidence,
           reason: `Paragraph ${p.index + 1} shows consistent ${p.verdict.replace(/-/g, ' ')} patterns.`,
