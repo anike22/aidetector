@@ -59,6 +59,11 @@ describe('Balanced detector discrimination diagnostic', () => {
         if (aiSentences.length === full.sentences.length) {
           expect(full.highlights.some(h => h.verdict === 'likely-human')).toBe(false);
         }
+        // The original screenshot shows this one-paragraph sample in green
+        // despite an AI-majority overall score; never repeat that contradiction.
+        if (full.overall.aiProbability >= 60) {
+          expect(full.highlights.some(h => h.verdict === 'likely-human')).toBe(false);
+        }
       }
       expect(classifier.available).toBe(true);
       expect(full.overall.aiProbability).toBeGreaterThanOrEqual(0);
