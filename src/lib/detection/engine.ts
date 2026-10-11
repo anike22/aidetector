@@ -25,6 +25,7 @@ import type { PassageScore } from './layers/humanEditDetection.ts';
 import { analyzeSemanticConsistency } from './layers/semanticConsistency.ts';
 import { detectHumanEdits } from './layers/humanEditDetection.ts';
 import { analyzeDocumentConsistency } from './layers/documentConsistency.ts';
+import { analyzeDocumentStyle } from './documentStyleEvidence.ts';
 
 export const DETECTOR_VERSION = '2.5.2';
 export const MODEL_VERSION = 'ensemble-v4-classifier-v2';
@@ -910,6 +911,20 @@ export async function analyzeAdvancedText(
     humanEdit,
     documentConsistency,
   );
+  // An additional explainable, document-wide reading evaluates repeated advice,
+  // repeated caveats, section progression, personal experience, and specificity.
+  // Require multiple cues rather than treating tidy SEO formatting as AI proof.
+  const styleEvidence = analyzeDocumentStyle(trimmed);
+  const styleSignalStrong = wordCount >= 600 &&
+    styleEvidence.supportingCues.length >= 4 &&
+    linguisticResult.profile.personalVoiceScore < 0.08;
+  if (styleSignalStrong) {
+    // Capped at 12 points until independent benchmark calibration.
+    const styleContribution = Math.min(12, (styleEvidence.supportingCues.length - 3) * 6);
+    const increase = Math.min(styleContribution, adjusted.human);
+    adjusted.ai += increase;
+    adjusted.human -= increase;
+  }
   // uncertainty is kept separate from adjusted.mixed — it feeds confidence
   // calibration only and must never inflate the displayed Mixed probability.
   const uncertaintyScore = adjusted.uncertainty;
@@ -1081,6 +1096,14 @@ export async function analyzeAdvancedText(
     ...languageResult.warnings,
     ...statisticalResult.warnings,
   ];
+  if (styleSignalStrong) {
+    warnings.push({
+      type: 'low-context',
+      severity: 'info',
+      message: 'Document-wide style analysis noted: ' + styleEvidence.supportingCues.join('; ') +
+        '. These are supporting AI-style clues, not proof of AI authorship.',
+    });
+  }
   if (unresolvedLocalEvidence) {
     warnings.push({
       type: 'low-context',
