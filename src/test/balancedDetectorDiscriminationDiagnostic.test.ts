@@ -1,3 +1,4 @@
+import './detectorProvenanceBenchmark.test';
 import { describe, expect, it } from 'vitest';
 import { classifyWithClassifier } from '@/lib/detection/classifier';
 import { analyzeAdvancedText, buildHighlights, buildParagraphVerdicts } from '@/lib/detection/engine';
