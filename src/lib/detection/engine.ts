@@ -469,9 +469,13 @@ function buildParagraphVerdicts(
     const sentStart = sents.length ? sentenceVerdicts.indexOf(sents[0]) : 0;
     const sentEnd = sents.length ? sentStart + sents.length - 1 : sentStart;
 
-    const aiP = Math.round((ai * 0.6 + (sents.length ? sents.reduce((sum, s) => sum + s.aiProbability, 0) / sents.length : 0) * 0.4));
-    const humanP = Math.round((human * 0.6 + (sents.length ? sents.reduce((sum, s) => sum + s.humanProbability, 0) / sents.length : 0) * 0.4));
-    const mixedP = Math.round(Math.min(100, mixed * 100 + (sents.length ? sents.reduce((sum, s) => sum + s.mixedProbability, 0) / sents.length : 0) * 0.4));
+    // Linguistic paragraph signals are fractions [0, 1]; sentence probabilities
+    // are percentages [0, 100]. Convert units BEFORE blending all three classes.
+    const averageSentence = (key: 'aiProbability' | 'humanProbability' | 'mixedProbability') =>
+      sents.length ? sents.reduce((sum, sentence) => sum + sentence[key], 0) / sents.length : 0;
+    const aiP = Math.round(Math.min(100, ai * 100 * 0.6 + averageSentence('aiProbability') * 0.4));
+    const humanP = Math.round(Math.min(100, human * 100 * 0.6 + averageSentence('humanProbability') * 0.4));
+    const mixedP = Math.round(Math.min(100, mixed * 100 * 0.6 + averageSentence('mixedProbability') * 0.4));
 
     const verdict = classifyLocalVerdict(aiP, humanP, mixedP, thresholds);
     const max = Math.max(aiP, humanP, mixedP);
