@@ -66,22 +66,27 @@ export async function runAggressiveDetector(
   const classProbs =
     fullResult?.metadata?.classProbabilities ||
     (fullResult as any)?.classProbabilities;
-  const classifierAi = classProbs
-    ? Math.round(
-        ((classProbs.ai ?? 0) +
-          (classProbs['translated-ai'] ?? 0) +
-          (classProbs['human-edited-ai'] ?? 0)) *
-          100
-      )
+  // Five-class output must not be collapsed by summing every AI-labelled
+  // class. Under weak evidence, three near-uniform AI-family labels can sum
+  // to 60%+ even while Human is the highest *individual* class.
+  // Count it as independent AI evidence only when one AI class clearly
+  // exceeds the Human class, rather than exploiting the number of labels.
+  const humanClassProbability = classProbs?.human ?? 0;
+  const pureAiClassProbability = Math.max(classProbs?.ai ?? 0, classProbs?.['translated-ai'] ?? 0);
+  const leadingAiClassProbability = Math.max(
+    pureAiClassProbability,
+    classProbs?.['human-edited-ai'] ?? 0,
+  );
+  const independentClassAiEvidence =
+    leadingAiClassProbability >= humanClassProbability + 0.15;
+  const classifierAi = independentClassAiEvidence
+    ? Math.round(leadingAiClassProbability * 100)
     : 0;
-  const pureClassifierAi = classProbs
-    ? Math.round(
-        ((classProbs.ai ?? 0) + (classProbs['translated-ai'] ?? 0)) * 100
-      )
-    : 0;
-  const humanEditedAi = classProbs
-    ? Math.round((classProbs['human-edited-ai'] ?? 0) * 100)
-    : 0;
+  const pureClassifierAi =
+    independentClassAiEvidence && pureAiClassProbability >= humanClassProbability + 0.15
+      ? Math.round(pureAiClassProbability * 100)
+      : 0;
+  const humanEditedAi = Math.round((classProbs?.['human-edited-ai'] ?? 0) * 100);
 
   const humanization = fullResult?.humanization;
   const linguistic = fullResult?.linguisticProfile;
