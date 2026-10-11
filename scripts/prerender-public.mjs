@@ -56,12 +56,15 @@ try {
         page = await context.newPage();
         browserErrors = [];
         page.on('pageerror', error => browserErrors.push(String(error).slice(0, 600)));
+        page.on('requestfailed', request => {
+          if (browserErrors.length < 12) browserErrors.push(`Failed request: ${request.url().slice(0, 180)} (${request.failure()?.errorText || 'unknown'})`);
+        });
         page.on('console', message => {
           if (message.type() === 'error') browserErrors.push(message.text().slice(0, 600));
         });
         // Commit confirms the local route responded; the H1/content checks below prove the app rendered.
         await page.goto(origin + pathname, {waitUntil:'commit',timeout:45000});
-        await page.waitForSelector('h1', {timeout:20000});
+        await page.waitForSelector('h1', {timeout:45000});
         lastError = null;
         break;
       } catch (error) {
