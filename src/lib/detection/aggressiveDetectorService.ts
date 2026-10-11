@@ -295,12 +295,24 @@ export async function runAggressiveDetector(
   strictAi = Math.min(98, Math.max(4, strictAi));
 
   const finalHumanScore = 100 - strictAi;
+  // Risk is a review priority, not the probability of AI authorship. A long
+  // document that the primary engine explicitly marks Inconclusive must not
+  // be presented as cleared / Low Risk by the secondary screen solely
+  // because both models produced weak AI scores.
+  const unresolvedLongDocument =
+    balanced?.verdict === 'inconclusive' &&
+    (fullResult?.textSufficiency?.wordCount ?? 0) >= 120 &&
+    sentences.length >= 6 &&
+    sentences.filter(s => s.verdict === 'inconclusive').length >= Math.ceil(sentences.length * 0.85);
   const finalRisk: 'Low' | 'Medium' | 'High' =
-    strictAi >= 65 ? 'High' : strictAi >= 35 ? 'Medium' : 'Low';
+    strictAi >= 65 ? 'High' : strictAi >= 35 || unresolvedLongDocument ? 'Medium' : 'Low';
 
   const recommendations = hasHumanizationEvasionEvidence
     ? []
     : [...raw.recommendations];
+  if (unresolvedLongDocument) {
+    recommendations.unshift('Review needed: document-level authorship is inconclusive because most local sentences provide no decisive AI or Human evidence. A low AI score does not prove human authorship.');
+  }
   if (hasHumanizationEvasionEvidence) {
     recommendations.unshift(
       'Humanization/evasion patterns detected: the text reads naturally, but independent editing and weak-authorship signals remain consistent with rewritten AI content.'
