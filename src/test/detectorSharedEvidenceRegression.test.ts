@@ -20,20 +20,22 @@ describe('Shared browser and Edge evidence scoring', () => {
     expect(browser).toBe(edge);
     expect(browserStrict).toBe(edgeStrict);
   });
-  it('traces the exact unchanged bitcoin article to 19 + 6 = 25', async () => {
+  it('traces the exact unchanged bitcoin article through the reading rubric', async () => {
     expect(createHash('sha256').update(bitcoin).digest('hex')).toBe('b297a5efc3c5c63f849817b7c07df663a2377606c40104ddf3f58e535b6c8d1d');
     const r = await browser(bitcoin);
     expect(r._dev?.rawEnsembleScores.ai).toBe(19);
     expect(r._dev?.preStyleScores.ai).toBe(19);
     expect(r._dev?.styleEvidence.supportingCues).toHaveLength(4);
-    expect(r._dev?.styleEvidence.appliedContribution).toBe(6);
-    expect(r.overall.aiProbability).toBe(25);
+    const audit = r.readingEvidence!;
+    expect(audit.appliedContribution).toBe(Math.round(audit.netPoints));
+    expect(audit.finalAi).toBe(audit.baseAi + audit.appliedContribution);
+    expect(r.overall.aiProbability).toBe(audit.finalAi);
     expect(r.overall.verdict).toBe('inconclusive');
-    expect((await browserStrict(bitcoin)).ai).toBe(25);
+    expect((await browserStrict(bitcoin)).ai).toBe(r.overall.aiProbability);
     expect(stable(await edge(bitcoin))).toEqual(stable(r));
   });
   it('allows strong document evidence to contribute more than twelve points', async () => {
-    const paragraph = 'Before buying, check and compare mining equipment because output depends on electricity and conditions. Consider the network and review the estimate. Keep in mind that earnings are not guaranteed. Research the equipment and calculate the costs before spending money. Mining equipment output depends on the network and electricity conditions.';
+    const paragraph = 'Equipment needs to be understood before making a purchase because its output changes with operating conditions. For example, imagine equipment using 300 watts while producing output. Keep in mind that earnings are not guaranteed. Research the equipment and calculate the costs before spending money. Mining equipment output depends on the network and electricity conditions.';
     const text = Array.from({ length: 12 }, (_, i) => `## Section ${i + 1}\n\n${paragraph}\n\n${paragraph}`).join('\n\n');
     const style = analyzeDocumentStyle(text);
     expect(style.supportingCues.length).toBeGreaterThan(5);

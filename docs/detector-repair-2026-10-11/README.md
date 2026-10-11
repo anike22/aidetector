@@ -1,5 +1,7 @@
 # Detector scoring repair — 11 October 2026
 
+Historical engine 2.5.3 report. See [the engine 2.6.0 reading-rubric report](../reading-rubric-2026-10-11/README.md) for the subsequent implementation and current article result.
+
 The repair removes the 12-point document-style contribution ceiling while retaining the four-cue corroboration gate and six-point weight per cue above the gate. Browser and Supabase now import the same canonical pipeline in `supabase/functions/_shared/detection`. This includes classifier normalization, paragraph units, highlights, uncertainty verdicts and style evidence. Strict scoring and its heuristic are also shared; the Edge endpoint accepts `mode: aggressive` and returns both results. The SEO Assistant keeps its existing default heuristic policy.
 
 Explicit intermediate ceilings were removed from linguistic specificity and personal-voice contributions, sentence transition/formulaic/boilerplate matching, paragraph transitions, mixed minority-mass allocation, classifier-weight ceiling, and Strict heuristic contributions and 64/84/98 score ceilings. Final probability/feature normalization, corroboration gates, and evidence weights remain. Disagreements appear in review guidance rather than limiting the Strict score.

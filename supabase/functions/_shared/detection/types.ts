@@ -1,3 +1,4 @@
+import type { ReadingEvidence } from './readingEvidence.ts';
 export type ContentType =
   | 'academic'
   | 'research'
@@ -206,6 +207,7 @@ export interface DevDiagnostics {
 }
 
 export interface AdvancedTextAnalysisResult {
+  readingEvidence?: ReadingEvidence & { baseAi: number; requestedContribution: number; appliedContribution: number; finalAi: number };
   overall: {
     aiProbability: number;
     humanProbability: number;

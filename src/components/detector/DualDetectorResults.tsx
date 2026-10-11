@@ -259,6 +259,29 @@ function BalancedResultCard({ result }: { result: BalancedDetectorResult }) {
             <RiskBadge risk={result.risk} />
           </div>
 
+          {result.full.readingEvidence && (
+            <details className="rounded-lg border border-border/50 p-3 text-xs">
+              <summary className="cursor-pointer font-semibold">How this score was calculated</summary>
+              <div className="mt-3 space-y-3">
+                <p>Base AI score {result.full.readingEvidence.baseAi}% + reading adjustment {result.full.readingEvidence.appliedContribution} points = {result.full.readingEvidence.finalAi}%.</p>
+                <p className="text-muted-foreground">Reading points use provisional style rules. They are not calibrated authorship probabilities. Independent context or writing history may change the assessment.</p>
+                {!result.full.readingEvidence.eligible && <p>The reading adjustment did not meet the sample-length, language or corroboration requirements.</p>}
+                <ul className="space-y-3">
+                  {result.full.readingEvidence.checks.map(check => (
+                    <li key={check.id} className="border-t border-border/40 pt-2">
+                      <div className="flex justify-between gap-2 font-medium">
+                        <span>{check.label}</span>
+                        <span className="shrink-0">{check.points > 0 ? '+' : ''}{check.points.toFixed(2)} pts</span>
+                      </div>
+                      <p className="mt-1 text-muted-foreground">{check.finding}</p>
+                      {check.excerpts[0] && <blockquote className="mt-1 border-l-2 border-border pl-2 text-muted-foreground break-words">{check.excerpts[0].text}</blockquote>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </details>
+          )}
+
           {/* Confidence + metadata row */}
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1 border-t border-border/40">
             <span className="flex items-center gap-1">

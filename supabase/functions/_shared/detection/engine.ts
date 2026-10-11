@@ -26,8 +26,9 @@ import { analyzeSemanticConsistency } from './layers/semanticConsistency.ts';
 import { detectHumanEdits } from './layers/humanEditDetection.ts';
 import { analyzeDocumentConsistency } from './layers/documentConsistency.ts';
 import { analyzeDocumentStyle } from './documentStyleEvidence.ts';
+import { analyzeReadingEvidence } from './readingEvidence.ts';
 
-export const DETECTOR_VERSION = '2.5.3';
+export const DETECTOR_VERSION = '2.6.0';
 export const MODEL_VERSION = 'ensemble-v4-classifier-v2';
 export const LANGUAGE_PIPELINE_VERSION = 'lang-v3';
 export const CALIBRATION_VERSION = 'cal-v3-five-class';
@@ -911,22 +912,21 @@ export async function analyzeAdvancedText(
     humanEdit,
     documentConsistency,
   );
-  // An additional explainable, document-wide reading evaluates repeated advice,
-  // repeated caveats, section progression, personal experience, and specificity.
-  // Require multiple cues rather than treating tidy SEO formatting as AI proof.
+  // Shared, auditable reading rubric. Provisional evidence points are not a
+  // calibrated probability; no expected output or known authorship enters it.
   const styleEvidence = analyzeDocumentStyle(trimmed);
-  const styleSignalStrong = wordCount >= 600 &&
-    styleEvidence.supportingCues.length >= 4 &&
-    linguisticResult.profile.personalVoiceScore < 0.08;
-  const styleContribution = styleSignalStrong ? (styleEvidence.supportingCues.length - 3) * 6 : 0;
-  const styleTransfer = Math.min(styleContribution, adjusted.human);
+  const readingEvidence = analyzeReadingEvidence(trimmed, languageCode);
+  const styleSignalStrong = readingEvidence.eligible;
+  const styleContribution = Math.round(readingEvidence.netPoints);
   const preStyleScores = { ai: adjusted.ai, human: adjusted.human, mixed: adjusted.mixed };
-  if (styleSignalStrong) {
-    // Each qualifying cue above the corroboration gate contributes six points.
-    // Only available probability mass limits transfer; there is no evidence ceiling.
-    adjusted.ai += styleTransfer;
-    adjusted.human -= styleTransfer;
-  }
+  const styleTransfer = styleContribution >= 0
+    ? Math.min(styleContribution, adjusted.human)
+    : -Math.min(-styleContribution, adjusted.ai);
+  adjusted.ai += styleTransfer;
+  adjusted.human -= styleTransfer;
+  const readingAudit = { ...readingEvidence, baseAi: preStyleScores.ai,
+    requestedContribution: styleContribution, appliedContribution: styleTransfer,
+    finalAi: adjusted.ai };
   // uncertainty is kept separate from adjusted.mixed — it feeds confidence
   // calibration only and must never inflate the displayed Mixed probability.
   const uncertaintyScore = adjusted.uncertainty;
@@ -1079,6 +1079,7 @@ export async function analyzeAdvancedText(
     isSupported,
   );
 
+  if (readingEvidence.eligible) limitations.push(...readingEvidence.limitations);
   const metadata: AnalysisMetadata = {
     detectorVersion: DETECTOR_VERSION,
     modelVersion: MODEL_VERSION,
@@ -1102,8 +1103,7 @@ export async function analyzeAdvancedText(
     warnings.push({
       type: 'low-context',
       severity: 'info',
-      message: 'Document-wide style analysis noted: ' + styleEvidence.supportingCues.join('; ') +
-        '. These are supporting AI-style clues, not proof of AI authorship.',
+      message: 'Document reading evidence contributed ' + styleTransfer + ' points. This provisional heuristic adjustment is not a calibrated authorship probability; review the evidence breakdown.',
     });
   }
   if (unresolvedLocalEvidence) {
@@ -1184,6 +1184,7 @@ export async function analyzeAdvancedText(
   } : undefined;
 
   return {
+    readingEvidence: readingAudit,
     overall: {
       aiProbability: adjusted.ai,
       humanProbability: adjusted.human,

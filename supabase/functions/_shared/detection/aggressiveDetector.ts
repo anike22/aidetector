@@ -23,6 +23,12 @@ export interface AggressiveDetectorResult {
   risk: 'Low' | 'Medium' | 'High';
   // Recommendations returned for actionable improvement
   recommendations: string[];
+  scoreTrace?: {
+    balancedAi: number; heuristicAi: number;
+    branch: 'strict' | 'moderate' | 'natural';
+    candidateBeforeBounds: number; finalAi: number;
+    readingContribution: number; readingVersion?: string;
+  };
 }
 
 export interface AggressiveDetectorError {
@@ -287,6 +293,7 @@ export async function runAggressiveDetector(
     baseAi <= 45 &&
     confidence <= 55 &&
     (humanization?.confidence ?? 0) < 35;
+  const candidateBeforeBounds = strictAi;
   strictAi = Math.min(100, Math.max(0, strictAi));
 
   const finalHumanScore = 100 - strictAi;
@@ -334,5 +341,12 @@ export async function runAggressiveDetector(
     human: finalHumanScore,
     risk: finalRisk,
     recommendations,
+    scoreTrace: {
+      balancedAi: baseAi, heuristicAi: raw.aiScore,
+      branch: isStrictAi ? 'strict' : isModerateAi ? 'moderate' : 'natural',
+      candidateBeforeBounds, finalAi: strictAi,
+      readingContribution: fullResult?.readingEvidence?.appliedContribution ?? 0,
+      readingVersion: fullResult?.readingEvidence?.version,
+    },
   };
 }

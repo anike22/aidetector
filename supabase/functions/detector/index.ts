@@ -16,7 +16,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const DETECTOR_VERSION = '2.5.3';
+const DETECTOR_VERSION = '2.6.0';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
