@@ -1,3 +1,4 @@
+import aiBitcoinMining from './fixtures/userAttestedAiBitcoinMining.md?raw';
 import { describe, expect, it } from 'vitest';
 import { analyzeAdvancedText } from '@/lib/detection/engine';
 import { runAggressiveDetector } from '@/lib/detection/aggressiveDetectorService';
@@ -13,8 +14,17 @@ const attestedHumanSamples = [{
 
 describe('Provenance-aware detector regression benchmark', () => {
   it('records both modes, false-positive events, and missing verified-ground-truth denominators', async () => {
+    const samples = [
+      ...attestedHumanSamples,
+      {
+        id: 'bitcoin-mining-user-attested-ai',
+        provenance: 'user-attested',
+        origin: 'ai',
+        text: aiBitcoinMining,
+      },
+    ];
     const results = [];
-    for (const sample of attestedHumanSamples) {
+    for (const sample of samples) {
       const balanced = await analyzeAdvancedText(sample.text);
       const strict = await runAggressiveDetector(sample.text, {
         ai: balanced.overall.aiProbability,
@@ -38,19 +48,25 @@ describe('Provenance-aware detector regression benchmark', () => {
     }
     const report = {
       sampleCount: results.length,
-      selfReportedHumanCount: results.length,
+      selfReportedHumanCount: results.filter(r => r.origin === 'human').length,
+      selfReportedAiCount: results.filter(r => r.origin === 'ai').length,
       independentlyVerifiedHumanCount: 0,
       independentlyVerifiedAiCount: 0,
       highAiThreshold: 65,
       selfReportedHumanHighAiEvents: {
-        balanced: results.filter(x => x.balancedHighAi).length,
-        strict: results.filter(x => x.strictHighAi).length,
+        balanced: results.filter(x => x.origin === 'human' && x.balancedHighAi).length,
+        strict: results.filter(x => x.origin === 'human' && x.strictHighAi).length,
+      },
+      selfReportedAiFalseNegativeEvents: {
+        balanced: results.filter(x => x.origin === 'ai' && !x.balancedHighAi).length,
+        strict: results.filter(x => x.origin === 'ai' && !x.strictHighAi).length,
       },
       verifiedFalsePositiveRate: null,
       verifiedFalseNegativeRate: null,
       results,
     };
     console.info('[provenance-benchmark]', JSON.stringify(report));
+    expect(report.selfReportedAiCount).toBe(1);
     expect(report.selfReportedHumanHighAiEvents.balanced).toBe(0);
     expect(report.selfReportedHumanHighAiEvents.strict).toBe(0);
     expect(report.verifiedFalsePositiveRate).toBeNull();
