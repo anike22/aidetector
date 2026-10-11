@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ export default function SignupPage() {
   const { signUpWithEmail, signInWithGoogle } = useAuth();
   const { trackEvent } = useCustomerDataPlatform();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref');
   const affiliateLinkId = searchParams.get('aff');
@@ -34,7 +35,10 @@ export default function SignupPage() {
   const [referralTracked, setReferralTracked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    const signupEmail = location.state?.signupEmail;
+    return typeof signupEmail === 'string' ? signupEmail.trim() : '';
+  });
   const [emailLocked, setEmailLocked] = useState(false);
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);

@@ -4,10 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Users, DollarSign, Link as LinkIcon, Award, ArrowRight, CheckCircle2, Bot } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AffiliateHubPage() {
   const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   return (
     <div className="container mx-auto py-16 space-y-16">
@@ -24,17 +27,31 @@ export default function AffiliateHubPage() {
           Join our affiliate program and earn passive income by referring clients to our SaaS tools, consulting services, and premium resources.
         </p>
         
-        <form className="max-w-md mx-auto flex gap-2 pt-4" onSubmit={e => { e.preventDefault(); /* submit */ }}>
+        <form className="max-w-md mx-auto flex gap-2 pt-4" onSubmit={e => {
+          e.preventDefault();
+          if (user) {
+            navigate('/affiliates/dashboard');
+            return;
+          }
+          navigate('/signup?returnTo=%2Faffiliates%2Fdashboard', {
+            state: { signupEmail: email.trim() },
+          });
+        }}>
           <Input 
             placeholder="Enter your email to join" 
             type="email" 
-            required 
+            aria-label="Email address"
+            autoComplete="email"
+            required={!user}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="h-12 text-base"
           />
           <Button size="lg" type="submit" className="h-12 px-8">Join Now</Button>
         </form>
+        <p className="text-sm text-muted-foreground">
+          Create and verify your account, then submit your affiliate application. Affiliate access is subject to approval.
+        </p>
       </div>
 
       {/* Benefits */}
