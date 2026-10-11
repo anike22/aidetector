@@ -954,7 +954,7 @@ export async function analyzeAdvancedText(
     documentConsistency.consistencyScore,
   );
 
-  const verdict = classifyVerdict(
+  const initialVerdict = classifyVerdict(
     adjusted.ai,
     adjusted.human,
     adjusted.mixed,
@@ -967,8 +967,6 @@ export async function analyzeAdvancedText(
     ensemble.humanization,
     weakHumanAuthorshipEvidence,
   );
-  const riskLevelVal = riskLevel(verdict, adjusted.ai);
-
   // Independent local evidence may contradict a high document AI score.
   // Do not relabel or manipulate the displayed probability: flag the disagreement
   // and lower confidence until a held-out calibration set can resolve it.
@@ -994,6 +992,16 @@ export async function analyzeAdvancedText(
     inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
     !ensemble.humanization.detected;
   const unresolvedLocalEvidence = strongLocalHumanConflict || weakLocalCorroboration;
+
+  // Do not promote a score to an authorship verdict without corroboration.
+  // Keep the model's numeric score visible for audit; it is NOT recalibrated
+  // until a labelled human/AI holdout can justify recalibration.
+  const verdict: Verdict = unresolvedLocalEvidence &&
+    (initialVerdict === 'likely-ai' || initialVerdict === 'mostly-ai-human-edited')
+      ? 'inconclusive'
+      : initialVerdict;
+
+  const riskLevelVal = riskLevel(verdict, adjusted.ai);
 
   // Apply uncertainty penalty to confidence: high epistemic uncertainty (short
   // text, feature disagreement, boundary ambiguity) reduces displayed confidence
