@@ -137,7 +137,7 @@ function* charNgrams(text: string, minN: number, maxN: number): Generator<string
   }
 }
 
-function scoreBinaryChunk(text: string, model: BinaryLanguageModel, vocabMap: Record<string, number>): number {
+function scoreBinaryChunk(text: string, model: BinaryLanguageModel, vocabMap: Record<string, number>, normalizeFeatures = false): number {
   const counts: Record<string, number> = {};
   for (const gram of charNgrams(text, model.ngramRange[0], model.ngramRange[1])) {
     if (vocabMap[gram] === undefined) continue;
@@ -146,12 +146,20 @@ function scoreBinaryChunk(text: string, model: BinaryLanguageModel, vocabMap: Re
   if (Object.keys(counts).length === 0) return 0.5;
 
   let logit = model.intercept;
+  let dot = 0;
+  let squaredNorm = 0;
   for (const [gram, count] of Object.entries(counts)) {
     const idx = vocabMap[gram];
     const tf = Math.log(1 + count);
     const idf = model.idf[idx];
-    logit += tf * idf * model.coef[idx];
+    const feature = tf * idf;
+    dot += feature * model.coef[idx];
+    squaredNorm += feature * feature;
   }
+  // English baseline: high-dimensional TF-IDF vectors must be L2-normalized
+  // before evaluating the trained linear weights. Missing normalization caused
+  // logits to grow with document length and saturate to 100% on human writing.
+  logit += normalizeFeatures && squaredNorm > 0 ? dot / Math.sqrt(squaredNorm) : dot;
   return sigmoid(logit);
 }
 
@@ -159,6 +167,7 @@ function scoreClasses(
   text: string,
   model: LanguageModel,
   vocabMap: Record<string, number>,
+  normalizeFeatures = false,
 ): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const gram of charNgrams(text, model.ngramRange[0], model.ngramRange[1])) {
@@ -167,16 +176,20 @@ function scoreClasses(
   }
   const K = model.classes.length;
   const logits = new Float32Array(K);
+  let squaredNorm = 0;
   for (const [gram, count] of Object.entries(counts)) {
     const idx = vocabMap[gram];
     const tf = Math.log(1 + count);
     const idf = model.idf[idx];
+    const feature = tf * idf;
+    squaredNorm += feature * feature;
     for (let k = 0; k < K; k++) {
-      logits[k] += tf * idf * model.weights[idx][k];
+      logits[k] += feature * model.weights[idx][k];
     }
   }
+  const norm = normalizeFeatures && squaredNorm > 0 ? Math.sqrt(squaredNorm) : 1;
   for (let k = 0; k < K; k++) {
-    logits[k] += model.biases[k];
+    logits[k] = logits[k] / norm + model.biases[k];
   }
 
   // Softmax
@@ -301,10 +314,10 @@ export async function classifyWithClassifier(text: string, languageCode: string)
   let totalWeight = 0;
 
   for (const chunk of chunks) {
-    const classProbs = scoreClasses(chunk.text, model, vocabMap);
+    const classProbs = scoreClasses(chunk.text, model, vocabMap, languageCode.toLowerCase() === 'en');
     const weight = chunk.text.length;
     const binaryAiProb = binaryModel && binaryVocabMap
-      ? scoreBinaryChunk(chunk.text, binaryModel, binaryVocabMap)
+      ? scoreBinaryChunk(chunk.text, binaryModel, binaryVocabMap, languageCode.toLowerCase() === 'en')
       : Object.values(classProbs).reduce((a, b) => a + b, 0) - (classProbs.human || 0);
     weightedAiSum += binaryAiProb * weight;
     totalWeight += weight;
