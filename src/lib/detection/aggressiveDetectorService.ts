@@ -247,7 +247,8 @@ export async function runAggressiveDetector(
   const localEvidenceConflict = Boolean(
     fullResult?.warnings?.some(w =>
       w.type === 'low-context' &&
-      w.message.startsWith('Document-level AI classification conflicts')
+      (w.message.startsWith('Document-level AI classification conflicts') ||
+       w.message.startsWith('Document-level AI classification lacks corroboration'))
     )
   );
   if (localEvidenceConflict) {
