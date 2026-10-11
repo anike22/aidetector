@@ -352,6 +352,9 @@ function classifyLocalVerdict(
   // Mixed requires: mixed is genuinely the dominant signal (> 45) AND the
   // margin between AI and Human is very tight (< 10 points).
   const max = Math.max(ai, human, mixed);
+  // Relative leadership between weak signals is not strong authorship evidence.
+  // Previously AI=23 versus Human=12 was incorrectly labelled 'likely-ai'.
+  if (max < 35) return 'inconclusive';
   if (ai >= thresholds.likelyAi && mixed < 25) return 'likely-ai';
   if (human >= thresholds.likelyHuman && ai < 25) return 'likely-human';
   if (ai >= thresholds.mostlyAi && human >= 15) return 'mostly-ai-human-edited';
@@ -498,8 +501,11 @@ function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: Paragr
       const end = run[run.length - 1].end;
       const text = run.map((s) => s.text).join(' ');
       const avgAi = run.reduce((sum, s) => sum + s.aiProbability, 0) / run.length;
-      const verdict = avgAi >= 70 ? 'likely-ai' : avgAi >= 40 ? 'mixed' : 'likely-human';
-      highlights.push({
+      // A run assembled from AI-leaning sentences must never be relabelled
+      // human solely because its average *absolute* score is low.
+      // Below 40, the evidence is insufficient to highlight confidently.
+      const verdict = avgAi >= 40 ? 'likely-ai' : 'inconclusive';
+      if (verdict !== 'inconclusive') highlights.push({
         start,
         end,
         text,
