@@ -87,6 +87,11 @@ describe('Provenance-aware detector regression benchmark', () => {
       results,
     };
     console.info('[provenance-benchmark]', JSON.stringify(report));
+    const longAi = results.find(r => r.id === 'bitcoin-mining-user-attested-ai');
+    // Do not claim detection: prevent an unsupported confident Human verdict
+    // while classifier recall remains unresolved.
+    expect(longAi?.balancedVerdict).toBe('inconclusive');
+    expect(longAi?.balancedAi).toBeLessThan(65);
     expect(report.selfReportedAiCount).toBe(1);
     expect(report.selfReportedHumanHighAiEvents.balanced).toBe(0);
     expect(report.selfReportedHumanHighAiEvents.strict).toBe(0);
