@@ -280,6 +280,16 @@ Ultimately, developing balanced governance frameworks will be essential for ensu
 
     // 2. High-Sensitivity Analysis — Strict detector (standalone or with balanced) must score decisively high (>= 85%)
     const strictResult = await runAggressiveDetector(chatGptSample);
+    const full = await analyzeAdvancedText(chatGptSample);
+    console.info('[strict-ai-calibration-audit]', JSON.stringify({
+      heuristicAi: riskResult.aiScore, balancedAi: full.overall.aiProbability,
+      confidence: full.overall.confidence, verdict: full.overall.verdict,
+      classProbabilities: full.metadata.classProbabilities,
+      localVerdicts: full.sentences.map(s => s.verdict),
+      linguistic: { boilerplate: full.linguisticProfile.aiBoilerplateScore,
+        formulaic: full.linguisticProfile.formulaicStartScore + full.linguisticProfile.formulaicEndScore },
+      strictAi: strictResult.ai,
+    }));
     expect(strictResult.ai).toBeGreaterThanOrEqual(85);
     expect(strictResult.human).toBeLessThanOrEqual(15);
     expect(strictResult.risk).toBe('High');
