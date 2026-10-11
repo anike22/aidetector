@@ -301,9 +301,12 @@ export async function runAggressiveDetector(
   // because both models produced weak AI scores.
   const unresolvedLongDocument =
     balanced?.verdict === 'inconclusive' &&
-    (fullResult?.textSufficiency?.wordCount ?? 0) >= 120 &&
-    sentences.length >= 6 &&
-    sentences.filter(s => s.verdict === 'inconclusive').length >= Math.ceil(sentences.length * 0.85);
+    (fullResult?.textSufficiency?.wordCount ?? 0) >= 1500 &&
+    sentences.length >= 80 &&
+    (fullResult?.paragraphs?.length ?? 0) >= 40 &&
+    sentences.filter(s => s.verdict === 'inconclusive').length >= Math.ceil(sentences.length * 0.90) &&
+    (fullResult?.paragraphs?.filter(p => p.verdict === 'inconclusive').length ?? 0) >=
+      Math.ceil((fullResult?.paragraphs?.length ?? 0) * 0.90);
   const finalRisk: 'Low' | 'Medium' | 'High' =
     strictAi >= 65 ? 'High' : strictAi >= 35 || unresolvedLongDocument ? 'Medium' : 'Low';
 
