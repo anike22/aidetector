@@ -1,0 +1,338 @@
+// Aggressive Detector Service — adapter for High-Sensitivity Analysis (Strict screen)
+// Calibrated to aggressively detect and score AI text high while flagging subtle AI patterns.
+//
+// Leverages both the SEO Assistant's analyzeAIRisk engine and the full multi-layer
+// detection ensemble (analyzeAdvancedText) to ensure aggressive sensitivity and accurate high scores.
+
+import { analyzeAIRisk } from './aiRiskHeuristic.ts';
+import { analyzeAdvancedText } from './engine.ts';
+import type { AdvancedTextAnalysisResult } from './types.ts';
+
+type BalancedDetectorResult = {
+  ai: number; human: number; mixed: number; verdict: string; risk: string;
+  confidence: number; confidenceLevel: string; language: string;
+  engineVersion?: string; modelVersion?: string; calibrationVersion?: string;
+  languagePipelineVersion?: string; requestId?: string; analyzedAt?: string;
+  full: AdvancedTextAnalysisResult;
+};
+
+export interface AggressiveDetectorResult {
+  // Scores (0–100) — exactly two categories (no Mixed category on this card)
+  ai: number;
+  human: number;
+  risk: 'Low' | 'Medium' | 'High';
+  // Recommendations returned for actionable improvement
+  recommendations: string[];
+}
+
+export interface AggressiveDetectorError {
+  message: string;
+  canRetry: boolean;
+}
+
+// runAggressiveDetector performs High-Sensitivity Analysis (Strict screen flagging weaker AI-like patterns).
+export async function runAggressiveDetector(
+  text: string,
+  balancedResult?: BalancedDetectorResult
+): Promise<AggressiveDetectorResult> {
+  const raw = analyzeAIRisk(text, true);
+
+  // If balancedResult was not provided, run the comprehensive multi-layer ensemble engine directly
+  let balanced = balancedResult;
+  if (!balanced && text.trim().length >= 25) {
+    try {
+      const adv = await analyzeAdvancedText(text);
+      balanced = {
+        ai: adv.overall.aiProbability,
+        human: adv.overall.humanProbability,
+        mixed: adv.overall.mixedProbability,
+        verdict: adv.overall.verdict,
+        risk: adv.overall.riskLevel,
+        confidence: adv.overall.confidence,
+        confidenceLevel: adv.overall.confidenceLevel,
+        language: adv.language.primary?.name || 'English',
+        engineVersion: adv.metadata.detectorVersion,
+        modelVersion: adv.metadata.modelVersion,
+        calibrationVersion: adv.metadata.calibrationVersion,
+        languagePipelineVersion: adv.metadata.languagePipelineVersion,
+        requestId: adv.metadata.requestId,
+        analyzedAt: adv.metadata.analyzedAt,
+        full: adv,
+      };
+    } catch {
+      // Fallback cleanly to heuristic if advanced engine encounters error
+    }
+  }
+
+  const baseAi = balanced?.ai ?? 0;
+  const mixedSignal = balanced?.mixed ?? 0;
+  const verdict = balanced?.verdict ?? '';
+  const confidence = balanced?.confidence ?? 50;
+
+  // Extract multi-layer machine learning classifier probabilities if present
+  const fullResult = balanced?.full;
+  const classProbs =
+    fullResult?.metadata?.classProbabilities ||
+    (fullResult as any)?.classProbabilities;
+  // Five-class output must not be collapsed by summing every AI-labelled
+  // class. Under weak evidence, three near-uniform AI-family labels can sum
+  // to 60%+ even while Human is the highest *individual* class.
+  // Count it as independent AI evidence only when one AI class clearly
+  // exceeds the Human class, rather than exploiting the number of labels.
+  const humanClassProbability = classProbs?.human ?? 0;
+  const pureAiClassProbability = Math.max(classProbs?.ai ?? 0, classProbs?.['translated-ai'] ?? 0);
+  const leadingAiClassProbability = Math.max(
+    pureAiClassProbability,
+    classProbs?.['human-edited-ai'] ?? 0,
+  );
+  const independentClassAiEvidence =
+    leadingAiClassProbability >= humanClassProbability + 0.15;
+  const classifierAi = independentClassAiEvidence
+    ? Math.round(leadingAiClassProbability * 100)
+    : 0;
+  const pureClassifierAi =
+    independentClassAiEvidence && pureAiClassProbability >= humanClassProbability + 0.15
+      ? Math.round(pureAiClassProbability * 100)
+      : 0;
+  const humanEditedAi = Math.round((classProbs?.['human-edited-ai'] ?? 0) * 100);
+
+  const humanization = fullResult?.humanization;
+  const linguistic = fullResult?.linguisticProfile;
+  const statistical = fullResult?.statisticalProfile;
+  const weakGroundedAuthorship = Boolean(
+    linguistic &&
+      linguistic.specificityScore < 0.08 &&
+      linguistic.personalVoiceScore < 0.08
+  );
+
+  // A common evasion case is a classifier that leans strongly human after an
+  // AI passage has been paraphrased. Do not let that high human probability
+  // automatically exempt the text when the independent humanization layer,
+  // weak authorship grounding, and editing/coherence signals agree.
+  const hasHumanizationEvasionEvidence = Boolean(
+    balanced &&
+      baseAi <= 20 &&
+      balanced.human >= 75 &&
+      humanization?.detected &&
+      // A low-confidence paraphrasing/coherence hint is common in ordinary
+      // human editing. Do not treat it as near-certain AI authorship.
+      humanization.confidence >= 65 &&
+      weakGroundedAuthorship &&
+      humanEditedAi >= 25 &&
+      (statistical?.editingSignalScore ?? 0) >= 0.15
+  );
+
+  // Sentence-level AI verification
+  const sentences = fullResult?.sentences || [];
+  // Do not count "mostly-human-ai-assisted" as AI-authored sentences.
+  // Substring matching on "ai" incorrectly turns human-leaning verdicts
+  // into strict-mode AI evidence.
+  const aiSentenceCount = sentences.filter(
+    (s) => s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited'
+  ).length;
+  const sentenceAiRatio =
+    sentences.length > 0 ? (aiSentenceCount / sentences.length) * 100 : 0;
+
+  // Combined AI & assisted signals
+  const combinedAiSignal = baseAi + mixedSignal * 0.75;
+  const hasVerifiableAiAssistance =
+    verdict.includes('ai') ||
+    verdict.includes('mixed') ||
+    verdict === 'mostly-ai-human-edited' ||
+    verdict === 'mostly-human-ai-assisted';
+
+  const isHighConfidence =
+    balanced?.confidenceLevel !== 'Low' && confidence >= 40;
+
+  // Check if balanced detector or linguistic engine verified natural human writing
+  const isVerifiedHuman =
+    !hasHumanizationEvasionEvidence &&
+    ((balanced &&
+      (verdict === 'likely-human' ||
+        verdict === 'mostly-human' ||
+        (balanced.human >= 75 && baseAi <= 15 && mixedSignal <= 15)) &&
+      classifierAi < 25) ||
+      (balanced &&
+        verdict === 'mostly-human-ai-assisted' &&
+        balanced.human >= 60 &&
+        baseAi <= 30 &&
+        confidence >= 50 &&
+        raw.aiScore < 38) ||
+      (balanced &&
+        confidence < 40 &&
+        raw.aiScore < 30 &&
+        classifierAi < 35) ||
+    // A weak, nearly-uniform multi-class output is not independent evidence
+    // of AI merely because the four AI-family labels sum to > 70%.
+    // Require the heuristic AND local sentences to support escalation.
+    (balanced &&
+      raw.aiScore <= 25 &&
+      baseAi <= 45 &&
+      sentences.length >= 3 &&
+      sentenceAiRatio === 0 &&
+      sentences.every(sentence => sentence.verdict === 'inconclusive' || sentence.verdict === 'likely-human') &&
+      (humanization?.confidence ?? 0) < 35 &&
+      !hasHumanizationEvasionEvidence) ||
+    (!balanced &&
+      raw.aiScore < 30 &&
+      raw.recommendations.some((r) =>
+        r.includes('align with natural human writing')
+      )));
+
+  // High-Sensitivity Strict Mode:
+  // Designed as an aggressive screen to decisively detect and score AI text high.
+  // Flags clear AI, AI-assisted, and hybrid synthetic patterns.
+  // Preserves genuine human prose when verified natural human writing is detected.
+  const isStrictAi =
+    !isVerifiedHuman &&
+    (hasHumanizationEvasionEvidence ||
+      // A heuristic score by itself is insufficient to declare high-risk AI:
+      // the screenshots show that natural human text can trip those rules.
+      (raw.aiScore >= 65 &&
+        (pureClassifierAi >= 35 || (baseAi >= 45 && confidence >= 60))) ||
+      // Strong independent heuristic evidence with a supporting ensemble
+      // signal remains actionable after English classifier normalization.
+      (raw.aiScore >= 70 && (baseAi >= 25 || sentenceAiRatio >= 10)) ||
+      (isHighConfidence &&
+        (pureClassifierAi >= 35 ||
+          baseAi >= 35 ||
+          combinedAiSignal >= 45 ||
+          (hasVerifiableAiAssistance &&
+            (verdict === 'likely-ai' ||
+              verdict === 'mostly-ai-human-edited') &&
+            (baseAi >= 22 || pureClassifierAi >= 25 || mixedSignal >= 15)) ||
+          sentenceAiRatio >= 20 ||
+          verdict === 'likely-ai' ||
+          verdict === 'mostly-ai-human-edited')));
+
+  const isModerateAi =
+    !isVerifiedHuman &&
+    (raw.aiScore >= 38 ||
+      (isHighConfidence &&
+        (classifierAi >= 18 ||
+          baseAi >= 15 ||
+          combinedAiSignal >= 18 ||
+          mixedSignal >= 12 ||
+          sentenceAiRatio >= 10)));
+
+  let strictAi: number;
+
+  if (isStrictAi) {
+    // Clear AI or assisted text is aggressively detected and scored high (86%–100% AI, High Risk)
+    const candidate = Math.max(
+      raw.aiScore,
+      pureClassifierAi > 0 ? Math.round(pureClassifierAi * 1.15 + 10) : 0,
+      Math.round(baseAi * 1.5 + mixedSignal * 0.9 + 20)
+    );
+    strictAi = hasHumanizationEvasionEvidence
+      ? Math.max(
+            90,
+            candidate,
+            90 + Math.round(humanization!.confidence / 5 + humanEditedAi / 2)
+        )
+      : Math.max(86, candidate);
+  } else if (isModerateAi) {
+    // Moderate/hybrid AI signals are strictly elevated to 52% or above
+    const candidate = Math.max(
+      raw.aiScore,
+      classifierAi > 0 ? Math.round(classifierAi * 1.1) : 0,
+      Math.round(baseAi * 1.25 + mixedSignal * 0.75 + 10)
+    );
+    strictAi = Math.max(52, candidate);
+  } else {
+    // Authentic human writing evaluates dynamically to its true empirical score without artificial floors or clamps
+    const confRatio = Math.max(0.2, Math.min(1.0, confidence / 100));
+    const baseWeight = 0.55 * confRatio;
+    strictAi = isHighConfidence
+      ? Math.max(raw.aiScore, Math.round(baseAi * 0.7))
+      : Math.round(raw.aiScore * (1 - baseWeight) + baseAi * baseWeight);
+  }
+
+  // Preserve the strict-mode floor unless the two engines conflict at low
+  // confidence and the independent heuristic supports genuine human prose.
+  // For low / ambiguous Balanced results, Strict should not undercut the
+  // primary score merely because a verified-human exemption short-circuited
+  // the stricter heuristic. Do not impose this floor on a high-scoring
+  // Balanced result, which itself may be a formal-human false positive.
+  if (balanced && baseAi <= 45) {
+    strictAi = Math.max(strictAi, baseAi);
+  } else if (balancedResult && !isVerifiedHuman) {
+    strictAi = Math.max(strictAi, baseAi);
+  }
+  // A low-confidence disagreement between the heuristic and ensemble is
+  // uncertainty. Record the disagreement for review without capping the score.
+  const hasSevereCrossEngineConflict =
+    Boolean(balanced) &&
+    raw.aiScore <= 25 &&
+    baseAi >= 45 &&
+    pureClassifierAi >= 55 &&
+    confidence <= 50 &&
+    (humanization?.confidence ?? 0) < 35;
+  // If the document and its own sentence-level evidence contradict each
+  // other, report that contradiction alongside the uncapped Strict score.
+  const localEvidenceConflict = Boolean(
+    fullResult?.warnings?.some(w =>
+      w.type === 'low-context' &&
+      (w.message.startsWith('Document-level AI classification conflicts') ||
+       w.message.startsWith('Document-level AI classification lacks corroboration'))
+    )
+  );
+  // Moderate heuristic signals combined with weak Balanced evidence and no
+  // locally AI-leaning sentences cannot justify a near-certain Strict verdict.
+  // Preserve Strict's independent heuristic, but express this as uncertain.
+  const weaklyCorroboratedStrictEscalation =
+    sentences.length >= 3 &&
+    aiSentenceCount === 0 &&
+    raw.aiScore <= 55 &&
+    baseAi <= 45 &&
+    confidence <= 55 &&
+    (humanization?.confidence ?? 0) < 35;
+  strictAi = Math.min(100, Math.max(0, strictAi));
+
+  const finalHumanScore = 100 - strictAi;
+  // Risk is a review priority, not the probability of AI authorship. A long
+  // document that the primary engine explicitly marks Inconclusive must not
+  // be presented as cleared / Low Risk by the secondary screen solely
+  // because both models produced weak AI scores.
+  const unresolvedLongDocument =
+    balanced?.verdict === 'inconclusive' &&
+    (fullResult?.textSufficiency?.wordCount ?? 0) >= 1500 &&
+    sentences.length >= 80 &&
+    (fullResult?.paragraphs?.length ?? 0) >= 40 &&
+    sentences.filter(s => s.verdict === 'inconclusive').length >= Math.ceil(sentences.length * 0.90) &&
+    (fullResult?.paragraphs?.filter(p => p.verdict === 'inconclusive').length ?? 0) >=
+      Math.ceil((fullResult?.paragraphs?.length ?? 0) * 0.90);
+  const finalRisk: 'Low' | 'Medium' | 'High' =
+    strictAi >= 65 ? 'High' : strictAi >= 35 || unresolvedLongDocument ? 'Medium' : 'Low';
+
+  const recommendations = hasHumanizationEvasionEvidence
+    ? []
+    : [...raw.recommendations];
+  if (hasSevereCrossEngineConflict || localEvidenceConflict || weaklyCorroboratedStrictEscalation) {
+    recommendations.unshift('Conflicting evidence: review the score alongside the sentence-level findings; accumulated evidence has not been capped.');
+  }
+  if (unresolvedLongDocument) {
+    recommendations.unshift('Review needed: document-level authorship is inconclusive because most local sentences provide no decisive AI or Human evidence. A low AI score does not prove human authorship.');
+  }
+  if (hasHumanizationEvasionEvidence) {
+    recommendations.unshift(
+      'Humanization/evasion patterns detected: the text reads naturally, but independent editing and weak-authorship signals remain consistent with rewritten AI content.'
+    );
+  }
+  if (
+    strictAi >= 35 &&
+    mixedSignal > 10 &&
+    !recommendations.some((r) => r.includes('mixed') || r.includes('Hybrid'))
+  ) {
+    recommendations.unshift(
+      'Hybrid AI-assisted phrasing detected across sentences; strict screen flagged weaker AI traces.'
+    );
+  }
+
+  return {
+    ai: strictAi,
+    human: finalHumanScore,
+    risk: finalRisk,
+    recommendations,
+  };
+}

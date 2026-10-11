@@ -25,8 +25,9 @@ import type { PassageScore } from './layers/humanEditDetection.ts';
 import { analyzeSemanticConsistency } from './layers/semanticConsistency.ts';
 import { detectHumanEdits } from './layers/humanEditDetection.ts';
 import { analyzeDocumentConsistency } from './layers/documentConsistency.ts';
+import { analyzeDocumentStyle } from './documentStyleEvidence.ts';
 
-export const DETECTOR_VERSION = '2.5.2';
+export const DETECTOR_VERSION = '2.5.3';
 export const MODEL_VERSION = 'ensemble-v4-classifier-v2';
 export const LANGUAGE_PIPELINE_VERSION = 'lang-v3';
 export const CALIBRATION_VERSION = 'cal-v3-five-class';
@@ -352,6 +353,9 @@ function classifyLocalVerdict(
   // Mixed requires: mixed is genuinely the dominant signal (> 45) AND the
   // margin between AI and Human is very tight (< 10 points).
   const max = Math.max(ai, human, mixed);
+  // Relative leadership between weak signals is not strong authorship evidence.
+  // Previously AI=23 versus Human=12 was incorrectly labelled 'likely-ai'.
+  if (max < 35) return 'inconclusive';
   if (ai >= thresholds.likelyAi && mixed < 25) return 'likely-ai';
   if (human >= thresholds.likelyHuman && ai < 25) return 'likely-human';
   if (ai >= thresholds.mostlyAi && human >= 15) return 'mostly-ai-human-edited';
@@ -435,7 +439,7 @@ function buildSentenceVerdicts(
   });
 }
 
-function buildParagraphVerdicts(
+export function buildParagraphVerdicts(
   text: string,
   sentenceVerdicts: SentenceVerdict[],
   paragraphAiSignals: number[],
@@ -466,9 +470,13 @@ function buildParagraphVerdicts(
     const sentStart = sents.length ? sentenceVerdicts.indexOf(sents[0]) : 0;
     const sentEnd = sents.length ? sentStart + sents.length - 1 : sentStart;
 
-    const aiP = Math.round((ai * 0.6 + (sents.length ? sents.reduce((sum, s) => sum + s.aiProbability, 0) / sents.length : 0) * 0.4));
-    const humanP = Math.round((human * 0.6 + (sents.length ? sents.reduce((sum, s) => sum + s.humanProbability, 0) / sents.length : 0) * 0.4));
-    const mixedP = Math.round(Math.min(100, mixed * 100 + (sents.length ? sents.reduce((sum, s) => sum + s.mixedProbability, 0) / sents.length : 0) * 0.4));
+    // Linguistic paragraph signals are fractions [0, 1]; sentence probabilities
+    // are percentages [0, 100]. Convert units BEFORE blending all three classes.
+    const averageSentence = (key: 'aiProbability' | 'humanProbability' | 'mixedProbability') =>
+      sents.length ? sents.reduce((sum, sentence) => sum + sentence[key], 0) / sents.length : 0;
+    const aiP = Math.round(Math.min(100, ai * 100 * 0.6 + averageSentence('aiProbability') * 0.4));
+    const humanP = Math.round(Math.min(100, human * 100 * 0.6 + averageSentence('humanProbability') * 0.4));
+    const mixedP = Math.round(Math.min(100, mixed * 100 * 0.6 + averageSentence('mixedProbability') * 0.4));
 
     const verdict = classifyLocalVerdict(aiP, humanP, mixedP, thresholds);
     const max = Math.max(aiP, humanP, mixedP);
@@ -488,39 +496,48 @@ function buildParagraphVerdicts(
   });
 }
 
-function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: ParagraphVerdict[], minRun = 2): PassageHighlight[] {
+export function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: ParagraphVerdict[], minRun = 2): PassageHighlight[] {
   const highlights: PassageHighlight[] = [];
-  let run: SentenceVerdict[] = [];
-
-  const pushRun = () => {
-    if (run.length >= minRun) {
-      const start = run[0].start;
-      const end = run[run.length - 1].end;
-      const text = run.map((s) => s.text).join(' ');
-      const avgAi = run.reduce((sum, s) => sum + s.aiProbability, 0) / run.length;
-      const verdict = avgAi >= 70 ? 'likely-ai' : avgAi >= 40 ? 'mixed' : 'likely-human';
-      highlights.push({
-        start,
-        end,
-        text,
-        verdict,
-        confidence: Math.round(run.reduce((sum, s) => sum + s.confidence, 0) / run.length),
-        reason: `${run.length} consecutive ${verdict.replace(/-/g, ' ')} sentences.`,
-      });
+  // Strong human passages are as useful as AI passages. Group consecutive
+  // *supported* local verdicts; never infer authorship from low absolute scores.
+  const kinds: Array<{ verdict: Verdict; matches: (s: SentenceVerdict) => boolean; probability: (s: SentenceVerdict) => number }> = [
+    {
+      verdict: 'likely-ai',
+      matches: s => (s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited') && s.aiProbability >= 40,
+      probability: s => s.aiProbability,
+    },
+    {
+      verdict: 'likely-human',
+      matches: s => s.verdict === 'likely-human' && s.humanProbability >= 50 && s.humanProbability > s.aiProbability + 20,
+      probability: s => s.humanProbability,
+    },
+  ];
+  for (const kind of kinds) {
+    let run: SentenceVerdict[] = [];
+    const pushRun = () => {
+      if (run.length >= minRun) {
+        const confidence = Math.round(run.reduce((sum, s) => sum + s.confidence, 0) / run.length);
+        const probability = run.reduce((sum, s) => sum + kind.probability(s), 0) / run.length;
+        if (confidence >= 35 && probability >= (kind.verdict === 'likely-human' ? 50 : 40)) {
+          highlights.push({
+            start: run[0].start,
+            end: run[run.length - 1].end,
+            text: run.map(s => s.text).join(' '),
+            verdict: kind.verdict,
+            confidence,
+            reason: `${run.length} consecutive ${kind.verdict.replace(/-/g, ' ')} sentences with corroborating evidence.`,
+          });
+        }
+      }
+      run = [];
+    };
+    for (const sentence of sentenceVerdicts) {
+      if (kind.matches(sentence)) run.push(sentence);
+      else pushRun();
     }
-    run = [];
-  };
-
-  for (const s of sentenceVerdicts) {
-    if (s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited') {
-      run.push(s);
-    } else {
-      pushRun();
-    }
+    pushRun();
   }
-  pushRun();
 
-  // Add paragraph-level highlights where the whole paragraph strongly matches one verdict.
   for (const p of paragraphs) {
     if (p.confidence >= 80 && (p.verdict === 'likely-ai' || p.verdict === 'likely-human')) {
       const sents = sentenceVerdicts.slice(p.sentenceRange[0], p.sentenceRange[1] + 1);
@@ -528,7 +545,7 @@ function buildHighlights(sentenceVerdicts: SentenceVerdict[], paragraphs: Paragr
         highlights.push({
           start: sents[0].start,
           end: sents[sents.length - 1].end,
-          text: sents.map((s) => s.text).join(' '),
+          text: sents.map(s => s.text).join(' '),
           verdict: p.verdict,
           confidence: p.confidence,
           reason: `Paragraph ${p.index + 1} shows consistent ${p.verdict.replace(/-/g, ' ')} patterns.`,
@@ -597,7 +614,7 @@ function applyLayerAdjustments(
   //   - Mixed display value is only boosted when there is hard structural
   //     evidence: documentConsistency.inconsistencyLocations.length > 0
   //     (paragraph-level AI probability delta > 40 was actually detected).
-  //   - The boost is small (max ~8 points) and requires that the base mixed
+  //   - The boundary evidence is weighted and requires that the base mixed
   //     value already has some signal (> 5).
   //   - uncertainty is computed separately and used only by the confidence
   //     calibration and DevDiagnostics — it does NOT appear in Mixed%.
@@ -615,7 +632,7 @@ function applyLayerAdjustments(
   // (adjacent paragraphs with > 40-point AI probability delta).
   const hasStructuralBoundary = documentConsistency.inconsistencyLocations.length > 0;
   const mixedBoost = hasStructuralBoundary && mixed > 5
-    ? Math.min(8, documentConsistency.mixedAuthorshipProbability * 8)
+    ? documentConsistency.mixedAuthorshipProbability * 8
     : 0;
 
   // Semantic repetition increases AI probability slightly.
@@ -894,6 +911,22 @@ export async function analyzeAdvancedText(
     humanEdit,
     documentConsistency,
   );
+  // An additional explainable, document-wide reading evaluates repeated advice,
+  // repeated caveats, section progression, personal experience, and specificity.
+  // Require multiple cues rather than treating tidy SEO formatting as AI proof.
+  const styleEvidence = analyzeDocumentStyle(trimmed);
+  const styleSignalStrong = wordCount >= 600 &&
+    styleEvidence.supportingCues.length >= 4 &&
+    linguisticResult.profile.personalVoiceScore < 0.08;
+  const styleContribution = styleSignalStrong ? (styleEvidence.supportingCues.length - 3) * 6 : 0;
+  const styleTransfer = Math.min(styleContribution, adjusted.human);
+  const preStyleScores = { ai: adjusted.ai, human: adjusted.human, mixed: adjusted.mixed };
+  if (styleSignalStrong) {
+    // Each qualifying cue above the corroboration gate contributes six points.
+    // Only available probability mass limits transfer; there is no evidence ceiling.
+    adjusted.ai += styleTransfer;
+    adjusted.human -= styleTransfer;
+  }
   // uncertainty is kept separate from adjusted.mixed — it feeds confidence
   // calibration only and must never inflate the displayed Mixed probability.
   const uncertaintyScore = adjusted.uncertainty;
@@ -948,7 +981,7 @@ export async function analyzeAdvancedText(
     documentConsistency.consistencyScore,
   );
 
-  const verdict = classifyVerdict(
+  const initialVerdict = classifyVerdict(
     adjusted.ai,
     adjusted.human,
     adjusted.mixed,
@@ -961,13 +994,65 @@ export async function analyzeAdvancedText(
     ensemble.humanization,
     weakHumanAuthorshipEvidence,
   );
+  // Independent local evidence may contradict a high document AI score.
+  // Do not relabel or manipulate the displayed probability: flag the disagreement
+  // and lower confidence until a held-out calibration set can resolve it.
+  const localHumanCount = sentenceVerdicts.filter(s =>
+    s.verdict === 'likely-human' || s.verdict === 'mostly-human-ai-assisted'
+  ).length;
+  const localAiCount = sentenceVerdicts.filter(s =>
+    s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited'
+  ).length;
+  const inconclusiveLocalCount = sentenceVerdicts.filter(s => s.verdict === 'inconclusive').length;
+  const strongLocalHumanConflict =
+    sentenceVerdicts.length >= 3 &&
+    adjusted.ai >= 60 &&
+    localHumanCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
+    localAiCount <= Math.floor(sentenceVerdicts.length * 0.2) &&
+    !ensemble.humanization.detected;
+  // A high global AI score with no locally corroborated AI sentences and
+  // predominantly inconclusive evidence is not a basis for high certainty.
+  const weakLocalCorroboration =
+    sentenceVerdicts.length >= 3 &&
+    adjusted.ai >= 40 &&
+    localAiCount === 0 &&
+    inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
+    !ensemble.humanization.detected;
+  // Symmetric guard: overwhelmingly inconclusive local evidence cannot prove
+  // human authorship, either. Long-form AI text can have a low binary classifier
+  // score while every paragraph is unresolved; it must not be confidently
+  // declared human solely because the document-level AI probability is low.
+  const uncorroboratedHumanClaim =
+    wordCount >= 120 &&
+    adjusted.ai < 40 &&
+    sentenceVerdicts.length >= 6 &&
+    inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.85) &&
+    localHumanCount <= Math.floor(sentenceVerdicts.length * 0.10) &&
+    localAiCount === 0 &&
+    paragraphVerdicts.length >= 3 &&
+    paragraphVerdicts.filter(p => p.verdict === 'inconclusive').length >=
+      Math.ceil(paragraphVerdicts.length * 0.80);
+  const unresolvedLocalEvidence =
+    strongLocalHumanConflict || weakLocalCorroboration || uncorroboratedHumanClaim;
+
+  // Do not promote a score to an authorship verdict without corroboration.
+  // Keep the model's numeric score visible for audit; it is NOT recalibrated
+  // until a labelled human/AI holdout can justify recalibration.
+  const verdict: Verdict = unresolvedLocalEvidence &&
+    (initialVerdict === 'likely-ai' ||
+     initialVerdict === 'mostly-ai-human-edited' ||
+     initialVerdict === 'mostly-human-ai-assisted' ||
+     (uncorroboratedHumanClaim && (initialVerdict === 'likely-human')))
+      ? 'inconclusive'
+      : initialVerdict;
+
   const riskLevelVal = riskLevel(verdict, adjusted.ai);
 
   // Apply uncertainty penalty to confidence: high epistemic uncertainty (short
   // text, feature disagreement, boundary ambiguity) reduces displayed confidence
   // without affecting Mixed probability. Max penalty is 12 points at uncertainty=100.
   const uncertaintyPenalty = Math.round(uncertaintyScore * 0.12);
-  const evidencePenalty = weakHumanAuthorshipEvidence ? 25 : 0;
+  const evidencePenalty = (weakHumanAuthorshipEvidence ? 25 : 0) + (unresolvedLocalEvidence ? 20 : 0);
   const calibratedConfidence = Math.max(0, ensemble.scores.confidence - uncertaintyPenalty - evidencePenalty);
   const confidenceLevelVal = confidenceLevel(calibratedConfidence);
 
@@ -1013,6 +1098,25 @@ export async function analyzeAdvancedText(
     ...languageResult.warnings,
     ...statisticalResult.warnings,
   ];
+  if (styleSignalStrong) {
+    warnings.push({
+      type: 'low-context',
+      severity: 'info',
+      message: 'Document-wide style analysis noted: ' + styleEvidence.supportingCues.join('; ') +
+        '. These are supporting AI-style clues, not proof of AI authorship.',
+    });
+  }
+  if (unresolvedLocalEvidence) {
+    warnings.push({
+      type: 'low-context',
+      severity: 'warning',
+      message: uncorroboratedHumanClaim
+        ? 'Document-level Human classification lacks corroboration: most sentences and paragraphs are inconclusive. This is not reliable proof of human authorship.'
+        : strongLocalHumanConflict
+          ? 'Document-level AI classification conflicts with mostly human-leaning sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.'
+          : 'Document-level AI classification lacks corroboration from mostly inconclusive sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.',
+    });
+  }
   if (wordCount < 40) {
     if (!warnings.some((w) => w.type === 'short-text')) {
       warnings.push({
@@ -1056,6 +1160,9 @@ export async function analyzeAdvancedText(
       confidence: ensemble.scores.confidence,
     },
     adjustedScores: { ai: adjusted.ai, human: adjusted.human, mixed: adjusted.mixed },
+    preStyleScores,
+    styleEvidence: { eligible: styleSignalStrong, supportingCues: styleEvidence.supportingCues, requestedContribution: styleContribution, appliedContribution: styleTransfer },
+    classifierAi: classifierResult.aiProbability,
     adjustedAiRisk,
     mixedAiContribution: MIXED_AI_CONTRIBUTION,
     uncertainty: uncertaintyScore,

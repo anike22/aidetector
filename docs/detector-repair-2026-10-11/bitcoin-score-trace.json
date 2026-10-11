@@ -1,0 +1,279 @@
+{
+  "fixture": "src/test/fixtures/userAttestedAiBitcoinMining.md",
+  "sha256": "b297a5efc3c5c63f849817b7c07df663a2377606c40104ddf3f58e535b6c8d1d",
+  "words": 2356,
+  "before": {
+    "client": {
+      "overall": {
+        "aiProbability": 25,
+        "humanProbability": 75,
+        "mixedProbability": 0,
+        "verdict": "inconclusive",
+        "verdictLabel": "Inconclusive",
+        "confidence": 44,
+        "confidenceLevel": "Medium",
+        "riskLevel": "Low",
+        "adjustedAiRisk": 25
+      },
+      "aggressive": {
+        "ai": 25,
+        "human": 75,
+        "risk": "Medium",
+        "recommendations": [
+          "Review needed: document-level authorship is inconclusive because most local sentences provide no decisive AI or Human evidence. A low AI score does not prove human authorship.",
+          "Sentence rhythm, burstiness, and vocabulary variation align with natural human writing."
+        ]
+      },
+      "diagnostics": {
+        "rawEnsembleScores": {
+          "ai": 19,
+          "human": 81,
+          "mixed": 0,
+          "confidence": 68
+        },
+        "adjustedScores": {
+          "ai": 25,
+          "human": 75,
+          "mixed": 0
+        },
+        "adjustedAiRisk": 24.977716566941723,
+        "mixedAiContribution": 0.6,
+        "uncertainty": 31,
+        "sentenceSignals": {
+          "aiSentenceCount": 0,
+          "humanSentenceCount": 7,
+          "mixedSentenceCount": 209,
+          "totalSentences": 216,
+          "aiContinuityScore": 0,
+          "dominantSentenceLabel": "mixed"
+        },
+        "documentConsistencyScore": 0.994429141735431,
+        "structuralBoundariesDetected": 3,
+        "mixedAuthorshipProbability": 0.005570858264569007,
+        "humanEditProbability": 0.8029411764705883,
+        "verdictReason": "verdict=inconclusive | adjustedAiRisk=25.0 | rawAi=25 | rawMixed=0 | sentenceDominant=mixed | aiContinuity=0 | docConsistency=0.99",
+        "calibrationVersion": "cal-v3-five-class",
+        "engineVersion": "2.5.2"
+      },
+      "version": "2.5.2"
+    },
+    "edge-source": {
+      "overall": {
+        "aiProbability": 16,
+        "humanProbability": 81,
+        "mixedProbability": 3,
+        "verdict": "likely-human",
+        "verdictLabel": "Likely Human",
+        "confidence": 64,
+        "confidenceLevel": "Medium",
+        "riskLevel": "Low",
+        "adjustedAiRisk": 17
+      },
+      "aggressive": {
+        "ai": 16,
+        "human": 84,
+        "risk": "Low",
+        "recommendations": [
+          "Sentence rhythm, burstiness, and vocabulary variation align with natural human writing."
+        ]
+      },
+      "diagnostics": {
+        "rawEnsembleScores": {
+          "ai": 16,
+          "human": 81,
+          "mixed": 3,
+          "confidence": 68
+        },
+        "adjustedScores": {
+          "ai": 16,
+          "human": 81,
+          "mixed": 3
+        },
+        "adjustedAiRisk": 16.797113488168765,
+        "mixedAiContribution": 0.6,
+        "uncertainty": 37,
+        "sentenceSignals": {
+          "aiSentenceCount": 0,
+          "humanSentenceCount": 216,
+          "mixedSentenceCount": 0,
+          "totalSentences": 216,
+          "aiContinuityScore": 0,
+          "dominantSentenceLabel": "human"
+        },
+        "documentConsistencyScore": 0.966810802635085,
+        "structuralBoundariesDetected": 5,
+        "mixedAuthorshipProbability": 0.033189197364915025,
+        "humanEditProbability": 1,
+        "verdictReason": "verdict=likely-human | adjustedAiRisk=16.8 | rawAi=16 | rawMixed=3 | sentenceDominant=human | aiContinuity=0 | docConsistency=0.97",
+        "calibrationVersion": "cal-v3-five-class",
+        "engineVersion": "2.5.2"
+      },
+      "version": "2.5.2"
+    },
+    "edge-deployed": {
+      "overall": {
+        "aiProbability": 33,
+        "humanProbability": 52,
+        "mixedProbability": 15,
+        "verdict": "mostly-human-ai-assisted",
+        "verdictLabel": "Mostly Human with AI Assistance",
+        "confidence": 37,
+        "confidenceLevel": "Medium",
+        "riskLevel": "Medium",
+        "adjustedAiRisk": 34
+      },
+      "aggressive": {
+        "ai": 33,
+        "human": 67,
+        "risk": "Low",
+        "recommendations": [
+          "Sentence rhythm, burstiness, and vocabulary variation align with natural human writing."
+        ]
+      },
+      "diagnostics": {
+        "rawEnsembleScores": {
+          "ai": 33,
+          "human": 52,
+          "mixed": 15,
+          "confidence": 40
+        },
+        "adjustedScores": {
+          "ai": 33,
+          "human": 52,
+          "mixed": 15
+        },
+        "adjustedAiRisk": 34.33681414479639,
+        "mixedAiContribution": 0.6,
+        "uncertainty": 28,
+        "sentenceSignals": {
+          "aiSentenceCount": 0,
+          "humanSentenceCount": 0,
+          "mixedSentenceCount": 216,
+          "totalSentences": 216,
+          "aiContinuityScore": 0,
+          "dominantSentenceLabel": "mixed"
+        },
+        "documentConsistencyScore": 0.9592035361990988,
+        "structuralBoundariesDetected": 10,
+        "mixedAuthorshipProbability": 0.04079646380090119,
+        "humanEditProbability": 0.6441176470588235,
+        "verdictReason": "verdict=mostly-human-ai-assisted | adjustedAiRisk=34.3 | rawAi=33 | rawMixed=15 | sentenceDominant=mixed | aiContinuity=0 | docConsistency=0.96",
+        "calibrationVersion": "cal-v3-five-class",
+        "engineVersion": "2.5.1"
+      },
+      "version": "2.5.1"
+    }
+  },
+  "after": {
+    "balanced": {
+      "aiProbability": 25,
+      "humanProbability": 75,
+      "mixedProbability": 0,
+      "verdict": "inconclusive",
+      "verdictLabel": "Inconclusive",
+      "confidence": 44,
+      "confidenceLevel": "Medium",
+      "riskLevel": "Low",
+      "adjustedAiRisk": 25
+    },
+    "aggressive": {
+      "ai": 25,
+      "human": 75,
+      "risk": "Medium",
+      "recommendations": [
+        "Review needed: document-level authorship is inconclusive because most local sentences provide no decisive AI or Human evidence. A low AI score does not prove human authorship.",
+        "Conflicting evidence: review the score alongside the sentence-level findings; accumulated evidence has not been capped.",
+        "Sentence rhythm, burstiness, and vocabulary variation align with natural human writing."
+      ]
+    },
+    "trace": {
+      "rawEnsembleScores": {
+        "ai": 19,
+        "human": 81,
+        "mixed": 0,
+        "confidence": 68
+      },
+      "adjustedScores": {
+        "ai": 25,
+        "human": 75,
+        "mixed": 0
+      },
+      "preStyleScores": {
+        "ai": 19,
+        "human": 81,
+        "mixed": 0
+      },
+      "styleEvidence": {
+        "eligible": true,
+        "supportingCues": [
+          "recurring explanatory-and-caution section pattern",
+          "frequent repeated qualification language",
+          "limited first-person experience",
+          "uniform section progression"
+        ],
+        "requestedContribution": 6,
+        "appliedContribution": 6
+      },
+      "classifierAi": 18,
+      "adjustedAiRisk": 24.977716566941723,
+      "mixedAiContribution": 0.6,
+      "uncertainty": 31,
+      "sentenceSignals": {
+        "aiSentenceCount": 0,
+        "humanSentenceCount": 7,
+        "mixedSentenceCount": 209,
+        "totalSentences": 216,
+        "aiContinuityScore": 0,
+        "dominantSentenceLabel": "mixed"
+      },
+      "documentConsistencyScore": 0.994429141735431,
+      "structuralBoundariesDetected": 3,
+      "mixedAuthorshipProbability": 0.005570858264569007,
+      "humanEditProbability": 0.8029411764705883,
+      "verdictReason": "verdict=inconclusive | adjustedAiRisk=25.0 | rawAi=25 | rawMixed=0 | sentenceDominant=mixed | aiContinuity=0 | docConsistency=0.99",
+      "calibrationVersion": "cal-v3-five-class",
+      "engineVersion": "2.5.3"
+    },
+    "style": {
+      "sectionCount": 20,
+      "paragraphs": 123,
+      "formulaicSectionRatio": 0.45,
+      "cautionDensity": 8.064516129032258,
+      "repeatedAdviceRatio": 0.13821138211382114,
+      "personalExperienceDensity": 0.8488964346349746,
+      "namedConcreteExampleDensity": 19.524617996604416,
+      "uniformity": 0.6023183116564964,
+      "sectionTemplateRepetition": 0.45,
+      "paragraphSimilarity": 0.06263326752724152,
+      "originalEvidenceDensity": 0,
+      "toneConsistency": 0.13821138211382114,
+      "semanticRepetition": 0.00641025641025641,
+      "crossSectionSimilarity": 0.08351332996443919,
+      "contextualReasoning": 0.5093378607809848,
+      "evidenceExplanation": [
+        "Specificity counts concrete examples and named entities; factual correctness is not checked.",
+        "Original-evidence markers indicate claimed observations, not verified provenance.",
+        "Semantic repetition and reasoning are lexical proxies, not full contextual understanding."
+      ],
+      "score": 44,
+      "supportingCues": [
+        "recurring explanatory-and-caution section pattern",
+        "frequent repeated qualification language",
+        "limited first-person experience",
+        "uniform section progression"
+      ]
+    }
+  },
+  "verification": {
+    "regressionTestsPassed": 29,
+    "viteBuild": "passed",
+    "fullTypecheck": "blocked by existing unrelated signup/image-alt/competitor typing errors",
+    "testSupabaseDeployment": {
+      "project": "aidetector-repair-test",
+      "projectRef": "opivtrfgurwndilnbfmm",
+      "functionVersion": 6,
+      "engineVersion": "2.5.3"
+    },
+    "liveHttpTest": "blocked by automatic approval review; no live response verified"
+  }
+}

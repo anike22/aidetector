@@ -67,7 +67,7 @@ describe('Provenance-aware detector regression benchmark', () => {
       }
       if (sample.origin === 'ai') {
         console.info('[long-ai-layer-audit]', JSON.stringify({
-          wordCount: sample.text.trim().split(/\\s+/).length,
+          wordCount: sample.text.trim().split(/\s+/).length,
           classifierAi: classifier.aiProbability,
           classProbabilities: classifier.classProbabilities,
           chunkScores: classifier.chunkScores.map(c => c.aiProbability),

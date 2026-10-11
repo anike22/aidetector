@@ -180,6 +180,9 @@ export interface AnalysisMetadata {
 export interface DevDiagnostics {
   rawEnsembleScores: { ai: number; human: number; mixed: number; confidence: number };
   adjustedScores: { ai: number; human: number; mixed: number };
+  preStyleScores: { ai: number; human: number; mixed: number };
+  styleEvidence: { eligible: boolean; supportingCues: string[]; requestedContribution: number; appliedContribution: number };
+  classifierAi: number;
   adjustedAiRisk: number;
   mixedAiContribution: number;
   /** Epistemic uncertainty (0–100): low confidence + feature disagreement + short text.

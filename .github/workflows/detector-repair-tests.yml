@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Run detector regression and diagnostic tests
-        run: npx vitest run src/test/detectorScreenshotSeparationRegression.test.ts src/test/balancedDetectorDiscriminationDiagnostic.test.ts src/test/highSensitivityDetectionCalibration.test.ts --reporter=verbose
+        run: npx vitest run src/test/detectorScreenshotSeparationRegression.test.ts src/test/balancedDetectorDiscriminationDiagnostic.test.ts src/test/highSensitivityDetectionCalibration.test.ts src/test/detectorSharedEvidenceRegression.test.ts --reporter=verbose
       - name: Verify Vercel production build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}

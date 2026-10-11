@@ -466,9 +466,7 @@ export function runEnsemble(
   //      falloff ensures that even moderate dominance (e.g., 0.65) sharply
   //      suppresses mixed mass.  A clearly one-sided document is not mixed.
   //
-  //   3. HARD CAP: Mixed mass is capped at 40% of the minority class mass.
-  //      This limits mixed to at most ~20% of a 50/50 document, preventing
-  //      it from dominating the distribution.
+  // No arbitrary ceiling is applied to gated mixed evidence.
   //
   // Mixed mass is CARVED OUT of existing AI+Human proportionally, never added.
   // This preserves the AI-vs-Human ordering from calibratedAi.
@@ -485,14 +483,14 @@ export function runEnsemble(
   const certaintyFactor = 1 - Math.min(1, Math.abs(calibratedAi - 0.5) * 2);
   const certaintyFactorSq = certaintyFactor * certaintyFactor;
 
-  let mixedMassCapped = 0;
+  let mixedEvidenceMass = 0;
   if (hasStructuralEvidence) {
     // Reduced multipliers vs. previous version (0.7 vs 1.4) to prevent even
     // genuine uncertainty from over-contributing to the mixed mass.
     const mixedMultiplier = isSpanish
-      ? Math.min(0.7, SPANISH_CALIBRATION.featureWeights.mixed.conflict * 0.5)
+      ? SPANISH_CALIBRATION.featureWeights.mixed.conflict * 0.5
       : isArabic
-        ? Math.min(0.7, ARABIC_CALIBRATION.featureWeights.mixed.conflict * 0.5)
+        ? ARABIC_CALIBRATION.featureWeights.mixed.conflict * 0.5
         : 0.7;
 
     // Heuristic conflict: requires feature-level overlap AND genuine uncertainty.
@@ -505,17 +503,15 @@ export function runEnsemble(
 
     const mixedRaw = Math.max(heuristicConflict, classifierConflict) * mixedMultiplier;
 
-    // Cap at 40% of minority class — limits mixed to at most ~20% on 50/50 docs,
-    // and proportionally less as the document becomes more one-sided.
-    const minorityMass = Math.min(calibratedAi, 1 - calibratedAi);
-    mixedMassCapped = Math.min(mixedRaw, minorityMass * 0.40);
+    // Use all gated evidence mass; no minority-class contribution ceiling.
+    mixedEvidenceMass = mixedRaw;
   }
 
   // Carve mixed out of AI and Human proportionally rather than adding new mass.
   // This preserves the AI-vs-Human ordering that calibratedAi encodes.
-  const aiMass = Math.max(0, calibratedAi - mixedMassCapped * calibratedAi);
-  const humanMass = Math.max(0, (1 - calibratedAi) - mixedMassCapped * (1 - calibratedAi));
-  const mixedMass = mixedMassCapped;
+  const aiMass = Math.max(0, calibratedAi - mixedEvidenceMass * calibratedAi);
+  const humanMass = Math.max(0, (1 - calibratedAi) - mixedEvidenceMass * (1 - calibratedAi));
+  const mixedMass = mixedEvidenceMass;
   const totalMass = aiMass + humanMass + mixedMass;
 
   const ai = totalMass > 0 ? Math.min(1, Math.max(0, aiMass / totalMass)) : calibratedAi;

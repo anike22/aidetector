@@ -6,6 +6,7 @@ import {
   finalizeReservation,
   getTimezone,
 } from "../_shared/entitlements.ts";
+import { runAggressiveDetector } from "../_shared/detection/aggressiveDetector.ts";
 import { analyzeAdvancedText } from "../_shared/detection/engine.ts";
 import type { AdvancedTextAnalysisResult } from "../_shared/detection/types.ts";
 
@@ -15,7 +16,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const DETECTOR_VERSION = '2.5.2';
+const DETECTOR_VERSION = '2.5.3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -38,7 +39,7 @@ serve(async (req) => {
 
     const { user, guestId, isApiKey } = await resolveAuthUserOrGuest(supabase, req);
     const body = await req.json().catch(() => ({}));
-    const { text, sentence_level = true, paragraph_level = true, contentType, content_type, language, languageHint } = body;
+    const { text, sentence_level = true, paragraph_level = true, contentType, content_type, language, languageHint, mode = 'balanced' } = body;
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return new Response(JSON.stringify({ success: false, error: 'Text is required' }), {
@@ -94,6 +95,8 @@ serve(async (req) => {
       paragraphLevel: paragraph_level,
     });
 
+    const aggressiveResult = mode === 'aggressive' ? await runAggressiveDetector(text) : undefined;
+
     // 3. Finalize Reservation
     if (reservationId) {
       await finalizeReservation(supabase, {
@@ -112,6 +115,7 @@ serve(async (req) => {
         success: true,
         request_id: requestId,
         data: analysisResult,
+        ...(aggressiveResult ? { aggressive: aggressiveResult } : {}),
         usage: {
           plan: entitlement.plan,
           daily_remaining: entitlement.dailyRemaining !== null ? Math.max(0, entitlement.dailyRemaining - 1) : null,
