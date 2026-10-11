@@ -1001,7 +1001,22 @@ export async function analyzeAdvancedText(
     localAiCount === 0 &&
     inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.6) &&
     !ensemble.humanization.detected;
-  const unresolvedLocalEvidence = strongLocalHumanConflict || weakLocalCorroboration;
+  // Symmetric guard: overwhelmingly inconclusive local evidence cannot prove
+  // human authorship, either. Long-form AI text can have a low binary classifier
+  // score while every paragraph is unresolved; it must not be confidently
+  // declared human solely because the document-level AI probability is low.
+  const uncorroboratedHumanClaim =
+    wordCount >= 120 &&
+    adjusted.ai < 40 &&
+    sentenceVerdicts.length >= 6 &&
+    inconclusiveLocalCount >= Math.ceil(sentenceVerdicts.length * 0.85) &&
+    localHumanCount <= Math.floor(sentenceVerdicts.length * 0.10) &&
+    localAiCount === 0 &&
+    paragraphVerdicts.length >= 3 &&
+    paragraphVerdicts.filter(p => p.verdict === 'inconclusive').length >=
+      Math.ceil(paragraphVerdicts.length * 0.80);
+  const unresolvedLocalEvidence =
+    strongLocalHumanConflict || weakLocalCorroboration || uncorroboratedHumanClaim;
 
   // Do not promote a score to an authorship verdict without corroboration.
   // Keep the model's numeric score visible for audit; it is NOT recalibrated
@@ -1009,7 +1024,8 @@ export async function analyzeAdvancedText(
   const verdict: Verdict = unresolvedLocalEvidence &&
     (initialVerdict === 'likely-ai' ||
      initialVerdict === 'mostly-ai-human-edited' ||
-     initialVerdict === 'mostly-human-ai-assisted')
+     initialVerdict === 'mostly-human-ai-assisted' ||
+     (uncorroboratedHumanClaim && (initialVerdict === 'likely-human' || initialVerdict === 'mostly-human')))
       ? 'inconclusive'
       : initialVerdict;
 
@@ -1069,9 +1085,11 @@ export async function analyzeAdvancedText(
     warnings.push({
       type: 'low-context',
       severity: 'warning',
-      message: strongLocalHumanConflict
-        ? 'Document-level AI classification conflicts with mostly human-leaning sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.'
-        : 'Document-level AI classification lacks corroboration from mostly inconclusive sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.',
+      message: uncorroboratedHumanClaim
+        ? 'Document-level Human classification lacks corroboration: most sentences and paragraphs are inconclusive. This is not reliable proof of human authorship.'
+        : strongLocalHumanConflict
+          ? 'Document-level AI classification conflicts with mostly human-leaning sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.'
+          : 'Document-level AI classification lacks corroboration from mostly inconclusive sentence evidence. Treat this score as uncertain; authorship cannot be established from these signals.',
     });
   }
   if (wordCount < 40) {
