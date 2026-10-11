@@ -9,6 +9,35 @@ describe('Balanced detector discrimination diagnostic', () => {
   const naturalAiCandidate = `The public library has quietly become a gathering place for residents who rarely crossed paths before. On weekday evenings, students settle near the windows while older visitors join reading groups downstairs. Staff say the extended schedule has made the building more useful, although questions remain about how to fund the additional hours.`;
   const formulaicAiCandidate = `In today's rapidly evolving digital landscape, artificial intelligence is transforming the way organizations operate. By leveraging powerful machine learning algorithms, businesses can unlock new opportunities, streamline processes, and drive sustainable innovation. Moreover, adopting responsible frameworks is crucial for long-term success in an increasingly interconnected world.`;
 
+  it('matches the English binary classifier to the normalized stored model weights', async () => {
+    const { binaryClassifierModel } = await import('@/lib/detection/models/binary_classifier_model');
+    const model = binaryClassifierModel.languageModels.en;
+    const vocab = new Map(model.vocab.map((gram: string, index: number) => [gram, index]));
+    const lower = clearScopHuman.toLowerCase();
+    const counts = new Map<string, number>();
+    for (let n = 2; n <= 5; n++) {
+      for (let i = 0; i + n <= lower.length; i++) {
+        const gram = lower.slice(i, i + n);
+        if (vocab.has(gram)) counts.set(gram, (counts.get(gram) ?? 0) + 1);
+      }
+    }
+    let dot = 0;
+    let normSquared = 0;
+    for (const [gram, count] of counts) {
+      const index = vocab.get(gram)!;
+      const feature = Math.log(1 + count) * model.idf[index];
+      dot += feature * model.coef[index];
+      normSquared += feature * feature;
+    }
+    const expected = Math.round(100 / (1 + Math.exp(-(model.intercept + dot / Math.sqrt(normSquared)))));
+    const observed = await classifyWithClassifier(clearScopHuman, 'en');
+    console.info('[classifier-math-audit]', JSON.stringify({
+      expectedNormalizedBinary: expected, observedBinary: observed.aiProbability,
+      rawDot: dot, vectorNorm: Math.sqrt(normSquared), intercept: model.intercept,
+    }));
+    expect(observed.aiProbability).toBe(expected);
+  });
+
   it('records raw classifier versus full-pipeline decisions for controlled contrast cases', async () => {
     const samples = [
       { name: 'human-draft', text: humanDraft },
