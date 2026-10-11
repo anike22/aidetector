@@ -155,6 +155,7 @@ export async function runAggressiveDetector(
     (balanced &&
       raw.aiScore <= 25 &&
       baseAi <= 45 &&
+      sentences.length >= 3 &&
       sentenceAiRatio === 0 &&
       (humanization?.confidence ?? 0) < 35 &&
       !hasHumanizationEvasionEvidence) ||
