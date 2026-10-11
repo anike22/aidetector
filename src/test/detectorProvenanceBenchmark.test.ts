@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { analyzeAdvancedText } from '@/lib/detection/engine';
+import { runAggressiveDetector } from '@/lib/detection/aggressiveDetectorService';
+
+// Authorship provenance is self-reported, not independently verified.
+// Do not use this small diagnostic set to claim accuracy or false-positive rates.
+const attestedHumanSamples = [{
+  id: 'clearscop-user-attested-human',
+  provenance: 'user-attested',
+  origin: 'human',
+  text: `ClearScop is an SEO tool for researching, writing, optimizing and monitoring. It is an AI powered workflow for content creation and visibility. Just like the name sound, clearScop gives clear SEO direction for bloggers and agencies. When it comes to multilayered architecture, ClearScop is a tested business growth hube. Its best for bloggers who wish to optimize for chatGPT, google AI overviews, and other AI srarch. More so, the platform focused on AEO and SEO content strategies, it builds scalable growth engines for consumer.`,
+}];
+
+describe('Provenance-aware detector regression benchmark', () => {
+  it('records both modes, false-positive events, and missing verified-ground-truth denominators', async () => {
+    const results = [];
+    for (const sample of attestedHumanSamples) {
+      const balanced = await analyzeAdvancedText(sample.text);
+      const strict = await runAggressiveDetector(sample.text, {
+        ai: balanced.overall.aiProbability,
+        human: balanced.overall.humanProbability,
+        mixed: balanced.overall.mixedProbability,
+        verdict: balanced.overall.verdict,
+        risk: balanced.overall.riskLevel,
+        confidence: balanced.overall.confidence,
+        confidenceLevel: balanced.overall.confidenceLevel,
+        language: balanced.language.primary?.name || 'English',
+        full: balanced,
+      } as Parameters<typeof runAggressiveDetector>[1]);
+      results.push({
+        id: sample.id, origin: sample.origin, provenance: sample.provenance,
+        balancedAi: balanced.overall.aiProbability, balancedVerdict: balanced.overall.verdict,
+        strictAi: strict.ai, strictRisk: strict.risk,
+        balancedHighAi: balanced.overall.aiProbability >= 65,
+        strictHighAi: strict.ai >= 65,
+        highlights: balanced.highlights.map(h => h.verdict),
+      });
+    }
+    const report = {
+      sampleCount: results.length,
+      selfReportedHumanCount: results.length,
+      independentlyVerifiedHumanCount: 0,
+      independentlyVerifiedAiCount: 0,
+      highAiThreshold: 65,
+      selfReportedHumanHighAiEvents: {
+        balanced: results.filter(x => x.balancedHighAi).length,
+        strict: results.filter(x => x.strictHighAi).length,
+      },
+      verifiedFalsePositiveRate: null,
+      verifiedFalseNegativeRate: null,
+      results,
+    };
+    console.info('[provenance-benchmark]', JSON.stringify(report));
+    expect(report.selfReportedHumanHighAiEvents.balanced).toBe(0);
+    expect(report.selfReportedHumanHighAiEvents.strict).toBe(0);
+    expect(report.verifiedFalsePositiveRate).toBeNull();
+    expect(report.verifiedFalseNegativeRate).toBeNull();
+  });
+});
