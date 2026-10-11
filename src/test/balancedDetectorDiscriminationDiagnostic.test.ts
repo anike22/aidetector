@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classifyWithClassifier } from '@/lib/detection/classifier';
-import { analyzeAdvancedText } from '@/lib/detection/engine';
+import { analyzeAdvancedText, buildHighlights } from '@/lib/detection/engine';
 
 /** Candidate stress cases, NOT exact user screenshots and NOT a measured accuracy benchmark. */
 describe('Balanced detector discrimination diagnostic', () => {
@@ -77,5 +77,31 @@ describe('Balanced detector discrimination diagnostic', () => {
       expect(full.overall.aiProbability).toBeGreaterThanOrEqual(0);
       expect(full.overall.aiProbability).toBeLessThanOrEqual(100);
     }
+  });
+});
+
+describe('Passage highlight evidence policy', () => {
+  it('restores green highlights only for strong human-leaning consecutive sentences', () => {
+    const human = (start: number, text: string) => ({
+      text, start, end: start + text.length,
+      aiProbability: 10, humanProbability: 78, mixedProbability: 12,
+      verdict: 'likely-human' as const, confidence: 72,
+      explanation: 'Human-leaning local evidence', languageCode: 'en',
+    });
+    const sentences = [human(0, 'A personal observation.'), human(24, 'Another personal observation.')];
+    const highlights = buildHighlights(sentences, []);
+    expect(highlights).toHaveLength(1);
+    expect(highlights[0].verdict).toBe('likely-human');
+    expect(highlights[0].confidence).toBeGreaterThanOrEqual(35);
+  });
+
+  it('never turns inconclusive short-text evidence into a green human highlight', () => {
+    const sentences = [0, 1, 2].map(i => ({
+      text: 'Uncertain evidence.', start: i * 21, end: i * 21 + 19,
+      aiProbability: 16, humanProbability: 19, mixedProbability: 8,
+      verdict: 'inconclusive' as const, confidence: 12,
+      explanation: 'Conflicting signals', languageCode: 'en',
+    }));
+    expect(buildHighlights(sentences, [])).toHaveLength(0);
   });
 });
