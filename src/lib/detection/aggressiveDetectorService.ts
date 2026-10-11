@@ -242,6 +242,17 @@ export async function runAggressiveDetector(
   if (hasSevereCrossEngineConflict) {
     strictAi = Math.min(strictAi, 64);
   }
+  // If the document and its own sentence-level evidence contradict each
+  // other, Strict mode must not turn an unresolved dispute into 98% AI.
+  const localEvidenceConflict = Boolean(
+    fullResult?.warnings?.some(w =>
+      w.type === 'low-context' &&
+      w.message.startsWith('Document-level AI classification conflicts')
+    )
+  );
+  if (localEvidenceConflict) {
+    strictAi = Math.min(strictAi, 64);
+  }
   strictAi = Math.min(98, Math.max(4, strictAi));
 
   const finalHumanScore = 100 - strictAi;
