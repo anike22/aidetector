@@ -52,6 +52,25 @@ describe('Detector AI-vs-human separation regressions (human false positives)', 
     expect(result.risk).not.toBe('High');
   });
 
+  it('does not treat mostly-human-assisted sentence verdicts as AI sentence evidence', async () => {
+    const emptySentences = humanLeaningBalanced(26, 62, 12);
+    // Remove the verified-human exemption so this tests sentence evidence
+    // directly instead of passing because of a separate short circuit.
+    emptySentences.confidence = 49;
+    emptySentences.full.sentences = [];
+    const assistedSentences = humanLeaningBalanced(26, 62, 12);
+    assistedSentences.confidence = 49;
+    assistedSentences.full.sentences = Array.from({ length: 6 }, () => ({
+      verdict: 'mostly-human-ai-assisted',
+      aiProbability: 26,
+      humanProbability: 62,
+    }));
+    const baseline = await runAggressiveDetector(humanAuthoredDraft, emptySentences);
+    const assisted = await runAggressiveDetector(humanAuthoredDraft, assistedSentences);
+    expect(assisted.ai).toBe(baseline.ai);
+    expect(assisted.risk).toBe(baseline.risk);
+  });
+
   it('does not label an independently supplied human-written sample high risk only due to an aggressive score floor', async () => {
     const result = await runAggressiveDetector(
       humanAuthoredReport,
