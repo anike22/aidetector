@@ -47,6 +47,7 @@ describe('Balanced detector discrimination diagnostic', () => {
         verdict: full.overall.verdict,
         confidence: full.overall.confidence,
         localVerdicts: full.sentences.map(s => s.verdict),
+        paragraphVerdicts: full.paragraphs.map(p => ({verdict:p.verdict, confidence:p.confidence, ai:p.aiProbability, human:p.humanProbability})),
         highlights: full.highlights.map(h => ({verdict:h.verdict, confidence:h.confidence})),
         warnings: full.warnings,
         detectorVersion: full.metadata.detectorVersion,
