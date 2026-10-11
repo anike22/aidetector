@@ -91,6 +91,7 @@ describe('Provenance-aware detector regression benchmark', () => {
     // Do not claim detection: prevent an unsupported confident Human verdict
     // while classifier recall remains unresolved.
     expect(longAi?.balancedVerdict).toBe('inconclusive');
+    expect(longAi?.strictRisk).toBe('Medium');
     expect(longAi?.balancedAi).toBeLessThan(65);
     expect(report.selfReportedAiCount).toBe(1);
     expect(report.selfReportedHumanHighAiEvents.balanced).toBe(0);
