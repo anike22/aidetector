@@ -75,6 +75,14 @@ describe('Balanced detector discrimination diagnostic', () => {
           expect(full.highlights.some(h => h.verdict === 'likely-human')).toBe(false);
         }
       }
+      // Regression for classifier logit saturation from unnormalized n-grams.
+      if (sample.name === 'clearscop-user-reported-human') {
+        expect(classifier.aiProbability).toBeLessThan(65);
+        expect(classifier.classProbabilities['translated-ai'] ?? 0).toBeLessThan(0.5);
+      }
+      if (sample.name === 'formulaic-ai-style') {
+        expect(classifier.aiProbability).toBeGreaterThanOrEqual(70);
+      }
       expect(classifier.available).toBe(true);
       expect(full.overall.aiProbability).toBeGreaterThanOrEqual(0);
       expect(full.overall.aiProbability).toBeLessThanOrEqual(100);
