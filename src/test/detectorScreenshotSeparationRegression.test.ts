@@ -43,6 +43,19 @@ describe('Detector AI-vs-human separation regressions (human false positives)', 
     };
   }
 
+  it('does not display Strict below Balanced when human-evidence exemption applies', async () => {
+    const balanced = humanLeaningBalanced(37, 63, 0);
+    balanced.verdict = 'likely-human';
+    balanced.confidence = 55;
+    balanced.confidenceLevel = 'Medium';
+    balanced.full.metadata.classProbabilities = {
+      human: 0.8, ai: 0.05, 'human-edited-ai': 0.05,
+      'translated-ai': 0.05, mixed: 0.05,
+    };
+    const strict = await runAggressiveDetector(humanAuthoredDraft, balanced);
+    expect(strict.ai).toBeGreaterThanOrEqual(balanced.ai);
+  });
+
   it('does not turn a human-leaning 26/62/12 Balanced result into 90-98% AI using weak editing cues', async () => {
     const result = await runAggressiveDetector(
       humanAuthoredDraft,
