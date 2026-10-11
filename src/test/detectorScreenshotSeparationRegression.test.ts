@@ -56,6 +56,15 @@ describe('Detector AI-vs-human separation regressions (human false positives)', 
     expect(strict.ai).toBeGreaterThanOrEqual(balanced.ai);
   });
 
+  it.each([0, 42, 90, 95, 100])('adds ten points to Balanced %i within the percentage range', async (ai) => {
+    const balanced = humanLeaningBalanced(ai, 100 - ai, 0);
+    const result = await runAggressiveDetector(humanAuthoredDraft, balanced);
+    expect(result.ai).toBe(Math.min(100, ai + 10));
+    expect(result.human).toBe(100 - result.ai);
+    expect(result.scoreTrace?.candidateBeforeBounds).toBe(ai + 10);
+    expect(balanced.ai).toBe(ai);
+  });
+
   it('does not turn a human-leaning 26/62/12 Balanced result into 90-98% AI using weak editing cues', async () => {
     const result = await runAggressiveDetector(
       humanAuthoredDraft,

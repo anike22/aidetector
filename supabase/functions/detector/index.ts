@@ -95,7 +95,15 @@ serve(async (req) => {
       paragraphLevel: paragraph_level,
     });
 
-    const aggressiveResult = mode === 'aggressive' ? await runAggressiveDetector(text) : undefined;
+    const aggressiveResult = mode === 'aggressive' ? await runAggressiveDetector(text, {
+      ai: analysisResult.overall.aiProbability,
+      human: analysisResult.overall.humanProbability,
+      mixed: analysisResult.overall.mixedProbability,
+      verdict: analysisResult.overall.verdict, risk: analysisResult.overall.riskLevel,
+      confidence: analysisResult.overall.confidence,
+      confidenceLevel: analysisResult.overall.confidenceLevel,
+      language: analysisResult.language.primary?.name || 'English', full: analysisResult,
+    }) : undefined;
 
     // 3. Finalize Reservation
     if (reservationId) {

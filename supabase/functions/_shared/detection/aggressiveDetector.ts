@@ -293,6 +293,9 @@ export async function runAggressiveDetector(
     baseAi <= 45 &&
     confidence <= 55 &&
     (humanization?.confidence ?? 0) < 35;
+  // Requested mode policy: Aggressive is Balanced plus ten percentage points.
+  // Retain the existing heuristic fallback when Balanced is unavailable.
+  if (balanced) strictAi = baseAi + 10;
   const candidateBeforeBounds = strictAi;
   strictAi = Math.min(100, Math.max(0, strictAi));
 

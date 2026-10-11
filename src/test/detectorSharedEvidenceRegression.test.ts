@@ -31,7 +31,7 @@ describe('Shared browser and Edge evidence scoring', () => {
     expect(audit.finalAi).toBe(audit.baseAi + audit.appliedContribution);
     expect(r.overall.aiProbability).toBe(audit.finalAi);
     expect(r.overall.verdict).toBe('inconclusive');
-    expect((await browserStrict(bitcoin)).ai).toBe(r.overall.aiProbability);
+    expect((await browserStrict(bitcoin)).ai).toBe(Math.min(100, r.overall.aiProbability + 10));
     expect(stable(await edge(bitcoin))).toEqual(stable(r));
   });
   it('allows strong document evidence to contribute more than twelve points', async () => {
