@@ -111,8 +111,11 @@ export async function runAggressiveDetector(
 
   // Sentence-level AI verification
   const sentences = fullResult?.sentences || [];
+  // Do not count "mostly-human-ai-assisted" as AI-authored sentences.
+  // Substring matching on "ai" incorrectly turns human-leaning verdicts
+  // into strict-mode AI evidence.
   const aiSentenceCount = sentences.filter(
-    (s) => s.verdict && (s.verdict.includes('ai') || s.verdict === 'mixed')
+    (s) => s.verdict === 'likely-ai' || s.verdict === 'mostly-ai-human-edited'
   ).length;
   const sentenceAiRatio =
     sentences.length > 0 ? (aiSentenceCount / sentences.length) * 100 : 0;
