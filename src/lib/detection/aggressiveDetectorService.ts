@@ -157,6 +157,7 @@ export async function runAggressiveDetector(
       baseAi <= 45 &&
       sentences.length >= 3 &&
       sentenceAiRatio === 0 &&
+      sentences.every(sentence => sentence.verdict === 'inconclusive' || sentence.verdict === 'likely-human') &&
       (humanization?.confidence ?? 0) < 35 &&
       !hasHumanizationEvasionEvidence) ||
     (!balanced &&
@@ -262,6 +263,19 @@ export async function runAggressiveDetector(
     )
   );
   if (localEvidenceConflict) {
+    strictAi = Math.min(strictAi, 64);
+  }
+  // Moderate heuristic signals combined with weak Balanced evidence and no
+  // locally AI-leaning sentences cannot justify a near-certain Strict verdict.
+  // Preserve Strict's independent heuristic, but express this as uncertain.
+  const weaklyCorroboratedStrictEscalation =
+    sentences.length >= 3 &&
+    aiSentenceCount === 0 &&
+    raw.aiScore <= 55 &&
+    baseAi <= 45 &&
+    confidence <= 55 &&
+    (humanization?.confidence ?? 0) < 35;
+  if (weaklyCorroboratedStrictEscalation) {
     strictAi = Math.min(strictAi, 64);
   }
   strictAi = Math.min(98, Math.max(4, strictAi));
