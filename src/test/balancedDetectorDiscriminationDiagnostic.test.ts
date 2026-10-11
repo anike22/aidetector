@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classifyWithClassifier } from '@/lib/detection/classifier';
-import { analyzeAdvancedText, buildHighlights } from '@/lib/detection/engine';
+import { analyzeAdvancedText, buildHighlights, buildParagraphVerdicts } from '@/lib/detection/engine';
 
 /** Candidate stress cases, NOT exact user screenshots and NOT a measured accuracy benchmark. */
 describe('Balanced detector discrimination diagnostic', () => {
@@ -103,5 +103,25 @@ describe('Passage highlight evidence policy', () => {
       explanation: 'Conflicting signals', languageCode: 'en',
     }));
     expect(buildHighlights(sentences, [])).toHaveLength(0);
+  });
+});
+
+describe('Paragraph score unit regression', () => {
+  it('converts [0,1] local linguistic signals to percentages before combining sentence scores', () => {
+    const text = 'I wrote this note after meeting my editor yesterday.';
+    const sentences = [{
+      text, start: 0, end: text.length, aiProbability: 15,
+      humanProbability: 72, mixedProbability: 13,
+      verdict: 'likely-human' as const, confidence: 70,
+      explanation: 'human writing', languageCode: 'en',
+    }];
+    const [paragraph] = buildParagraphVerdicts(text, sentences, [0.1], [0.85], [0.05], 'en');
+    expect(paragraph.humanProbability).toBe(80);
+    expect(paragraph.aiProbability).toBe(12);
+    expect(paragraph.mixedProbability).toBe(8);
+    expect(paragraph.humanProbability).toBeGreaterThan(paragraph.aiProbability);
+    expect(paragraph.verdict).toBe('likely-human');
+    expect(paragraph.confidence).toBeGreaterThanOrEqual(80);
+    expect(buildHighlights(sentences, [paragraph]).some(h => h.verdict === 'likely-human')).toBe(true);
   });
 });
