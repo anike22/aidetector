@@ -1,3 +1,4 @@
+import humanSeoArticle from './fixtures/userAttestedHumanSeoReview.md?raw';
 import { classifyWithClassifier } from '@/lib/detection/classifier';
 import aiBitcoinMining from './fixtures/userAttestedAiBitcoinMining.md?raw';
 import { describe, expect, it } from 'vitest';
@@ -17,6 +18,12 @@ describe('Provenance-aware detector regression benchmark', () => {
   it('records both modes, false-positive events, and missing verified-ground-truth denominators', async () => {
     const samples = [
       ...attestedHumanSamples,
+      {
+        id: 'seo-review-user-attested-human-with-three-company-quotations',
+        provenance: 'user-attested',
+        origin: 'human',
+        text: humanSeoArticle,
+      },
       {
         id: 'bitcoin-mining-user-attested-ai',
         provenance: 'user-attested',
@@ -39,6 +46,22 @@ describe('Provenance-aware detector regression benchmark', () => {
         language: balanced.language.primary?.name || 'English',
         full: balanced,
       } as Parameters<typeof runAggressiveDetector>[1]);
+      if (sample.id === 'seo-review-user-attested-human-with-three-company-quotations') {
+        console.info('[human-seo-layer-audit]', JSON.stringify({
+          wordCount: sample.text.trim().split(/\s+/).length,
+          classifierAi: classifier.aiProbability,
+          classifierChunks: classifier.chunkScores.map(c => c.aiProbability),
+          localSentenceVerdicts: balanced.sentences.reduce<Record<string, number>>((counts, sentence) => {
+            counts[sentence.verdict] = (counts[sentence.verdict] || 0) + 1; return counts;
+          }, {}),
+          localParagraphVerdicts: balanced.paragraphs.reduce<Record<string, number>>((counts, paragraph) => {
+            counts[paragraph.verdict] = (counts[paragraph.verdict] || 0) + 1; return counts;
+          }, {}),
+          overall: balanced.overall,
+          strictAi: strict.ai,
+          strictRisk: strict.risk,
+        }));
+      }
       if (sample.origin === 'ai') {
         console.info('[long-ai-layer-audit]', JSON.stringify({
           wordCount: sample.text.trim().split(/\\s+/).length,
@@ -94,6 +117,7 @@ describe('Provenance-aware detector regression benchmark', () => {
     expect(longAi?.strictRisk).toBe('Medium');
     expect(longAi?.balancedAi).toBeLessThan(65);
     expect(report.selfReportedAiCount).toBe(1);
+    expect(report.selfReportedHumanCount).toBe(2);
     expect(report.selfReportedHumanHighAiEvents.balanced).toBe(0);
     expect(report.selfReportedHumanHighAiEvents.strict).toBe(0);
     expect(report.verifiedFalsePositiveRate).toBeNull();
