@@ -997,7 +997,9 @@ export async function analyzeAdvancedText(
   // Keep the model's numeric score visible for audit; it is NOT recalibrated
   // until a labelled human/AI holdout can justify recalibration.
   const verdict: Verdict = unresolvedLocalEvidence &&
-    (initialVerdict === 'likely-ai' || initialVerdict === 'mostly-ai-human-edited')
+    (initialVerdict === 'likely-ai' ||
+     initialVerdict === 'mostly-ai-human-edited' ||
+     initialVerdict === 'mostly-human-ai-assisted')
       ? 'inconclusive'
       : initialVerdict;
 
