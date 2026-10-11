@@ -245,7 +245,10 @@ export async function runAggressiveDetector(
 
   // Preserve the strict-mode floor unless the two engines conflict at low
   // confidence and the independent heuristic supports genuine human prose.
-  if (balancedResult && !isVerifiedHuman) {
+  // Strict sensitivity must never report LESS AI evidence than Balanced.
+  // The verified-human branch can lower a heuristic score, but must not
+  // reverse the two displayed modes for the same scan.
+  if (balanced) {
     strictAi = Math.max(strictAi, baseAi);
   }
   // A low-confidence disagreement between the heuristic and ensemble is
