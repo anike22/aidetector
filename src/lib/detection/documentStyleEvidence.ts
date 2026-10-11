@@ -16,6 +16,10 @@ export interface StyleEvidence {
   paragraphSimilarity: number;
   originalEvidenceDensity: number;
   toneConsistency: number;
+  semanticRepetition: number;
+  crossSectionSimilarity: number;
+  contextualReasoning: number;
+  evidenceExplanation: string[];
   score: number;
   supportingCues: string[];
 }
@@ -24,7 +28,7 @@ const advice = /\b(?:before|consider|check|calculate|compare|research|estimate|a
 const firsthand = /\b(?:i |we |my |our |i've |i.ve |i tested|we tested|my experience|i wrote|i noticed|we found)\b/gi;
 const concrete = /(?:\$\s?\d|\b\d+(?:[.,]\d+)?\s?(?:TH\/s|kWh|watts|months|days|years|%|BTC)\b|https?:\/\/|\b(?:ASIC|SHA-256|Google|Semrush|Surfer|MiningLegit)\b)/gi;
 const matches=(s:string,re:RegExp)=>[...s.matchAll(re)].length;
-const evidence = /\\b(?:according to (?:our|my) (?:research|test|data)|in (?:our|my) (?:tests?|experiments?|measurements?)|we (?:measured|observed|recorded|interviewed)|i (?:measured|observed|recorded|interviewed)|our (?:dataset|survey|results)|i (?:personally|tested)|we (?:personally|tested))\\b/gi;
+const evidence = /\bb(?:according to (?:our|my) (?:research|test|data)|in (?:our|my) (?:tests?|experiments?|measurements?)|we (?:measured|observed|recorded|interviewed)|i (?:measured|observed|recorded|interviewed)|our (?:dataset|survey|results)|i (?:personally|tested)|we (?:personally|tested))\bb/gi;
 const stop = new Set(['this','that','with','from','there','these','their','they','have','will','which','when','your','what','about','just','then','more','also','into','than','only','does','must','should','could','would','were','been','because','while','them','those','much','some','very','each','over','under']);
 const wordsOf=(s:string)=>new Set((s.toLowerCase().match(/[a-z]{4,}/g)||[]).filter(w=>!stop.has(w)));
 const jaccard=(a:Set<string>,b:Set<string>)=>{
@@ -54,7 +58,7 @@ export function analyzeDocumentStyle(text:string):StyleEvidence {
   const uniformity=Math.max(0,1-cv);
   // Overlap across nearby content paragraphs can reveal recycled explanations.
   // Use content words rather than headings or generic SEO keywords alone.
-  const paragraphSets=paragraphs.filter(p=>p.split(/\\s+/).length>=25).map(wordsOf);
+  const paragraphSets=paragraphs.filter(p=>p.split(/\s+/).length>=25).map(wordsOf);
   const similarities=paragraphSets.slice(1).map((set,i)=>jaccard(set,paragraphSets[i]));
   const paragraphSimilarity=similarities.length?similarities.reduce((a,b)=>a+b,0)/similarities.length:0;
   const originalEvidenceDensity=1000*matches(text,evidence)/words;
@@ -70,6 +74,27 @@ export function analyzeDocumentStyle(text:string):StyleEvidence {
     ?Math.max(...['personal','caution','imperative'].map(k=>toneMarkers.filter(p=>p[k as keyof typeof p]).length))/toneMarkers.length
     :0;
   const toneConsistency=cap(toneDominant);
+  // Semantic repetition proxy: lexical overlap after ignoring frequent function words.
+  // Not an embedding model; paraphrases with disjoint vocabulary may be missed.
+  const pairScores:number[]=[];
+  for(let i=0;i<paragraphSets.length;i++){
+    for(let j=i+1;j<Math.min(paragraphSets.length,i+9);j++){
+      pairScores.push(jaccard(paragraphSets[i],paragraphSets[j]));
+    }
+  }
+  const semanticRepetition=pairScores.length?pairScores.filter(x=>x>=0.24).length/pairScores.length:0;
+  const sectionSets=sections.filter(s=>s.split(/\s+/).length>=50).map(wordsOf);
+  const crossScores=sectionSets.slice(1).map((v,i)=>jaccard(v,sectionSets[i]));
+  const crossSectionSimilarity=crossScores.length?crossScores.reduce((a,b)=>a+b,0)/crossScores.length:0;
+  // Contextual reasoning proxy: evidence-backed claims, measurable examples,
+  // and causal explanations. It is NOT a factuality or original-research verifier.
+  const reasoningCount=matches(text,/\b(?:because|therefore|consequently|as a result|for example|for instance|this means|which means|if .{3,75} then)\b/gi);
+  const contextualReasoning=cap((reasoningCount*2+matches(text,evidence)*3)/Math.max(1,words/120));
+  const evidenceExplanation:string[]=[
+    'Specificity counts concrete examples and named entities; factual correctness is not checked.',
+    'Original-evidence markers indicate claimed observations, not verified provenance.',
+    'Semantic repetition and reasoning are lexical proxies, not full contextual understanding.',
+  ];
   const supportingCues:string[]=[];
   if(words>=600&&formulaicSectionRatio>=0.45) supportingCues.push('recurring explanatory-and-caution section pattern');
   if(words>=600&&cautionDensity>=4) supportingCues.push('frequent repeated qualification language');
@@ -78,11 +103,13 @@ export function analyzeDocumentStyle(text:string):StyleEvidence {
   if(words>=600&&sectionLengths.length>=7&&uniformity>=0.45) supportingCues.push('uniform section progression');
   if(words>=600&&paragraphSimilarity>=0.26&&paragraphSets.length>=10) supportingCues.push('recurring content vocabulary in adjacent paragraphs');
   if(words>=600&&sectionTemplateRepetition>=0.6&&sections.length>=7) supportingCues.push('repeated section-level explanation template');
+  if(words>=600&&semanticRepetition>=0.20) supportingCues.push('repeated content ideas across neighboring paragraphs');
+  if(words>=600&&crossSectionSimilarity>=0.30&&sectionSets.length>=5) supportingCues.push('similar content vocabulary across sections');
   // Original research and detailed examples are mitigating context, not definitive human markers.
   // Neither their presence nor their absence establishes authorship.
   // Concrete specificity is reported but cannot in itself establish authorship.
-  const score=Math.min(100,Math.round(100*supportingCues.length/7));
+  const score=Math.min(100,Math.round(100*supportingCues.length/9));
   return {sectionCount:sections.length,paragraphs:paragraphs.length,formulaicSectionRatio,
     cautionDensity,repeatedAdviceRatio,personalExperienceDensity,namedConcreteExampleDensity,
-    uniformity,sectionTemplateRepetition,paragraphSimilarity,originalEvidenceDensity,toneConsistency,score,supportingCues};
+    uniformity,sectionTemplateRepetition,paragraphSimilarity,originalEvidenceDensity,toneConsistency,semanticRepetition,crossSectionSimilarity,contextualReasoning,evidenceExplanation,score,supportingCues};
 }
