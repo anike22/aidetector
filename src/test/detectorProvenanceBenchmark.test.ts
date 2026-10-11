@@ -93,6 +93,21 @@ describe('Provenance-aware detector regression benchmark', () => {
         highlights: balanced.highlights.map(h => h.verdict),
       });
     }
+    const aiStyle = analyzeDocumentStyle(aiBitcoinMining);
+    const humanStyle = analyzeDocumentStyle(humanSeoArticle);
+    // These are diagnostic style proxies, not calibrated AI probabilities.
+    expect(aiStyle.score).toBeGreaterThan(humanStyle.score);
+    expect(aiStyle.supportingCues.length).toBeGreaterThan(humanStyle.supportingCues.length);
+    for (const evidence of [aiStyle, humanStyle]) {
+      expect(evidence.semanticRepetition).toBeGreaterThanOrEqual(0);
+      expect(evidence.crossSectionSimilarity).toBeGreaterThanOrEqual(0);
+      expect(evidence.contextualReasoning).toBeGreaterThanOrEqual(0);
+      expect(evidence.originalEvidenceDensity).toBeGreaterThanOrEqual(0);
+      expect(evidence.paragraphSimilarity).toBeGreaterThanOrEqual(0);
+      expect(evidence.toneConsistency).toBeGreaterThanOrEqual(0);
+      expect(evidence.sectionTemplateRepetition).toBeGreaterThanOrEqual(0);
+      expect(evidence.evidenceExplanation.length).toBeGreaterThanOrEqual(3);
+    }
     const report = {
       sampleCount: results.length,
       selfReportedHumanCount: results.filter(r => r.origin === 'human').length,
