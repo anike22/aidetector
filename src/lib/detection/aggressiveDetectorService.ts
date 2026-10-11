@@ -149,6 +149,15 @@ export async function runAggressiveDetector(
         confidence < 40 &&
         raw.aiScore < 30 &&
         classifierAi < 35) ||
+    // A weak, nearly-uniform multi-class output is not independent evidence
+    // of AI merely because the four AI-family labels sum to > 70%.
+    // Require the heuristic AND local sentences to support escalation.
+    (balanced &&
+      raw.aiScore <= 25 &&
+      baseAi <= 45 &&
+      sentenceAiRatio === 0 &&
+      (humanization?.confidence ?? 0) < 35 &&
+      !hasHumanizationEvasionEvidence) ||
     (!balanced &&
       raw.aiScore < 30 &&
       raw.recommendations.some((r) =>
