@@ -1,5 +1,6 @@
 import humanSeoArticle from './fixtures/userAttestedHumanSeoReview.md?raw';
 import { classifyWithClassifier } from '@/lib/detection/classifier';
+import { analyzeDocumentStyle } from '@/lib/detection/documentStyleEvidence';
 import aiBitcoinMining from './fixtures/userAttestedAiBitcoinMining.md?raw';
 import { describe, expect, it } from 'vitest';
 import { analyzeAdvancedText } from '@/lib/detection/engine';
@@ -34,6 +35,8 @@ describe('Provenance-aware detector regression benchmark', () => {
     const results = [];
     for (const sample of samples) {
       const classifier = await classifyWithClassifier(sample.text, 'en');
+      const style = analyzeDocumentStyle(sample.text);
+      console.info('[style-evidence]', JSON.stringify({ id: sample.id, ...style }));
       const balanced = await analyzeAdvancedText(sample.text);
       const strict = await runAggressiveDetector(sample.text, {
         ai: balanced.overall.aiProbability,
