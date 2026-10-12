@@ -96,7 +96,15 @@ try {
       let title = titles.at(-1)?.textContent;
       if (!title || (pathname !== '/' && title.includes('AI Detector – Detect ChatGPT'))) title = `${h1} | AIDetector.cx`;
       titles.forEach(el => el.remove()); const titleEl = document.createElement('title'); titleEl.textContent = title; document.head.append(titleEl);
-      const description = [...document.querySelectorAll('meta[name="description"]')].at(-1)?.getAttribute('content') || `${h1}. Explore AIDetector.cx tools, guidance and resources for content integrity.`;
+      const descriptions = [...document.querySelectorAll('meta[name="description"]')]
+        .map(el => el.getAttribute('content')?.trim()).filter(Boolean);
+      // RouteMeta supplies a generic fallback, but page-specific metadata is authoritative.
+      const description = descriptions.find(value => !value.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'))
+        || descriptions.at(-1)
+        || `${h1}. Explore AIDetector.cx tools, guidance and resources for content integrity.`;
+      if (pathname !== '/' && description.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.')) {
+        throw new Error(`Generic fallback metadata on public page: ${pathname}`);
+      }
       setMeta('description', description);
       setMeta('robots', 'index, follow, max-image-preview:large');
       document.querySelectorAll('link[rel="canonical"]').forEach(el => el.remove());
