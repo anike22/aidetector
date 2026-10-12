@@ -21,8 +21,8 @@ for (const url of urls) {
     assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
   }
   if (parsed.pathname === '/ai-checker-for-bloggers') {
-    assert(html.includes('<title>AI Checker for Bloggers: AI, Plagiarism &amp; SEO Review | AIDetector.cx</title>') || html.includes('<title>AI Checker for Bloggers: AI, Plagiarism & SEO Review | AIDetector.cx</title>'), 'Incorrect Bloggers SEO title');
-    assert(html.includes('Check blog content for AI-writing signals, plagiarism, SEO quality and publishing readiness.'), 'Missing Bloggers SEO description');
+    assert(html.includes('<title>AI Checker for Bloggers: Scan &amp; Optimize Content for SEO</title>') || html.includes('<title>AI Checker for Bloggers: Scan & Optimize Content for SEO</title>'), 'Incorrect Bloggers SEO title');
+    assert(html.includes('Scan, detect, and fully optimize your blog posts for SEO in one click.'), 'Missing Bloggers SEO description');
   }
   assert(!/name="robots"[^>]*noindex/.test(html), `Noindex: ${url}`);
   assert(!/pagead2\.googlesyndication\.com/.test(html), `Global ad script: ${url}`);
