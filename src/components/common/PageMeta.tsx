@@ -20,7 +20,7 @@ const PageMeta = ({
   canonicalUrl,
   ogTitle,
   ogDescription,
-  ogImage = "/brand/aidetector-icon.png",
+  ogImage = "https://www.aidetector.cx/brand/aidetector-icon.png",
   ogType = 'website',
   schemas = [],
   noindex = false,
