@@ -182,8 +182,8 @@ export default function AICheckerForBloggersPage() {
   return (
     <MainLayout>
       <PageMeta
-        title="AI Checker for Bloggers: AI, Plagiarism & SEO Review | AIDetector.cx"
-        description="Check blog content for AI-writing signals, plagiarism, SEO quality and publishing readiness. Built for bloggers, freelance writers and content teams."
+        title="AI Checker for Bloggers: Scan & Optimize Content for SEO"
+        description="Scan, detect, and fully optimize your blog posts for SEO in one click. The ultimate free AI checker for bloggers to protect rankings and outshine competitors. Try it now!"
         canonicalUrl="https://www.aidetector.cx/ai-checker-for-bloggers"
       />
       <div className="min-h-screen bg-background text-foreground flex flex-col">
