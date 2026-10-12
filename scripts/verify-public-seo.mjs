@@ -20,6 +20,10 @@ for (const url of urls) {
   if (['/', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(parsed.pathname)) {
     assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
   }
+  if (parsed.pathname === '/ai-checker-for-bloggers') {
+    assert(html.includes('<title>AI Checker for Bloggers: AI, Plagiarism &amp; SEO Review | AIDetector.cx</title>') || html.includes('<title>AI Checker for Bloggers: AI, Plagiarism & SEO Review | AIDetector.cx</title>'), 'Incorrect Bloggers SEO title');
+    assert(html.includes('Check blog content for AI-writing signals, plagiarism, SEO quality and publishing readiness.'), 'Missing Bloggers SEO description');
+  }
   assert(!/name="robots"[^>]*noindex/.test(html), `Noindex: ${url}`);
   assert(!/pagead2\.googlesyndication\.com/.test(html), `Global ad script: ${url}`);
 }
