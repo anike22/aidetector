@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
+import PageMeta from '@/components/common/PageMeta';
 import { SEOAssistantWorkspace } from '@/components/seo-assistant/SEOAssistantWorkspace';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,31 +16,8 @@ import {
 } from 'lucide-react';
 
 export default function AICheckerForBloggersPage() {
-  // Update document title and metadata
+  // Keep structured data in the existing lifecycle; page metadata uses PageMeta.
   useEffect(() => {
-    document.title = 'AI Checker for Bloggers: AI, Plagiarism & SEO Review | AIDetector.cx';
-
-    // Meta description
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta');
-      metaDesc.setAttribute('name', 'description');
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.setAttribute(
-      'content',
-      'Check blog content for AI-writing signals, plagiarism, SEO quality and publishing readiness. Built for bloggers, freelance writers and content teams.'
-    );
-
-    // Canonical link
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    canonical.setAttribute('href', 'https://aidetector.cx/ai-checker-for-bloggers');
-
     // Structured data insertion
     const structuredData = [
       {
@@ -203,6 +181,11 @@ export default function AICheckerForBloggersPage() {
 
   return (
     <MainLayout>
+      <PageMeta
+        title="AI Checker for Bloggers: AI, Plagiarism & SEO Review | AIDetector.cx"
+        description="Check blog content for AI-writing signals, plagiarism, SEO quality and publishing readiness. Built for bloggers, freelance writers and content teams."
+        canonicalUrl="https://www.aidetector.cx/ai-checker-for-bloggers"
+      />
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         
         {/* ── Compact Breadcrumbs ── */}
