@@ -17,6 +17,9 @@ for (const url of urls) {
   assert(html.includes(`href="${url}"`), `Wrong canonical: ${url}`);
   assert(/<h1\b/.test(html), `Missing heading: ${url}`);
   assert(/name="description"/.test(html), `Missing description: ${url}`);
+  if (['/', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(parsed.pathname)) {
+    assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
+  }
   assert(!/name="robots"[^>]*noindex/.test(html), `Noindex: ${url}`);
   assert(!/pagead2\.googlesyndication\.com/.test(html), `Global ad script: ${url}`);
 }
