@@ -47,7 +47,11 @@ const SCHEMAS = [
     '@type': 'Organization',
     name: 'AIDetector.cx',
     url: 'https://www.aidetector.cx/',
-    logo: 'https://www.aidetector.cx/logo.png',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://www.aidetector.cx/brand/aidetector-icon.png',
+      contentUrl: 'https://www.aidetector.cx/brand/aidetector-icon.png',
+    },
     sameAs: [],
     contactPoint: {
       '@type': 'ContactPoint',
@@ -111,6 +115,7 @@ export default function HomePage() {
         title="AI Detector – Detect ChatGPT & AI-Generated Text | AIDetector.cx"
         description="Free AI detector for ChatGPT, Claude and AI-generated text. Dual detection modes, multilingual AI analysis across 19+ languages, sentence-level results and explainable AI content detection."
         canonicalUrl="https://www.aidetector.cx/"
+        ogImage="https://www.aidetector.cx/brand/aidetector-icon.png"
         ogTitle="AI Detector – Detect ChatGPT & AI-Generated Text | AIDetector.cx"
         ogDescription="Detect ChatGPT, Claude, Gemini and AI-generated text free. Dual detection engines, 19+ languages, sentence-level breakdown — try it now, no account needed."
         schemas={SCHEMAS}
