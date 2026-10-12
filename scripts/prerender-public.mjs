@@ -102,7 +102,7 @@ try {
       const description = descriptions.find(value => !value.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'))
         || descriptions.at(-1)
         || `${h1}. Explore AIDetector.cx tools, guidance and resources for content integrity.`;
-      if (pathname !== '/' && description.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.')) {
+      if (['/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(pathname) && description.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.')) {
         throw new Error(`Generic fallback metadata on public page: ${pathname}`);
       }
       setMeta('description', description);
