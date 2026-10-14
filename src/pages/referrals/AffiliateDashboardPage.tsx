@@ -15,13 +15,15 @@ import {
   getCommissions,
   getAffiliateEarnings,
   getPayouts,
-  requestPayout,
+  getPayoutSetup,
+  type PayoutSetup,
 } from '@/lib/referralApi';
 import type { AffiliateApplication, AffiliateLink, Commission, Payout, AffiliateEarnings } from '@/types/referral';
 import { DollarSign, Link2, Copy, TrendingUp, Wallet, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/db/supabase';
 import { formatDistanceToNow } from 'date-fns';
+import UsdPayoutForm from './UsdPayoutForm';
 
 export default function AffiliateDashboardPage() {
   const { user, profile } = useAuth();
@@ -37,17 +39,20 @@ export default function AffiliateDashboardPage() {
   const [coupon, setCoupon] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('/ai-checker-for-bloggers');
   const [productAnalytics, setProductAnalytics] = useState<Array<{ destination: string; clicks: number; signups: number; conversions: number; revenue: number; commission: number }>>([]);
+  const [payoutSetup, setPayoutSetup] = useState<PayoutSetup | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
-      const [a, l, c, p, e] = await Promise.all([
+      const [a, l, c, p, e, setup] = await Promise.all([
         user?.id ? getMyAffiliateApplication(user.id) : Promise.resolve(null),
         getAffiliateLinks(user?.id),
         getCommissions({ userId: user?.id }),
         getPayouts({ userId: user?.id }),
         getAffiliateEarnings(user?.id || ''),
+        getPayoutSetup(),
       ]);
+      setPayoutSetup(setup);
       setApp(a);
       setLinks(l);
       setCommissions(c);
@@ -86,17 +91,6 @@ export default function AffiliateDashboardPage() {
       toast.success('Tracking link created');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create link');
-    }
-  };
-
-  const request = async () => {
-    if (earnings.approved <= 0) return;
-    try {
-      const payout = await requestPayout(earnings.approved, 'Bank Transfer');
-      setPayouts([payout, ...payouts]);
-      toast.success('Payout requested');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to request payout');
     }
   };
 
@@ -258,7 +252,7 @@ export default function AffiliateDashboardPage() {
                   <CardDescription>Request a payout once you have an approved balance.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={request} disabled={earnings.approved <= 0}>Request ${earnings.approved.toFixed(2)} Payout</Button>
+                  {payoutSetup && <UsdPayoutForm setup={payoutSetup} onRequested={load} />}
                   <div className="space-y-2">
                     {payouts.map((p) => (
                       <div key={p.id} className="flex items-center justify-between p-2 border rounded-md">
