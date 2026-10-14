@@ -1,3 +1,4 @@
+import AdminOutreachPage from './pages/admin/AdminOutreachPage';
 import MainLayout from '@/components/layouts/MainLayout';
 import type { ReactNode } from 'react';
 import HomePage from './pages/HomePage';
@@ -1163,6 +1164,7 @@ export const routes: RouteConfig[] = [
     path: '/rewards',
     element: <RewardsPage />,
   },
+  { name: 'Affiliate Outreach', path: '/admin/outreach', element: <AdminOutreachPage /> },
   {
     name: 'Admin Referrals',
     path: '/admin/referrals',
