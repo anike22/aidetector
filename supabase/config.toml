@@ -28,3 +28,7 @@ entrypoint = "./functions/plagiarism-checker/index.ts"
 # OAuth callback and cron use nonce/worker-token checks; admin actions verify the user JWT in the function.
 [functions.admin-outreach]
 verify_jwt = false
+
+# Custom service/worker authentication in handler.
+[functions.affiliate-onboarding]
+verify_jwt = false
