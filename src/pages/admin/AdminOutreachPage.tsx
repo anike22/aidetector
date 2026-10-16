@@ -66,7 +66,9 @@ const escape = (value: string) =>
 				c
 			]!,
 	);
-export default function AdminOutreachPage() {
+export default function AdminOutreachPage({ growth = false }: { growth?: boolean }) {
+ const functionName = growth ? "growth-outreach" : "admin-outreach";
+ const tablePrefix = growth ? "growth_outreach" : "admin_outreach";
 	const { profile, loading: authLoading } = useAuth();
 	const [config, setConfig] = useState<Config | null>(null),
 		[queue, setQueue] = useState<QueueRow[]>([]),
@@ -84,7 +86,7 @@ export default function AdminOutreachPage() {
 	const call = useCallback(
 		async (action: string, fields: Record<string, unknown> = {}) => {
 			const { data, error } = await supabase.functions.invoke(
-				"admin-outreach",
+				functionName,
 				{ body: { action, ...fields } },
 			);
 			if (error || data?.error) {
@@ -97,18 +99,18 @@ export default function AdminOutreachPage() {
 			}
 			return data;
 		},
-		[],
+		[functionName],
 	);
 	const load = useCallback(async () => {
 		const [c, q, m] = await Promise.all([
 			call("status"),
 			supabase
-				.from("admin_outreach_queue")
+				.from(`${tablePrefix}_queue` as any)
 				.select("*")
 				.order("created_at", { ascending: false })
 				.limit(300),
 			supabase
-				.from("admin_outreach_mail")
+				.from(`${tablePrefix}_mail` as any)
 				.select("*")
 				.neq("category", "unrelated")
 				.not("labels", "cs", "{SENT}")
@@ -120,7 +122,7 @@ export default function AdminOutreachPage() {
 		setConfig(c);
 		setQueue(q.data as QueueRow[]);
 		setMail(m.data as Mail[]);
-	}, [call]);
+	}, [call, tablePrefix]);
 	useEffect(() => {
 		if (profile?.role === "admin") load().catch((e) => setError(e.message));
 	}, [profile?.role, load]);
@@ -166,7 +168,7 @@ export default function AdminOutreachPage() {
 				← Admin dashboard
 			</Link>
 			<header>
-				<h1 className="text-2xl font-bold">Affiliate outreach</h1>
+				<h1 className="text-2xl font-bold">{growth ? "Growth client outreach" : "Affiliate outreach"}</h1>
 				<p className="text-muted-foreground">
 					Import researched prospects, review each message, and manage Gmail
 					conversations. No AI service is used to send or read mail here.
@@ -180,11 +182,13 @@ export default function AdminOutreachPage() {
 					{error}
 				</p>
 			)}
+			<div className="flex gap-4"><Link to="/admin/outreach">Affiliate mailbox</Link><Link to="/admin/growth-outreach">Growth mailbox</Link></div>
 			<Card>
 				<CardHeader>
-					<CardTitle>Mailbox and campaign controls</CardTitle>
+					<CardTitle>{growth ? "Growth client outreach" : "Affiliate outreach"} — mailbox controls</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-3">
+					{growth && <p>Connect the Growth mailbox and finish its history scan before enabling the reviewed queue. Initial cap: 10 new prospects per day.</p>}
 					<div className="flex flex-wrap gap-3">
 						<Badge>{config?.mailbox_email || "Mailbox not connected"}</Badge>
 						<Badge variant="outline">
@@ -202,7 +206,7 @@ export default function AdminOutreachPage() {
 						{config?.daily?.uncertain || 0} uncertain
 					</p>
 					<p className="text-sm">
-						Up to 50 new prospects per Lagos day, in batches of four between 8
+						Up to {config?.daily_cap || 50} new prospects per Lagos day, in batches of four between 8
 						a.m. and 9 p.m. Approved messages run every 15 minutes while
 						enabled. Three total sending attempts per address; permanent bounces
 						and opt-outs stop contact immediately.
@@ -216,7 +220,7 @@ export default function AdminOutreachPage() {
 							disabled={busy || !config?.oauth_configured}
 							onClick={() => act("connect")}
 						>
-							Connect partnerships Gmail
+							Connect {growth ? "growth" : "partnerships"} Gmail
 						</Button>
 						<Button
 							variant="outline"

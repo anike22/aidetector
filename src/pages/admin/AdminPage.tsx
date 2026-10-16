@@ -49,7 +49,7 @@ import type { Profile, SellerProduct } from '@/types/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type AdminSection = 'outreach' | 'overview' | 'customer-intelligence' | 'lifecycle' | 'users' | 'marketplace' | 'community' | 'content' | 'monetization' | 'settings' | 'services' | 'orders' | 'seo' | 'feature-controls' | 'api-health' | 'job-applications' | 'email' | 'social-links' | 'ai-directory' | 'about-founder' | 'detector-benchmark' | 'detector-feedback' | 'lead-capture' | 'humanizer-quality' | 'automation' | 'security';
+type AdminSection = 'growth-outreach' | 'outreach' | 'overview' | 'customer-intelligence' | 'lifecycle' | 'users' | 'marketplace' | 'community' | 'content' | 'monetization' | 'settings' | 'services' | 'orders' | 'seo' | 'feature-controls' | 'api-health' | 'job-applications' | 'email' | 'social-links' | 'ai-directory' | 'about-founder' | 'detector-benchmark' | 'detector-feedback' | 'lead-capture' | 'humanizer-quality' | 'automation' | 'security';
 
 interface ForumPost {
   id: string;
@@ -94,6 +94,7 @@ const NAV_ITEMS = [
   { id: 'humanizer-quality' as AdminSection, label: 'Humanizer Quality', icon: FileText },
   { id: 'automation' as AdminSection, label: 'Automation Center', icon: Bot },
   { id: 'security' as AdminSection, label: 'Security Center', icon: Shield },
+  { id: 'growth-outreach' as AdminSection, label: 'Growth Outreach', icon: Mail },
   { id: 'outreach' as AdminSection, label: 'Affiliate Outreach', icon: Mail },
   { id: 'email' as AdminSection, label: 'Email Management', icon: Mail },
   { id: 'feature-controls' as AdminSection, label: 'Feature Controls', icon: Shield },
@@ -162,6 +163,7 @@ export default function AdminPage() {
       case 'content': navigate('/admin/articles'); break;
       case 'feature-controls': navigate('/admin/feature-controls'); break;
       case 'api-health': navigate('/admin/api-health'); break;
+      case 'growth-outreach': navigate('/admin/growth-outreach'); break;
       case 'outreach': navigate('/admin/outreach'); break;
       case 'email': navigate('/admin/email'); break;
       case 'settings': navigate('/admin/settings'); break;
