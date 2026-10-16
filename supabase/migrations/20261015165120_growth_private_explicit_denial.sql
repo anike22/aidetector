@@ -1,0 +1,1 @@
+DO $$ DECLARE t text; BEGIN FOREACH t IN ARRAY ARRAY['mailbox','oauth_states','offers','quotes','campaign'] LOOP EXECUTE format('CREATE POLICY no_client_access ON growth_private.%I TO anon,authenticated USING(false) WITH CHECK(false)',t); END LOOP; END $$;

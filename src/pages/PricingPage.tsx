@@ -205,6 +205,11 @@ const FAQS = [
 ];
 
 export default function PricingPage() {
+  const [offerCode, setOfferCode] = useState(() => {
+    const value = new URLSearchParams(window.location.search).get('offer');
+    if (value === 'GROWTH10') sessionStorage.setItem('growth_offer', value);
+    return value || sessionStorage.getItem('growth_offer') || '';
+  });
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const { user, profile } = useAuth();
   const { trackEvent } = useCustomerDataPlatform();
@@ -249,6 +254,7 @@ export default function PricingPage() {
           amount,
           metadata: {
             type: 'upgrade',
+            offer_code: offerCode,
             plan: planId,
             billing,
             interval: billing === 'annual' ? 'year' : 'month',
@@ -301,6 +307,11 @@ export default function PricingPage() {
       />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-16">
+        <div className="mb-6 rounded-lg border p-4">
+          <label htmlFor="growth-offer">Introductory offer code</label>
+          <input id="growth-offer" className="mx-3 rounded border p-2" value={offerCode} onChange={e => { const v=e.target.value.toUpperCase(); setOfferCode(v); sessionStorage.setItem('growth_offer',v); }} placeholder="Optional code" />
+          {offerCode === 'GROWTH10' && <p>New paying customers: 10% off your first three monthly plan payments. Standard pricing afterwards. Annual plans excluded. Eligibility and final amount are checked at checkout.</p>}
+        </div>
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <Badge variant="outline" className="mb-3 text-primary border-primary/30 bg-primary/5 text-xs font-semibold px-3 py-1">

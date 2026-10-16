@@ -35,7 +35,7 @@ afterEach(() => {
 	mocks.invoke.mockReset();
 	mocks.role = "admin";
 });
-const setup = () => {
+const setup = (growth = false) => {
 	mocks.invoke.mockResolvedValue({
 		data: {
 			enabled: false,
@@ -50,11 +50,17 @@ const setup = () => {
 	});
 	return render(
 		<MemoryRouter>
-			<AdminOutreachPage />
+			<AdminOutreachPage growth={growth} />
 		</MemoryRouter>,
 	);
 };
 describe("outreach admin review controls", () => {
+ it("uses the Growth endpoint without reconnecting Partnerships", async () => {
+  setup(true);
+  await waitFor(() => expect(mocks.invoke).toHaveBeenCalled());
+  expect(mocks.invoke.mock.calls.every((call: any) => call[0] === "growth-outreach")).toBe(true);
+  expect(screen.getByText("Connect growth Gmail")).toBeTruthy();
+ });
 	it("denies nonadministrators without fetching mailbox data", () => {
 		mocks.role = "user";
 		setup();

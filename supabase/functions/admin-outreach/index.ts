@@ -435,6 +435,7 @@ Deno.serve(async (req: Request) => {
 		const url = new URL(req.url);
 		if (req.method === "GET" && url.searchParams.get("action") === "callback") {
 			const state = url.searchParams.get("state") || "";
+            if (state.startsWith("growth-")) return Response.redirect(root + "/functions/v1/growth-outreach?" + url.searchParams.toString(), 303);
 			const stored = await credentials("consume_state", {
 				hash: await hash(state),
 			});
