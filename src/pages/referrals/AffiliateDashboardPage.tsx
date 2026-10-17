@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export default function AffiliateDashboardPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [earnings, setEarnings] = useState<AffiliateEarnings>({ pending: 0, approved: 0, paid: 0 });
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [website, setWebsite] = useState('');
   const [social, setSocial] = useState('');
   const [experience, setExperience] = useState('');
@@ -68,8 +70,12 @@ export default function AffiliateDashboardPage() {
   }, [user]);
 
   const submitApplication = async () => {
+    if (!agreementAccepted) {
+      toast.error('Please read and accept the Affiliate Program Agreement.');
+      return;
+    }
     try {
-      const created = await applyForAffiliate({ website, social_profiles: social, marketing_experience: experience });
+      const created = await applyForAffiliate({ website, social_profiles: social, marketing_experience: `${experience.trim()}\n\nAffiliate Program Agreement v1.0 (2026-10-17) expressly accepted at ${new Date().toISOString()} via /affiliate-agreement.` });
       setApp(created);
       toast.success('Application submitted');
     } catch (err: any) {
@@ -137,7 +143,7 @@ export default function AffiliateDashboardPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Affiliate Program</h1>
-        <p className="text-muted-foreground">Earn commissions by promoting AIDetector.cx.</p>
+        <p className="text-muted-foreground">Earn commissions by promoting AIDetector.cx. <Link to="/affiliate-agreement" className="text-primary underline">Read the full agreement</Link>.</p>
       </div>
 
       {notApplied ? (
@@ -147,7 +153,11 @@ export default function AffiliateDashboardPage() {
             <Input placeholder="Website or blog URL" value={website} onChange={(e) => setWebsite(e.target.value)} />
             <Textarea placeholder="Social profiles (one per line)" value={social} onChange={(e) => setSocial(e.target.value)} />
             <Textarea placeholder="Marketing experience" value={experience} onChange={(e) => setExperience(e.target.value)} />
-            <Button onClick={submitApplication}>Submit Application</Button>
+            <div className="flex items-start gap-2">
+              <input id="affiliate-agreement-acceptance" type="checkbox" checked={agreementAccepted} onChange={event => setAgreementAccepted(event.target.checked)} className="mt-1" />
+              <label htmlFor="affiliate-agreement-acceptance" className="text-sm">I have read and accept the <Link to="/affiliate-agreement" target="_blank" rel="noopener noreferrer" className="text-primary underline">Affiliate Program Agreement (v1.0)</Link>. I understand that approval is required.</label>
+            </div>
+            <Button onClick={submitApplication} disabled={!agreementAccepted}>Submit Application</Button>
           </CardContent>
         </Card>
       ) : app.status !== 'Approved' ? (

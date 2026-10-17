@@ -86,6 +86,7 @@ const footerColumns = [
       { label: 'Pricing Plans', href: '/pricing' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
+      { label: 'Affiliate Agreement', href: '/affiliate-agreement' },
       { label: 'Cookie Policy', href: '/cookies' },
       { label: 'All Pages Directory', href: '/all-pages', isHighlight: true },
     ],

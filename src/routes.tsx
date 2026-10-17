@@ -102,6 +102,7 @@ import ChromeExtensionPage from './pages/integrations/ChromeExtensionPage';
 import WordPressPluginPage from './pages/integrations/WordPressPluginPage';
 import CaseStudiesPage from './pages/case-studies/CaseStudiesPage';
 import AffiliateHubPage from './pages/affiliate/AffiliateHubPage';
+import AffiliateAgreementPage from './pages/legal/AffiliateAgreementPage';
 
 // Team Workspace & Collaboration
 import OrganizationsPage from './pages/team/OrganizationsPage';
@@ -1071,6 +1072,12 @@ export const routes: RouteConfig[] = [
     name: 'Case Studies',
     path: '/case-studies',
     element: <MainLayout><CaseStudiesPage /></MainLayout>,
+    public: true,
+  },
+  {
+    name: 'Affiliate Agreement',
+    path: '/affiliate-agreement',
+    element: <AffiliateAgreementPage />,
     public: true,
   },
   {

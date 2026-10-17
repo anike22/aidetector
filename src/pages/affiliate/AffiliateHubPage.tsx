@@ -24,7 +24,7 @@ export default function AffiliateHubPage() {
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">Earn 30% Recurring Commission.</span>
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Join our affiliate program and earn passive income by referring clients to our SaaS tools, consulting services, and premium resources.
+          Refer readers to eligible AIDetector.cx subscriptions and earn recurring commission on qualifying payments.
         </p>
         
         <form className="max-w-md mx-auto flex gap-2 pt-4" onSubmit={e => {
@@ -50,9 +50,18 @@ export default function AffiliateHubPage() {
           <Button size="lg" type="submit" className="h-12 px-8">Join Now</Button>
         </form>
         <p className="text-sm text-muted-foreground">
-          Create and verify your account, then submit your affiliate application. Affiliate access is subject to approval.
+          Create and verify your account, then submit your affiliate application. Affiliate access requires approval and express agreement to the program terms.
         </p>
       </div>
+
+      <section aria-labelledby="program-terms" className="max-w-4xl mx-auto rounded-xl border p-6 space-y-4">
+        <h2 id="program-terms" className="text-2xl font-bold">Clear terms for every partner</h2>
+        <p className="text-muted-foreground">Applications are welcome from all countries, including India, subject to legal and payment requirements. Commissions are in USD. Standard payouts use PayPal or USD bank transfer where supported; if neither works, propose another method for individual review.</p>
+        <p className="text-muted-foreground">30-day initial attribution; continuing customer attribution after a valid first paid conversion. Commissions have a 30-day hold and a US$50 standard payout minimum. Approved payout requests are processed in a monthly cycle.</p>
+        <p className="text-muted-foreground">300 complimentary testing credits after approval and activation. Testing does not automatically become a paid subscription. There is no requirement to publish or provide positive coverage.</p>
+        <Link to="/affiliate-agreement" className="inline-block font-semibold text-primary underline">Read the full Affiliate Program Agreement</Link>
+        <p className="text-sm text-muted-foreground">No enrollment or acceptance is assumed from an email invitation or visiting this page.</p>
+      </section>
 
       {/* Benefits */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8">
@@ -63,7 +72,7 @@ export default function AffiliateHubPage() {
             </div>
             <CardTitle>30% Recurring Commission</CardTitle>
             <CardDescription>
-              Earn 30% on every subscription payment for the lifetime of the customer.
+              Earn 30% on qualifying subscription payments from attributed customers while your affiliate participation remains active.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -72,9 +81,9 @@ export default function AffiliateHubPage() {
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Award className="w-6 h-6" />
             </div>
-            <CardTitle>High Conversion Rates</CardTitle>
+            <CardTitle>Independent Evaluation</CardTitle>
             <CardDescription>
-              Our optimized funnels and premium AI tools ensure your traffic converts at industry-leading rates.
+              Receive 300 testing credits after approval. Publish your honest assessment; positive coverage and paid placement are never required.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -85,7 +94,7 @@ export default function AffiliateHubPage() {
             </div>
             <CardTitle>Dedicated Support</CardTitle>
             <CardDescription>
-              Get access to affiliate managers, custom promo materials, and dedicated support to help you scale.
+              Contact our partnership team for tracking support, available brand assets and payment arrangements.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -105,7 +114,7 @@ export default function AffiliateHubPage() {
           {[
             { step: '01', title: 'Sign Up', desc: 'Join the program for free and get your unique tracking links.' },
             { step: '02', title: 'Promote', desc: 'Share your links via blog, social media, email, or video.' },
-            { step: '03', title: 'Earn', desc: 'Get paid 30% monthly via PayPal or Stripe for every active user.' }
+            { step: '03', title: 'Earn', desc: 'Earn 30% recurring commission. Request USD payouts via PayPal or bank transfer after the 30-day hold and $50 minimum.' }
           ].map((item, i) => (
             <div key={i} className="bg-background rounded-xl p-6 text-center border border-border shadow-sm relative">
               <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold absolute -top-5 left-1/2 -translate-x-1/2 border-4 border-background">

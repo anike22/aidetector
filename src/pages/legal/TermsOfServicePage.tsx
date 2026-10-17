@@ -116,6 +116,7 @@ export default function TermsOfServicePage() {
             <div className="mt-8 pt-6 border-t border-border">
               <p className="text-xs text-muted-foreground mb-2">Related</p>
               <Link to="/privacy" className="text-xs text-primary hover:text-primary/80 block mb-1.5">Privacy Policy</Link>
+              <Link to="/affiliate-agreement" className="text-xs text-primary hover:text-primary/80 block mb-1.5">Affiliate Agreement</Link>
               <Link to="/cookies" className="text-xs text-primary hover:text-primary/80 block">Cookie Policy</Link>
             </div>
           </div>
