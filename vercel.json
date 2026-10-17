@@ -193,6 +193,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/prerender/affiliate-agreement/index.html",
+      "destination": "/affiliate-agreement",
+      "permanent": true
+    },
+    {
       "source": "/image-detector",
       "destination": "/ai-image-detector",
       "permanent": true
@@ -396,4 +401,3 @@
     }
   ]
 }
-
