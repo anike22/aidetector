@@ -9,6 +9,10 @@
       "destination": "/prerender/about/index.html"
     },
     {
+      "source": "/affiliate-agreement",
+      "destination": "/prerender/affiliate-agreement/index.html"
+    },
+    {
       "source": "/affiliate-hub",
       "destination": "/prerender/affiliate-hub/index.html"
     },
@@ -392,3 +396,4 @@
     }
   ]
 }
+
