@@ -1173,6 +1173,7 @@ export const routes: RouteConfig[] = [
   },
   { name: 'Growth Outreach', path: '/admin/growth-outreach', element: <AdminOutreachPage key="growth" growth /> },
   { name: 'Clients Outreach', path: '/admin/clients-outreach', element: <AdminOutreachPage key="clients" clients /> },
+  { name: 'Outreach Mailbox', path: '/admin/outreach-mail', element: <AdminOutreachPage key="outreach-mail" outreachMail /> },
   { name: 'Affiliate Outreach', path: '/admin/outreach', element: <AdminOutreachPage key="affiliate" /> },
   {
     name: 'Admin Referrals',
