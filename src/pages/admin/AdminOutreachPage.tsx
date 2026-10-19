@@ -66,9 +66,9 @@ const escape = (value: string) =>
 				c
 			]!,
 	);
-export default function AdminOutreachPage({ growth = false, clients = false }: { growth?: boolean; clients?: boolean }) {
- const functionName = clients ? "clients-outreach" : growth ? "growth-outreach" : "admin-outreach";
- const tablePrefix = clients ? "clients_outreach" : growth ? "growth_outreach" : "admin_outreach";
+export default function AdminOutreachPage({ growth = false, clients = false, outreachMail = false }: { growth?: boolean; clients?: boolean; outreachMail?: boolean }) {
+ const functionName = outreachMail ? "outreach-mail" : clients ? "clients-outreach" : growth ? "growth-outreach" : "admin-outreach";
+ const tablePrefix = outreachMail ? "outreach_mail" : clients ? "clients_outreach" : growth ? "growth_outreach" : "admin_outreach";
 	const { profile, loading: authLoading } = useAuth();
 	const [config, setConfig] = useState<Config | null>(null),
 		[queue, setQueue] = useState<QueueRow[]>([]),
@@ -168,7 +168,7 @@ export default function AdminOutreachPage({ growth = false, clients = false }: {
 				← Admin dashboard
 			</Link>
 			<header>
-				<h1 className="text-2xl font-bold">{clients ? "Clients outreach" : growth ? "Growth client outreach" : "Affiliate outreach"}</h1>
+				<h1 className="text-2xl font-bold">{outreachMail ? "Outreach mailbox" : clients ? "Clients outreach" : growth ? "Growth client outreach" : "Affiliate outreach"}</h1>
 				<p className="text-muted-foreground">
 					Import researched prospects, review each message, and manage Gmail
 					conversations. No AI service is used to send or read mail here.
@@ -182,13 +182,13 @@ export default function AdminOutreachPage({ growth = false, clients = false }: {
 					{error}
 				</p>
 			)}
-			<div className="flex gap-4"><Link to="/admin/outreach">Affiliate mailbox</Link><Link to="/admin/growth-outreach">Growth mailbox</Link><Link to="/admin/clients-outreach">Clients mailbox</Link></div>
+			<div className="flex gap-4"><Link to="/admin/outreach">Affiliate mailbox</Link><Link to="/admin/growth-outreach">Growth mailbox</Link><Link to="/admin/clients-outreach">Clients mailbox</Link><Link to="/admin/outreach-mail">Outreach mailbox</Link></div>
 			<Card>
 				<CardHeader>
-					<CardTitle>{clients ? "Clients outreach" : growth ? "Growth client outreach" : "Affiliate outreach"} — mailbox controls</CardTitle>
+					<CardTitle>{outreachMail ? "Outreach mailbox" : clients ? "Clients outreach" : growth ? "Growth client outreach" : "Affiliate outreach"} — mailbox controls</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-3">
-					{growth && !clients && <p>Connect the Growth mailbox and finish its history scan before enabling the reviewed queue. Initial cap: 10 new prospects per day.</p>}{clients && <p>Connect clients@aidetector.cx with Google, then complete mailbox history synchronization. Sending remains disabled until you enable it.</p>}
+					{growth && !clients && <p>Connect the Growth mailbox and finish its history scan before enabling the reviewed queue. Initial cap: 10 new prospects per day.</p>}{clients && <p>Connect clients@aidetector.cx with Google, then complete mailbox history synchronization. Sending remains disabled until you enable it.</p>}{outreachMail && <p>Connect outreach@aidetector.cx with Google, scan mailbox history, and review your campaign before enabling sending.</p>}
 					<div className="flex flex-wrap gap-3">
 						<Badge>{config?.mailbox_email || "Mailbox not connected"}</Badge>
 						<Badge variant="outline">
@@ -220,7 +220,7 @@ export default function AdminOutreachPage({ growth = false, clients = false }: {
 							disabled={busy || !config?.oauth_configured}
 							onClick={() => act("connect")}
 						>
-							Connect {clients ? "clients" : growth ? "growth" : "partnerships"} Gmail
+							Connect {outreachMail ? "outreach" : clients ? "clients" : growth ? "growth" : "partnerships"} Gmail
 						</Button>
 						<Button
 							variant="outline"
