@@ -21,7 +21,6 @@ export interface AnalyzeTextOptions {
   sentenceLevel?: boolean;
   paragraphLevel?: boolean;
   onGuestUsage?: (usage: { remaining: number; limit: number }) => void;
-  engineCount?: 1 | 2;
 }
 
 export interface GuestUsageInfo {
@@ -71,18 +70,16 @@ export async function analyzeText(
     p_credits_cost: 1,
     p_timezone: tz,
     p_idempotency_key: cryptoKey(),
-    p_metadata: { text_length: text.length, engines: options.engineCount ?? 1 },
-    p_unit_quantity: text.trim().split(/\s+/).length,
+    p_metadata: { text_length: text.length }
   });
 
   if (reservationError) {
     console.error('reserve_entitlement_and_credits error:', reservationError);
-    throw new AnalysisError('Billing could not be verified. Please retry; analysis has not started.', 'API_ERROR');
   }
 
   const reservation = (reservationData || [])[0] || {};
 
-  if (reservation.allowed !== true) {
+  if (reservation.allowed === false) {
     broadcastUsageUpdate();
     throw new AnalysisError(
       reservation.reason || 'Daily scan limit reached. Create a free account or upgrade to continue.',
@@ -96,9 +93,6 @@ export async function analyzeText(
   }
 
   const reservationId = reservation.reservation_id;
-  if (!reservationId) {
-    throw new AnalysisError('Billing authorization was incomplete. Please retry.', 'API_ERROR');
-  }
 
   // 2. High-Precision Full Detection Analysis
   let result: AdvancedTextAnalysisResult;
@@ -113,13 +107,11 @@ export async function analyzeText(
     // If analysis fails, release reservation
     if (reservationId) {
       try {
-        const { error } = await supabase.rpc('settle_client_reservation', {
+        await supabase.rpc('settle_client_reservation', {
           p_reservation_id: reservationId,
           p_outcome: 'failed',
-          p_metadata: { reason: analysisErr instanceof Error ? analysisErr.message : 'Analysis failed' },
-          p_guest_id: guestId,
+          p_metadata: { reason: analysisErr instanceof Error ? analysisErr.message : 'Analysis failed' }
         });
-        if (error) console.error('Billing refund pending:', error);
       } catch (finalizeErr) {
         console.warn('finalize_credit_reservation failed error:', finalizeErr);
       }
@@ -134,13 +126,11 @@ export async function analyzeText(
   // 3. Finalize Atomic Reservation on Success
   if (reservationId) {
     try {
-      const { data, error } = await supabase.rpc('settle_client_reservation', {
+      await supabase.rpc('settle_client_reservation', {
         p_reservation_id: reservationId,
         p_outcome: 'success',
-        p_metadata: {},
-        p_guest_id: guestId,
+        p_metadata: {}
       });
-      if (error || data?.[0]?.settled !== true) console.error('Billing settlement pending:', error || data);
     } catch (finalizeErr) {
       console.warn('finalize_credit_reservation success error:', finalizeErr);
     }
@@ -153,8 +143,8 @@ export async function analyzeText(
 
   if (!userId && reservation.daily_remaining !== null && options.onGuestUsage) {
     options.onGuestUsage({
-      remaining: reservation.trial_checks_remaining ?? 0,
-      limit: reservation.trial_checks_total ?? 1,
+      remaining: Math.max(0, (reservation.daily_remaining ?? 1) - 1),
+      limit: reservation.daily_limit ?? 3,
     });
   }
 

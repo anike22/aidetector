@@ -552,8 +552,6 @@ export interface VerifiedSource {
   provider: 'crossref' | 'openalex' | 'unpaywall' | 'web' | 'exa';
   /** Percentage of submitted document matched against this source (0–100). */
   matchContribution: number;
-  /** Non-overlapping marginal percentage contributed by this source (0–100). */
-  uniqueContribution?: number;
   citedMaterial: boolean;
   matchedSpans: MatchedSpan[];
   /** Highest span similarity across all spans (0–100). */
@@ -565,29 +563,6 @@ export interface VerifiedSource {
   queryRecovery?: number;
   /** Optional discovery-only ranking score; never used for plagiarism percentage. */
   discoveryScore?: number;
-}
-
-export interface PlagiarismDiagnostics {
-  submittedChars: number;
-  submittedWords: number;
-  sentenceCount: number;
-  passagesGenerated: number;
-  queriesGenerated: number;
-  queryStrategy: string;
-  queriesSentByProvider: Record<string, string[]>;
-  providersResponded: Record<string, boolean>;
-  candidatesReturnedByProvider: Record<string, number>;
-  retrievedUrls: string[];
-  fullTextRetrievedCount: number;
-  abstractSnippetFallbackCount: number;
-  failedRetrievalsCount: number;
-  candidatePassagesReachingMatcher: number;
-  exactMatchesFound: number;
-  nearMatchesFound: number;
-  verifiedParaphrasesFound: number;
-  candidateSimilaritiesFound: number;
-  calculatedSimilarityPercentage: number;
-  scoringFormula: string;
 }
 
 /** Full plagiarism result — every score is derived from verified evidence. */
@@ -611,18 +586,15 @@ export interface PlagiarismAnalysisResult {
   /** Honest coverage note explaining which sources are searched. */
   coverageNote: string;
   providerStatus: {
-    crossref: 'ok' | 'failed' | 'skipped' | { status: 'ok' | 'failed' | 'skipped'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
-    openalex: 'ok' | 'failed' | 'skipped' | { status: 'ok' | 'failed' | 'skipped'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
-    unpaywall: 'ok' | 'failed' | 'skipped' | { status: 'ok' | 'failed' | 'skipped'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
-    gemini: 'ok' | 'failed' | 'skipped' | { status: 'ok' | 'failed' | 'skipped'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
-    webSearch: 'ok' | 'failed' | 'skipped' | 'not_configured' | { status: 'ok' | 'failed' | 'skipped' | 'not_configured'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
-    exa?: 'ok' | 'failed' | 'skipped' | { status: 'ok' | 'failed' | 'skipped'; queriesSent?: number; candidatesReturned?: number; verifiedSources?: number };
+    crossref: 'ok' | 'failed' | 'skipped';
+    openalex: 'ok' | 'failed' | 'skipped';
+    unpaywall: 'ok' | 'failed' | 'skipped';
+    gemini: 'ok' | 'failed' | 'skipped';
+    webSearch: 'ok' | 'failed' | 'skipped' | 'not_configured';
   };
-  diagnostics?: PlagiarismDiagnostics;
   errorMessage?: string;
-  /** Entitlement metadata forwarded from server when upgrade or credits are required. */
+  /** Entitlement metadata forwarded from server when upgrade is required. */
   upgrade_required?: boolean;
-  errorCode?: string;
   remaining?: number | null;
   limit?: number | null;
 }
@@ -633,99 +605,26 @@ export interface PlagiarismAnalysisResult {
  * NEVER returns a fake originality score. Any failure throws so the caller
  * can surface a clear retry message — never a silently positive result.
  */
-export async function analyzePlagiarism(text: string, language?: string): Promise<PlagiarismAnalysisResult> {
+export async function analyzePlagiarism(text: string): Promise<PlagiarismAnalysisResult> {
   const { supabase } = await import('@/db/supabase');
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  // Build headers — include auth token if a session exists, else use anonKey for Edge Runtime gateway
+  // Build headers — include auth token if a session exists
   const { data: { session } } = await supabase.auth.getSession();
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'apikey': anonKey || '',
-    'Authorization': session?.access_token ? `Bearer ${session.access_token}` : `Bearer ${anonKey || ''}`,
-    'x-timezone': tz,
-  };
-  if (!session?.access_token) {
-    // Guest path: obtain or validate the canonical server-issued guest session ID
-    // Reuses the platform-wide guest identity mechanism persisted under 'aicx_vid'
-    const { ensureGuestSession } = await import('@/lib/visitorId');
-    const guestId = await ensureGuestSession();
-    if (guestId) {
-      headers['x-guest-id'] = guestId;
-      headers['x-visitor-id'] = guestId;
-    }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  } else {
+    // Guest path: send a stable daily fingerprint (no PII stored, hashed server-side)
+    const fp = await buildGuestFingerprint();
+    headers['x-guest-id'] = fp;
   }
 
   const { data, error } = await supabase.functions.invoke('plagiarism-checker', {
-    body: { text, language: language && language !== 'auto' ? language : undefined },
+    body: { text },
     headers,
   });
 
   if (error) {
-    let errorDetails: any = null;
-    try {
-      if (error.context && typeof error.context.json === 'function') {
-        errorDetails = await error.context.json();
-      }
-    } catch {
-      // ignore
-    }
-
-    if (errorDetails) {
-      const defaultProviderStatus: PlagiarismAnalysisResult['providerStatus'] = {
-        crossref: 'skipped',
-        openalex: 'skipped',
-        unpaywall: 'skipped',
-        gemini: 'skipped',
-        webSearch: 'not_configured',
-      };
-
-      const rawErrorCode = errorDetails.error_code || errorDetails.errorCode;
-      const isUpgrade = Boolean(errorDetails.upgrade_required);
-      const isInsufficientCredits = rawErrorCode === 'INSUFFICIENT_CREDITS';
-
-      if (isUpgrade || isInsufficientCredits || rawErrorCode === 'TRIAL_EXHAUSTED' || rawErrorCode === 'PAID_ONLY_FEATURE') {
-        return {
-          status: 'analysis_failed',
-          similarityScore: 0,
-          originalityScore: 100,
-          exactMatchScore: 0,
-          nearMatchScore: 0,
-          paraphraseMatchScore: 0,
-          semanticMatchScore: 0,
-          riskLevel: 'None',
-          sources: [],
-          coverageNote: errorDetails.error || errorDetails.errorMessage || 'Plagiarism analysis could not run.',
-          providerStatus: errorDetails.providerStatus || defaultProviderStatus,
-          upgrade_required: isUpgrade && !isInsufficientCredits,
-          errorCode: rawErrorCode || (isInsufficientCredits ? 'INSUFFICIENT_CREDITS' : 'UPGRADE_REQUIRED'),
-          remaining: errorDetails.remaining ?? null,
-          limit: errorDetails.limit ?? null,
-          errorMessage: errorDetails.error || errorDetails.errorMessage || (isInsufficientCredits
-            ? 'Insufficient credits for plagiarism check. Please top up your balance.'
-            : 'Plan upgrade required to run plagiarism checks.'),
-        };
-      }
-      if (errorDetails.status || errorDetails.errorMessage || errorDetails.error) {
-        return {
-          status: errorDetails.status || 'analysis_failed',
-          similarityScore: errorDetails.similarityScore || 0,
-          originalityScore: errorDetails.originalityScore || 100,
-          exactMatchScore: 0,
-          nearMatchScore: 0,
-          paraphraseMatchScore: 0,
-          semanticMatchScore: 0,
-          riskLevel: 'None',
-          sources: errorDetails.sources || [],
-          coverageNote: errorDetails.coverageNote || 'Analysis could not be completed.',
-          providerStatus: errorDetails.providerStatus || defaultProviderStatus,
-          errorCode: rawErrorCode,
-          errorMessage: errorDetails.errorMessage || errorDetails.error || 'Plagiarism analysis encountered an issue.',
-        };
-      }
-    }
-
     // Supabase client-level network error — surface it
     throw new Error(error.message || 'PLAGIARISM_CHECK_UNAVAILABLE');
   }

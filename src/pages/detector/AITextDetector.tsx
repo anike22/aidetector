@@ -326,11 +326,8 @@ export default function AITextDetector() {
       engineCount: 2,
     });
 
-    // Both results share this scan's authorization. Pass balancedResult into
-    // runAggressiveDetector so the strict screen synthesizes against ensemble evidence.
-    const aggressivePromise = balancedPromise
-      .then((bResult) => runAggressiveDetector(textToAnalyze, bResult))
-      .catch(() => runAggressiveDetector(textToAnalyze));
+    // MeDo Aggressive scoring is independent of the Balanced result.
+    const aggressivePromise = runAggressiveDetector(textToAnalyze);
 
     // ── Handle balanced result ────────────────────────────────────────────────
     balancedPromise
@@ -575,7 +572,7 @@ export default function AITextDetector() {
     if (!textToAnalyze.trim()) return;
     setAggressiveError(null);
     setAggressiveLoading(true);
-    runAggressiveDetector(textToAnalyze, balancedResult || undefined)
+    runAggressiveDetector(textToAnalyze)
       .then((aResult) => { setAggressiveResult(aResult); setAggressiveLoading(false); })
       .catch((e) => {
         setAggressiveLoading(false);
