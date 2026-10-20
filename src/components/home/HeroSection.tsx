@@ -133,7 +133,7 @@ export default function HeroSection() {
     ? (!monthlyAllocation || monthlyAllocation <= 0 ? 100 : Math.max(0, Math.min(100, Math.round((creditsBalance / monthlyAllocation) * 100))))
     : (!trialTotal || trialTotal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round((trialRemaining / trialTotal) * 100))));
 
-  const isLimitReached = !entitlementLoading && (
+  const isLimitReached = !summary?.isUnlimited && !entitlementLoading && (
     isPaid ? creditsBalance < 1 : trialRemaining <= 0 && creditsBalance < 1
   );
 
@@ -267,7 +267,7 @@ export default function HeroSection() {
               )}
               <span className="font-semibold text-foreground truncate">
                 {isPaid
-                  ? `${creditsBalance} credits available · 1 credit per check`
+                  ? summary?.isUnlimited ? 'Unlimited checks included · No credit top-ups' : `${creditsBalance} credits available · 1 credit per check`
                   : !user
                   ? trialRemaining > 0
                     ? '1 free check remaining · No signup required.'

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Lock, AlertCircle, Clock, Loader2, Send, ArrowRight, Home } from 'lucide-react';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { useAuth } from '@/contexts/AuthContext';
 import { Helmet } from 'react-helmet-async';
 import { getFeatureFlagSync, DEFAULT_UNAVAILABLE_MESSAGE, FeatureFlag, normalizeFeatureSlug } from '@/lib/featureFlags';
@@ -23,6 +24,7 @@ export default function FeatureGate({ featureSlug, children }: Props) {
   const [loading, setLoading] = useState(false);
   const { user, profile } = useAuth();
   const location = useLocation();
+  const { summary: billingSummary } = useEntitlement(normalizedSlug);
 
   const [requestName, setRequestName] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
@@ -141,9 +143,9 @@ export default function FeatureGate({ featureSlug, children }: Props) {
   }
 
   // Plan check
-  const userPlan = profile?.subscription_plan || 'free';
+  const userPlan = billingSummary?.isPaidActive ? billingSummary.plan : profile?.subscription_plan || 'free';
   const isAdmin = profile?.role === 'admin';
-  const planLevels = { 'free': 0, 'pro': 1, 'business': 2, 'enterprise': 3 };
+  const planLevels = { 'free': 0, 'pro': 1, 'business': 2, 'enterprise': 3, 'agency_unlimited': 3 };
   
   if (!isAdmin && feature.required_plan && feature.required_plan !== 'free') {
     const requiredLevel = planLevels[feature.required_plan as keyof typeof planLevels] || 0;

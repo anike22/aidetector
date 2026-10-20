@@ -9,7 +9,9 @@ export function isPaidSubscriptionActive(
   planEndDate: string | null | undefined
 ): boolean {
   if (!plan || plan === 'free') return false;
-  if (!['pro', 'pro_plus', 'pro+', 'business', 'enterprise'].includes(plan.toLowerCase())) return false;
+  if (!['pro', 'pro_plus', 'pro+', 'business', 'enterprise', 'agency_unlimited'].includes(plan.toLowerCase())) return false;
+
+  if (plan.toLowerCase() === 'agency_unlimited' && (!planEndDate || !Number.isFinite(new Date(planEndDate).getTime()))) return false;
 
   const normalizedStatus = (status || '').toLowerCase();
   if (['active', 'trialing'].includes(normalizedStatus)) {

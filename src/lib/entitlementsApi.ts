@@ -26,6 +26,7 @@ export interface EntitlementSummary {
   plan: string;
   status: string;
   isPaidActive: boolean;
+  isUnlimited?: boolean;
   creditsBalance: number;
   creditsUsedTotal: number;
   trialChecksRemaining: number;
@@ -116,6 +117,7 @@ export async function getLiveEntitlementSummary(): Promise<EntitlementSummary> {
     plan: row.plan || (userId ? 'free' : 'guest'),
     status: row.status || 'Active',
     isPaidActive: Boolean(row.is_paid_active),
+    isUnlimited: row.plan === 'agency_unlimited' && row.is_paid_active === true,
     creditsBalance: row.credits_balance ?? 0,
     creditsUsedTotal: row.credits_used_total ?? 0,
     trialChecksRemaining: trialRemaining,
@@ -158,7 +160,7 @@ export async function checkEntitlement(
 
   const rateItem = RATE_TABLE[featureSlug];
   const minPlan = rateItem?.minPlan || 'free';
-  const ranks: Record<string, number> = { guest: 0, free: 1, pro: 2, pro_plus: 3, 'pro+': 3, business: 4, enterprise: 5 };
+  const ranks: Record<string, number> = { guest: 0, free: 1, pro: 2, pro_plus: 3, 'pro+': 3, business: 4, enterprise: 5, agency_unlimited: 5 };
 
   const isGuest = !summary.isAuthenticated;
   const isPaid = summary.isPaidActive;
@@ -170,7 +172,12 @@ export async function checkEntitlement(
   let reason: string | null = null;
   let errorCode: string | null = null;
 
-  if (isPaid) {
+  if (summary.isUnlimited && ['api_access', 'bulk_processing'].includes(featureSlug)) {
+    errorCode = 'AGENCY_FEATURE_EXCLUDED';
+    reason = 'Agency Unlimited excludes API access and automated bulk processing.';
+  } else if (summary.isUnlimited && rateItem) {
+    allowed = true;
+  } else if (isPaid) {
     if ((ranks[summary.plan] ?? -1) < (ranks[minPlan] ?? 99)) {
       errorCode = 'UPGRADE_REQUIRED';
       reason = 'Your plan does not include this feature.';

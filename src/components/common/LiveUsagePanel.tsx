@@ -45,7 +45,7 @@ export function LiveUsagePanel({
   const plan = summary?.plan || entitlement?.plan || 'guest';
   const isAuthenticated = summary?.isAuthenticated ?? entitlement?.isAuthenticated ?? false;
   const isPaid = summary?.isPaidActive ?? false;
-  const wasPaidPlan = ['pro', 'pro_plus', 'pro+', 'business', 'enterprise'].includes(plan.toLowerCase());
+  const wasPaidPlan = ['pro', 'pro_plus', 'pro+', 'business', 'enterprise', 'agency_unlimited'].includes(plan.toLowerCase());
   const isExpiredPaidPlan = isAuthenticated && wasPaidPlan && !isPaid;
 
   const trialChecksRemaining = typeof summary?.trialChecksRemaining === 'number'
@@ -105,6 +105,14 @@ export function LiveUsagePanel({
   const isExhausted = isPaid
     ? creditsBalance < operationCost
     : !hasTrialRemaining && creditsBalance < operationCost;
+
+  if (summary?.isUnlimited) {
+    return <Card className={`border-primary/30 ${className}`}><CardContent className="p-4 space-y-2">
+      <p className="font-semibold">Agency Unlimited · {['api_access', 'bulk_processing'].includes(featureSlug) ? 'This feature is excluded' : 'Included — no credits deducted'}</p>
+      {!compact && <><p className="text-sm text-muted-foreground">Unlimited interactive website use through {formattedPlanEndDate}. API access and automated bulk processing are excluded. Normal input and processing limits apply.</p>
+      <Button variant="outline" size="sm" onClick={() => refresh()} disabled={loading}>Refresh access</Button></>}
+    </CardContent></Card>;
+  }
 
   if (compact) {
     const indicatorText = isPaid
