@@ -70,7 +70,7 @@ export function TeamCreditManagement() {
       return;
     }
 
-    const quotaNum = parseInt(allocatedCredits, 10);
+    const quotaNum = summary?.plan === 'agency_unlimited' ? 1 : parseInt(allocatedCredits, 10);
     if (isNaN(quotaNum) || quotaNum < 0) {
       toast.error('Please enter a valid credit sub-quota.');
       return;
@@ -84,7 +84,7 @@ export function TeamCreditManagement() {
         return;
       }
 
-      toast.success(`Allocated ${quotaNum} credits to ${email.trim()}`);
+      toast.success(summary?.plan === 'agency_unlimited' ? `Added ${email.trim()} to your agency` : `Allocated ${quotaNum} credits to ${email.trim()}`);
       setEmail('');
       setSeatName('');
       setAllocatedCredits('500');
@@ -143,6 +143,31 @@ export function TeamCreditManagement() {
         <span className="text-muted-foreground text-sm font-medium">Loading team credit pool...</span>
       </div>
     );
+  }
+
+  if (summary?.is_team_account && summary.plan === 'agency_unlimited') {
+    const members = summary.allocations || [];
+    return <Card><CardHeader><CardTitle>Agency Unlimited · Team access</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p>Unlimited interactive website use. Five named users total, including the owner. API access and automated bulk processing are excluded.</p>
+        {summary.is_owner ? <>
+          <p className="text-sm">{members.length + 1} of 5 seats in use. Members must register using the exact email added below.</p>
+          <form onSubmit={handleAddOrUpdate} className="flex flex-wrap gap-2">
+            <Label htmlFor="agency-member-email" className="sr-only">Member email</Label>
+            <Input id="agency-member-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="editor@agency.com" required />
+            <Button type="submit" disabled={submitting || members.length >= 4}>{submitting ? 'Adding…' : 'Add member'}</Button>
+          </form>
+          {members.map(member => <div key={member.id} className="flex items-center justify-between gap-2 border-t pt-2">
+            <span>{member.member_email}</span><Button variant="outline" size="sm" onClick={async () => {
+              const result = await removeTeamMember(member.id);
+              if (!result.success) toast.error(result.error || 'Unable to remove member');
+              else await fetchSummary(true);
+            }}>Remove member</Button>
+          </div>)}
+          <p className="text-sm">For onboarding, editor training or refund requests, contact <a className="underline" href="mailto:billing@aidetector.cx">billing@aidetector.cx</a>.</p>
+        </> : <p>Your agency owner manages your access. No credit allocation is needed.</p>}
+        <Button variant="outline" onClick={() => fetchSummary(true)} disabled={refreshing}>Refresh access</Button>
+      </CardContent></Card>;
   }
 
   // 1. Member View (when user is a seat in a Business/Enterprise team)

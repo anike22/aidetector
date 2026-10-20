@@ -138,7 +138,7 @@ export function SEOAssistantWorkspace({
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
 
   const isGuest = !user || summary?.isAuthenticated === false;
-  const isSubscriber = summary?.isPaidActive === true && ['pro', 'pro_plus', 'pro+', 'business', 'enterprise'].includes((summary?.plan || '').toLowerCase());
+  const isSubscriber = summary?.isPaidActive === true && ['pro', 'pro_plus', 'pro+', 'business', 'enterprise', 'agency_unlimited'].includes((summary?.plan || '').toLowerCase());
   const isRegisteredNonSubscriber = !isGuest && !isSubscriber;
 
   // Editor state

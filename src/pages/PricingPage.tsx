@@ -225,7 +225,7 @@ export default function PricingPage() {
 
   const handleAction = async (planId: string) => {
     if (!user) {
-      navigate('/signup');
+      navigate('/signup?redirect=' + encodeURIComponent('/pricing#agency-unlimited'));
       return;
     }
 
@@ -239,6 +239,7 @@ export default function PricingPage() {
       return;
     }
 
+    if (planId === 'agency_unlimited' && !window.confirm('Agency Unlimited costs $2,500 USD for 12 months, paid once. Five users total. Unlimited interactive website use; API and automated bulk processing excluded. Normal per-request limits apply. 30-day refund requests: billing@aidetector.cx. Continue to secure checkout?')) return;
     setLoadingPlan(planId);
     try {
       const plan = DISPLAY_PLANS.find(p => p.id === planId);
@@ -254,10 +255,10 @@ export default function PricingPage() {
           amount,
           metadata: {
             type: 'upgrade',
-            offer_code: offerCode,
+            offer_code: planId === 'agency_unlimited' ? '' : offerCode,
             plan: planId,
             billing,
-            interval: billing === 'annual' ? 'year' : 'month',
+            interval: planId === 'agency_unlimited' || billing === 'annual' ? 'year' : 'month',
           },
         },
         headers: {
@@ -353,6 +354,24 @@ export default function PricingPage() {
           )}
         </div>
 
+        <Card id="agency-unlimited" className="mb-12 border-primary scroll-mt-24">
+          <CardHeader><CardTitle>Agency Unlimited — $2,500 for one year</CardTitle>
+            <p className="text-muted-foreground">One payment. All website tools. No credit top-ups.</p></CardHeader>
+          <CardContent className="space-y-4">
+            <p>Unlimited standard interactive website use for five named users total, including the account owner, across your agency’s client projects.</p>
+            <ul className="list-disc pl-5 space-y-1 text-sm">
+              <li><Link className="underline" to="/ai-checker-for-bloggers">AI Checker for Bloggers</Link>, <Link className="underline" to="/seo-assistant">SEO Assistant</Link>, <Link className="underline" to="/detector">AI Detector</Link>, <Link className="underline" to="/humanizer">Humanizer</Link> and <Link className="underline" to="/plagiarism-checker">Plagiarism Checker</Link>.</li>
+              <li>Image, video, deepfake and voice tools, citation verification, hallucination checking, and other available interactive website tools.</li>
+              <li>Personal onboarding and editor training. Contact <a className="underline" href="mailto:billing@aidetector.cx">billing@aidetector.cx</a> after purchase to arrange your session.</li>
+              <li>30-day money-back guarantee. Request your refund by email within 30 days of initial purchase.</li>
+            </ul>
+            <p className="text-sm text-muted-foreground">Access lasts 12 months from verified payment; no automatic renewal. API access, automated bulk processing, resale and credential sharing are excluded. Normal per-request input limits and processing safeguards apply; there is no monthly check or credit allowance. Features in maintenance remain subject to service availability. Detection supports editorial judgment and does not prove authorship or guarantee rankings.</p>
+            <p className="text-sm"><Link className="underline" to="/terms#subscriptions">Read the Agency Unlimited terms</Link></p>
+            <Button onClick={() => handleAction('agency_unlimited')} disabled={loadingPlan === 'agency_unlimited' || currentPlan === 'agency_unlimited'}>
+              {loadingPlan === 'agency_unlimited' ? 'Opening checkout…' : currentPlan === 'agency_unlimited' ? 'Your current plan' : 'Get Agency Unlimited — $2,500 / year'}
+            </Button>
+          </CardContent>
+        </Card>
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {DISPLAY_PLANS.map((plan) => {

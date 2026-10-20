@@ -304,6 +304,7 @@ interface UserPost {
 }
 
 const PLAN_DETAILS: Record<string, any> = {
+  agency_unlimited: { name: 'Agency Unlimited', desc: '$2,500 / year · Unlimited website use', features: ['All website tools without credit top-ups', 'Five named users total', 'Client projects included', 'Personal onboarding and editor training', '30-day money-back guarantee'], icon: '🏢' },
   free: {
     name: 'Free',
     desc: '$0/month · Upgrade anytime',

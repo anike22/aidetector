@@ -49,6 +49,10 @@ Output: Analysis results and AI-generated content produced through the Service a
 
 Cancellation: You may cancel your subscription at any time. Cancellation takes effect at the end of your current billing period. No refunds are issued for partial billing periods.
 
+Agency Unlimited: $2,500 USD paid once grants 12 months of unlimited standard interactive website use from verified payment, for five named users total including the owner. Client projects are included. There is no monthly credit or check quota and no automatic renewal. API access, automated bulk processing, resale and credential sharing are excluded. Normal per-request input limits and processing safeguards apply. Feature maintenance and provider availability can affect individual tools. Personal onboarding and editor training are arranged by contacting billing@aidetector.cx after purchase.
+
+Agency Unlimited refunds: Request a full refund at billing@aidetector.cx within 30 days of your initial Agency Unlimited payment if the package does not meet your needs. Include your registered email and payment reference. Refunds are processed to the original payment method; processing time depends on the provider. Completed full refunds end access for the owner and team. This 30-day guarantee applies specifically to Agency Unlimited and takes precedence over the general 14-day policy below.
+
 Refunds: We offer a 14-day money-back guarantee for new subscribers. Contact billing@aidetector.cx within 14 days of your initial purchase.
 
 Price Changes: We will provide at least 30 days' notice before increasing subscription prices. Continued use after the effective date constitutes acceptance of new pricing.`,
@@ -97,7 +101,7 @@ export default function TermsOfServicePage() {
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           <Badge className="bg-primary/20 text-primary border-primary/30 mb-5">Legal</Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-3 text-balance">Terms of Service</h1>
-          <p className="text-white/60 text-sm">Last Updated: June 1, 2026 · Effective: June 1, 2026</p>
+          <p className="text-white/60 text-sm">Last Updated: October 20, 2026 · Effective: June 1, 2026</p>
         </div>
       </section>
 

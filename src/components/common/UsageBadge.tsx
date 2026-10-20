@@ -32,6 +32,10 @@ export default function UsageBadge({
   const trialRemaining = summary?.trialChecksRemaining ?? entitlement?.trialChecksRemaining ?? 0;
   const trialEligible = isTrialEligibleOperation(featureSlug);
 
+  if (summary?.isUnlimited && !['api_access', 'bulk_processing'].includes(featureSlug)) {
+    return <Badge variant="secondary">Included · Unlimited</Badge>;
+  }
+
   if (trialEligible && trialRemaining > 0 && !isPaid) {
     return (
       <Badge variant="secondary" className="gap-1 font-medium text-xs bg-primary/10 text-primary border-primary/20">

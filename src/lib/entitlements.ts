@@ -142,6 +142,12 @@ export const PLAN_TIERS: Record<string, PlanTier> = {
       exportFormats: ['PDF', 'DOCX', 'CSV', 'JSON', 'Certificate', 'API'],
     },
   },
+  agency_unlimited: {
+    id: 'agency_unlimited', name: 'Agency Unlimited', tagline: 'Unlimited interactive website use for your agency',
+    monthlyPrice: 0, annualPrice: 2500, annualMonthlyEquivalent: 208.33, monthlyCredits: 0, trialChecks: 0,
+    features: ['12 months of unlimited website use', 'All website tools', 'Five users total, including the owner', 'Client projects included', 'Personal onboarding and editor training', '30-day money-back guarantee'],
+    limits: { maxWordsPerCheck: 50000, maxVideoSeconds: 600, concurrency: 10, apiAccess: false, forensicMode: true, teamSeats: 5, exportFormats: ['PDF','DOCX','CSV','JSON','Certificate'] },
+  },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
