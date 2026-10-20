@@ -31,6 +31,7 @@ interface BloggerWorkflowStepsProps {
   isLockingTitle?: boolean;
   creditsBalance?: number;
   paidKeywordGate?: boolean;
+  unlimitedUsage?: boolean;
   targetCountry: string;
   targetLanguage: string;
   onTargetCountryChange: (val: string) => void;
@@ -58,6 +59,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
   onStartNew,
   isLockingTitle = false,
   creditsBalance = 0,
+  unlimitedUsage = false,
   paidKeywordGate = true,
   targetCountry,
   targetLanguage,
@@ -324,7 +326,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
               className="h-9 px-5 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
             >
               <Lock className="w-3.5 h-3.5" />
-              {paidKeywordGate ? 'Lock Keyword — 30 Credits' : 'Lock Keyword'}
+              {unlimitedUsage ? 'Lock Keyword — Included' : paidKeywordGate ? 'Lock Keyword — 30 Credits' : 'Lock Keyword'}
             </Button>
           </div>
           {!hasCurrentAnalysis && (
@@ -463,7 +465,7 @@ export const BloggerWorkflowSteps: React.FC<BloggerWorkflowStepsProps> = ({
                   </span>
                   <span className="text-xs text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground">
-                    {paidKeywordGate ? '30 Credits Charged (Full Session Active)' : 'Preview Session Active'}
+                    {unlimitedUsage ? 'Unlimited Session Active — No Credits Charged' : paidKeywordGate ? '30 Credits Charged (Full Session Active)' : 'Preview Session Active'}
                   </span>
                   {metrics && (
                     <span className="text-xs text-primary font-medium ml-auto hidden sm:inline-block">
