@@ -434,7 +434,7 @@ export function SEOAssistantWorkspace({
     // Live keyword analysis is optional enrichment. A valid primary keyword can always be locked.
     if (isLockingTitle) return;
     setIsLockingTitle(true);
-    const cost = 30;
+    const cost = summary?.isUnlimited ? 0 : 30;
     try {
       if (isBloggerLanding && isSubscriber) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -512,7 +512,7 @@ export function SEOAssistantWorkspace({
       };
       await saveSyncedSEOAssistantHistoryItem(historyItem);
       setHistoryCount(getSEOAssistantHistory().length);
-      toast.success(isBloggerLanding && !isSubscriber ? 'Keyword locked. Continue with your title and content preview.' : 'Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
+      toast.success(summary?.isUnlimited ? 'Keyword locked and saved. Included in Agency Unlimited — no credits charged.' : isBloggerLanding && !isSubscriber ? 'Keyword locked. Continue with your title and content preview.' : 'Keyword locked and saved. 30 credits charged. You can enter a title or start new.');
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       if (/failed to fetch|networkerror|network request failed/i.test(message)) {
@@ -543,7 +543,7 @@ export function SEOAssistantWorkspace({
     }
 
     setIsLockingTitle(true);
-    const cost = 30;
+    const cost = summary?.isUnlimited ? 0 : 30;
     const featureSlug = featureSlugForBilling;
     let paidMetrics = bloggerMetrics;
     let chargedCredits = cost;
@@ -694,9 +694,7 @@ export function SEOAssistantWorkspace({
   };
 
   // Cost calculation: SEO Assistant costs 30 credits per check as shown
-  const currentCost = useMemo(() => {
-    return 30;
-  }, []);
+  const currentCost = summary?.isUnlimited ? 0 : 30;
 
   // Click-to-locate issue handler with location metadata & text support
   const handleNavigateIssue = useCallback((target: any) => {
@@ -888,7 +886,7 @@ export function SEOAssistantWorkspace({
     }
 
     setIsAnalyzing(true);
-    const cost = 30; // Exactly 30 credits per check as shown in UI
+    const cost = summary?.isUnlimited ? 0 : 30; // Exactly 30 credits per check as shown in UI
     const featureSlug = featureSlugForBilling;
 
     try {
@@ -972,7 +970,7 @@ export function SEOAssistantWorkspace({
       if (res.isTrialCheck) {
         toast.success('Analysis completed! (1 Free trial check used)');
       } else {
-        toast.success(`Analysis completed! ${cost} credits deducted.`);
+        toast.success(summary?.isUnlimited ? 'Analysis completed! Included in Agency Unlimited — no credits deducted.' : `Analysis completed! ${cost} credits deducted.`);
       }
     } catch (err) {
       setIsAnalyzing(false);
@@ -2359,6 +2357,7 @@ Return ONLY valid JSON:
           isLockingTitle={isLockingTitle}
           creditsBalance={summary?.creditsBalance ?? entitlement?.remainingCredits ?? 0}
           paidKeywordGate={isSubscriber}
+          unlimitedUsage={summary?.isUnlimited === true}
           targetCountry={bloggerTargetCountry}
           targetLanguage={bloggerTargetLanguage}
           onTargetCountryChange={(country) => {
@@ -2424,7 +2423,7 @@ Return ONLY valid JSON:
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-muted-foreground text-[11px]">
-                  {wordCount} words · {isSubscriber ? '30 Credits Active' : 'Preview Active'}
+                  {wordCount} words · {summary?.isUnlimited ? 'Unlimited Session Active' : isSubscriber ? '30 Credits Active' : 'Preview Active'}
                 </span>
               </div>
             </div>
@@ -2561,7 +2560,7 @@ Return ONLY valid JSON:
                 className="text-xs bg-primary text-primary-foreground gap-1.5"
               >
                 {aiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                {aiGenerating ? 'Generating...' : 'Generate Article (5 Credits)'}
+                {aiGenerating ? 'Generating...' : summary?.isUnlimited ? 'Generate Article (Included)' : 'Generate Article (5 Credits)'}
               </Button>
             </div>
           </div>
