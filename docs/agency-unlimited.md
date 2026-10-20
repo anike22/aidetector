@@ -8,7 +8,7 @@ $2,500 USD paid once through Paystack for 12 months of standard interactive webs
 - Verified payment grants plan and one-year expiry atomically and idempotently. No monthly credit grant is created.
 - Reservation RPC checks owner/member entitlement before trial and credit gating. Agency reservations have zero reserved credits and retain normal settlement and idempotency.
 - Team owner can add four members through Dashboard → Team Credits & Seats. Members register with the exact added email. Removed or suspended members lose inherited access immediately.
-- Expired or refunded owners lose access along with their members. Cancellation retains access until expiry. Existing paid plans remain metered.
+- Expired or refunded owners lose access along with their members. Cancellation retains access until expiry. Existing paid plans remain metered. Upgrading from Business retains the earliest four active member seats and suspends extra seats so the owner plus members do not exceed five users.
 - Available website aliases missing from the legacy rate table are authorized only for an active Agency Unlimited owner/member. Unknown operations fail closed.
 
 ## Delivery and refunds

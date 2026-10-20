@@ -53,6 +53,8 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE UNIQUE INDEX plan_price_identity ON plan_prices(plan,billing_interval,currency);`);
  const migration=fs.readdirSync(path.join(root,'supabase/migrations')).find(n=>n.endsWith('_agency_unlimited_annual.sql'));
  await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',migration),'utf8'));
+ const seatMigration=fs.readdirSync(path.join(root,'supabase/migrations')).find(n=>n.endsWith('_agency_unlimited_seat_transition.sql'));
+ await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',seatMigration),'utf8'));
  const agencyGrant=async(ref='agency-good',amount=250000,interval='year',currency='usd',buyer=user)=>(await query(`SELECT apply_verified_subscription_payment('paystack',$1,$2,'agency_unlimited',$3,$4,$5,now()) AS result`,[ref,buyer,interval,amount,currency]))[0].result;
  await test('agency checkout rejects wrong price, currency, and monthly interval',async()=>{
    await assert.rejects(()=>agencyGrant('cheap',1),/amount or currency/);
@@ -112,6 +114,12 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
    assert.equal((await reserve('ai_detector',100,'refund-owner')).allowed,false);
    await db.exec(`SELECT set_config('test.user_id','${member}',false)`);
    assert.equal((await reserve('video_detect_forensic',30,'refund-member')).allowed,false);
+ });
+ await test('Business-to-agency upgrade suspends seats beyond five total',async()=>{
+   await db.exec(`SELECT set_config('test.user_id','${user}',false); UPDATE profiles SET subscription_plan='business',subscription_status='expired',credits_balance=0 WHERE id='${user}';
+     INSERT INTO team_credit_allocations(owner_id,member_email,allocated_credits,status) VALUES('${user}','extra@example.invalid',1,'active');`);
+   assert.equal((await agencyGrant('agency-seat-transition')).granted,true);
+   const rows=await query(`SELECT count(*)::int AS seats FROM team_credit_allocations WHERE owner_id=$1 AND status='active'`,[user]);assert.equal(rows[0].seats,4);
  });
  console.log(`${count} agency checks passed`);await db.close();
 })().catch(async e=>{console.error(e);if(db)await db.close();process.exitCode=1;});
