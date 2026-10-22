@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { supabase } from '@/db/supabase';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import { PageLeadCapture } from '@/components/lead-capture/PageLeadCapture';
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 
 // ─── preserved download / auth logic — DO NOT CHANGE ─────────────────────────
-const PLUGIN_URL = 'https://hzjnrmxwzkeaodvusszx.supabase.co/storage/v1/object/public/plugins/aidetector-wp.zip?v=2.4.5';
+const PLUGIN_URL = `${supabase.storage.from('plugins').getPublicUrl('aidetector-wp.zip').data.publicUrl}?v=2.4.5`;
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const META_STATS = [
@@ -706,4 +707,3 @@ export default function WordPressPluginPage() {
     </MainLayout>
   );
 }
-
