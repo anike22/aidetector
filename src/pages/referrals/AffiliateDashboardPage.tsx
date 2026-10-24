@@ -40,6 +40,22 @@ export default function AffiliateDashboardPage() {
   const [selectedProduct, setSelectedProduct] = useState('/ai-checker-for-bloggers');
   const [productAnalytics, setProductAnalytics] = useState<Array<{ destination: string; clicks: number; signups: number; conversions: number; revenue: number; commission: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [partnerKeys,setPartnerKeys] = useState<Array<{id:string;key_prefix:string;used:number;limit_total:number;active:boolean}>>([]);
+  const [newPartnerKey,setNewPartnerKey] = useState('');
+  const [partnerApiReady,setPartnerApiReady] = useState(false);
+  const [partnerBusy,setPartnerBusy] = useState(false);
+  const partnerRequest=async(action:'status'|'create'|'revoke',key_id?:string):Promise<void>=>{
+    setPartnerBusy(true);
+    try {
+      const {data,error}=await supabase.functions.invoke('partner-key-management',{body:{action,key_id}});
+      if(error || data?.error)throw new Error(data?.error || 'Partner API is not enabled');
+      if(action==='status'){setPartnerKeys(data.keys||[]);setPartnerApiReady(true);}
+      if(action==='create'){setNewPartnerKey(data.api_key);await partnerRequest('status');}
+      if(action==='revoke'){await partnerRequest('status');}
+    }catch(err:any){if(action!=='status')toast.error(err.message||'Partner API unavailable');setPartnerApiReady(false);}
+    finally{setPartnerBusy(false);}
+  };
+
 
   const load = async () => {
     try {
@@ -217,6 +233,15 @@ export default function AffiliateDashboardPage() {
                   </ol>
                 </div>
                 <p className="text-xs text-muted-foreground">The proposed pilot limit is 100 requests, up to 5,000 words per request, pending technical validation. Do not use the public detector endpoint as a partner API.</p>
+                <div className="space-y-2 border-t pt-3">
+                  <Button variant="outline" disabled={partnerBusy} onClick={()=>partnerRequest('status')}>Check API availability</Button>
+                  {partnerApiReady && <>
+                    <Button disabled={partnerBusy} onClick={()=>partnerRequest('create')}>Generate dedicated API key</Button>
+                    {newPartnerKey && <div className="space-y-2"><p className="text-sm font-medium">Copy this key now. It will not be shown again.</p><Input readOnly value={newPartnerKey}/><Button onClick={()=>copy(newPartnerKey)}>Copy secret</Button></div>}
+                    {partnerKeys.map(k=><div key={k.id} className="flex items-center justify-between border rounded-md p-2 text-sm"><span>{k.key_prefix}… · {k.used}/{k.limit_total} requests</span><Button variant="outline" disabled={!k.active||partnerBusy} onClick={()=>partnerRequest('revoke',k.id)}>Revoke</Button></div>)}
+                  </>}
+                </div>
+
               </CardContent>
             </Card>
           )}
