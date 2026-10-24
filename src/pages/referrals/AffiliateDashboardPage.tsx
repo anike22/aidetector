@@ -44,7 +44,7 @@ export default function AffiliateDashboardPage() {
   const [newPartnerKey,setNewPartnerKey] = useState('');
   const [partnerApiReady,setPartnerApiReady] = useState(false);
   const [partnerBusy,setPartnerBusy] = useState(false);
-  const partnerRequest=async(action:'status'|'create'|'revoke',key_id?:string)=>{
+  const partnerRequest=async(action:'status'|'create'|'revoke',key_id?:string):Promise<void>=>{
     setPartnerBusy(true);
     try {
       const {data,error}=await supabase.functions.invoke('partner-key-management',{body:{action,key_id}});
