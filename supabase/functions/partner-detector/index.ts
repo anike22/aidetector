@@ -37,6 +37,6 @@ Deno.serve(async(req)=>{
  const {error:saveError}=await db.from("partner_api_results").update({status:"complete",result:saved,text_input:""}).eq("id",row.result_id);
  if(saveError)throw Error("result_save_failed");
  const url="https://www.aidetector.cx/partner-results/"+row.result_id+"#"+access;
- return respond({request_id:row.result_id,summary:{balanced_ai_percent:result.overall.aiProbability,strict_ai_percent:strict?.aiScore ?? null,verdict:result.overall.verdict,language:result.language?.primary?.name},result_url:url});
+ return respond({request_id:row.result_id,summary:{balanced_ai_percent:result.overall.aiProbability,strict_ai_percent:strict?.ai ?? null,verdict:result.overall.verdict,language:result.language?.primary?.name},result_url:url});
  }catch(_err){await db.from("partner_api_results").update({status:"failed",text_input:""}).eq("id",row.result_id);return respond({error:"analysis_unavailable"},503);}
 });
