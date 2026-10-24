@@ -1,4 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.103.1";
+import { analyzeAdvancedText } from "../_shared/detection/engine.ts";
+import { runAggressiveDetector } from "../_shared/detection/aggressiveDetector.ts";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false}});
 const headers={"content-type":"application/json","access-control-allow-origin":"*","access-control-allow-headers":"authorization,content-type,apikey","access-control-allow-methods":"POST,OPTIONS"};
 const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -19,18 +21,21 @@ Deno.serve(async(req)=>{
  if(!row)return respond({error:"reservation_failed"},503);
  if(row.previous){return respond({error:"idempotency_key_already_used",message:"Existing scan must be retrieved through its original result URL"},409);}
  try{
- // Run the exact production engine through the existing detector function with the partner's user JWT not exposed.
- // Integration is deliberately fail-closed until a private engine adapter is configured.
- const adapter=Deno.env.get("PARTNER_DETECTOR_ADAPTER_URL");
- const secret=Deno.env.get("PARTNER_DETECTOR_ADAPTER_SECRET");
- if(!adapter||!secret)throw Error("private_detector_adapter_not_configured");
- const response=await fetch(adapter,{method:"POST",headers:{"authorization":"Bearer "+secret,"content-type":"application/json"},body:JSON.stringify({text:body.text,mode:"balanced"})});
- if(!response.ok)throw Error("detector_adapter_failed");
- const out=await response.json();
- const result=out.data;
- if(!result?.overall)throw Error("invalid_detector_response");
- await db.from("partner_api_results").update({status:"complete",result}).eq("id",row.result_id);
+ // Reuse production analysis libraries; do not alter their scoring.
+ const result=await analyzeAdvancedText(body.text,{
+   contentType:"auto",detectorVersion:"2.6.0",confidenceThreshold:0.5,
+   language:"auto",sentenceLevel:true,paragraphLevel:true
+ });
+ const strict=await runAggressiveDetector(body.text,{
+   ai:result.overall.aiProbability,human:result.overall.humanProbability,
+   mixed:result.overall.mixedProbability,verdict:result.overall.verdict,
+   risk:result.overall.riskLevel,confidence:result.overall.confidence,
+   confidenceLevel:result.overall.confidenceLevel,
+   language:result.language.primary?.name||"English",full:result
+ });
+ const saved={balanced:result,aggressive:strict};
+ await db.from("partner_api_results").update({status:"complete",result:saved}).eq("id",row.result_id);
  const url="https://www.aidetector.cx/partner-results/"+row.result_id+"#"+access;
- return respond({request_id:row.result_id,summary:{balanced_ai_percent:result.overall.aiProbability,verdict:result.overall.verdict,language:result.language?.primary?.name},result_url:url});
+ return respond({request_id:row.result_id,summary:{balanced_ai_percent:result.overall.aiProbability,strict_ai_percent:strict?.aiScore ?? null,verdict:result.overall.verdict,language:result.language?.primary?.name},result_url:url});
  }catch(_err){await db.from("partner_api_results").update({status:"failed",text_input:""}).eq("id",row.result_id);return respond({error:"analysis_unavailable"},503);}
 });
