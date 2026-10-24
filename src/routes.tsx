@@ -121,6 +121,7 @@ import ClientWorkspacesPage from './pages/team/ClientWorkspacesPage';
 // Phase 8 - Referral, Affiliate & Rewards Ecosystem
 import ReferralDashboardPage from './pages/referrals/ReferralDashboardPage';
 import AffiliateDashboardPage from './pages/referrals/AffiliateDashboardPage';
+import PartnerResultPage from './pages/referrals/PartnerResultPage';
 import PartnerPortalPage from './pages/referrals/PartnerPortalPage';
 import RewardsPage from './pages/referrals/RewardsPage';
 import AdminReferralsPage from './pages/admin/referrals/AdminReferralsPage';
@@ -1160,6 +1161,11 @@ export const routes: RouteConfig[] = [
     name: 'Affiliate Dashboard',
     path: '/affiliates/dashboard',
     element: <AffiliateDashboardPage />,
+  },
+  {
+    name: 'Partner Analysis',
+    path: '/partner-results/:id',
+    element: <PartnerResultPage />,
   },
   {
     name: 'Partner Portal',
