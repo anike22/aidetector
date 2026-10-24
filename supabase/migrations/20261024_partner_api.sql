@@ -28,6 +28,8 @@ begin
  if found then
    result_id:=existing.id;owner_id:=k.user_id;api_key_id:=k.id;previous:=true;return next;return;
  end if;
+ if not exists(select 1 from public.partner_api_grants where user_id=k.user_id and enabled) then raise exception 'partner_api_not_enabled'; end if;
+ if (select coalesce(sum(used),0) from public.partner_api_keys where user_id=k.user_id) >= 100 then raise exception 'quota_exceeded'; end if;
  if k.used>=k.limit_total then raise exception 'quota_exceeded'; end if;
  insert into public.partner_api_results(user_id,api_key_id,idempotency_key,access_hash,text_input)
  values(k.user_id,k.id,p_idempotency,p_access_hash,p_text) returning id into rid;
