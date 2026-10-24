@@ -197,6 +197,30 @@ export default function AffiliateDashboardPage() {
             </CardContent>
           </Card>
 
+          {user?.id === '28703673-8b82-4d93-aa3f-ff82d5fe99b5' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-medium">AIEVERYDAY · Partner API integration</CardTitle>
+                <CardDescription>Dedicated AI Detector API integration for your GPTs and website applications.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2"><Badge variant="secondary">Pending secure deployment</Badge><span className="text-sm text-muted-foreground">API credentials are not yet issued.</span></div>
+                <p className="text-sm">Your affiliate application is approved. Your existing website testing credits remain separate from the proposed API pilot allowance.</p>
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium">Integration instructions</p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>After the endpoint passes testing, generate a dedicated API key here using your authenticated account. Keys will be shown only once.</li>
+                    <li>Keep the key in the GPT Actions authentication configuration or a secure server environment; never put it in public GPT instructions or client-side code.</li>
+                    <li>POST text to the partner detector endpoint. The response will contain only Balanced and High-Sensitivity summary scores and a secure result URL.</li>
+                    <li>Show users a View Full Analysis link to AIDetector.cx, where access to detailed analysis is controlled by the user's account and plan.</li>
+                    <li>Monitor the separate request quota and rotate or revoke keys from this dashboard when the API is enabled.</li>
+                  </ol>
+                </div>
+                <p className="text-xs text-muted-foreground">The proposed pilot limit is 100 requests, up to 5,000 words per request, pending technical validation. Do not use the public detector endpoint as a partner API.</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Tabs defaultValue="links" className="space-y-4">
             <TabsList>
               <TabsTrigger value="links"><Link2 className="h-4 w-4 mr-1" /> Links</TabsTrigger>
