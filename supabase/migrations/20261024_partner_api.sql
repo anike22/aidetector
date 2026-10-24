@@ -36,3 +36,12 @@ begin
 end $$;
 revoke all on function public.partner_api_reserve(text,text,text,text) from public,anon,authenticated;
 grant execute on function public.partner_api_reserve(text,text,text,text) to service_role;
+
+create table if not exists public.partner_api_grants (
+ user_id uuid primary key references auth.users(id) on delete cascade,
+ enabled boolean not null default false,
+ created_at timestamptz not null default now()
+);
+alter table public.partner_api_grants enable row level security;
+revoke all on public.partner_api_grants from anon,authenticated;
+insert into public.partner_api_grants(user_id,enabled) values('28703673-8b82-4d93-aa3f-ff82d5fe99b5',false) on conflict(user_id) do nothing;
