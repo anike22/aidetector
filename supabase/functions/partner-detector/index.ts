@@ -8,13 +8,11 @@ const origin = 'https://www.aidetector.cx';
 const url = Deno.env.get('SUPABASE_URL') ?? '';
 const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const db = createClient(url, service, {auth:{persistSession:false}});
-let activeRequest:Request|null=null;
-const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(activeRequest?cors(activeRequest):{})}});
 const sha=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const randomSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const cors=(req:Request)=>{const origin=req.headers.get('origin')||''; return ['https://www.aidetector.cx','https://aidetector.cx'].includes(origin)?{'Access-Control-Allow-Origin':origin,'Vary':'Origin','Access-Control-Allow-Headers':'authorization,content-type,x-result-token,idempotency-key','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{'Access-Control-Allow-Headers':'authorization,content-type,x-result-token,idempotency-key','Access-Control-Allow-Methods':'GET,POST,OPTIONS'};};
 Deno.serve(async req=>{
-  activeRequest=req;
+  const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...cors(req)}});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors(req)});
   if (req.method!=='POST' && req.method!=='GET') return response({error:'Method not allowed'},405);
   if (!url || !service) return response({error:'Unavailable'},503);
