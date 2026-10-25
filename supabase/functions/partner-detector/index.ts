@@ -47,6 +47,7 @@ Deno.serve(async req=>{
     if(reservation?.status==='unauthorized')return response({error:'Unauthorized'},401);
     if(reservation?.status==='conflict')return response({error:'Idempotency conflict'},409);
     if(reservation?.status==='quota')return response({error:'Pilot quota exhausted'},429);
+    if(reservation?.status==='rate_limited')return response({error:'Too many requests; try again shortly'},429);
     if(reservation?.status==='pending')return response({error:'Request already processing; retry shortly'},409);
     if(reservation?.status==='failed')return response({error:'Previous request failed; use a new idempotency key'},409);
     // Replays return a stable status only until a safely persisted response replay is implemented.
