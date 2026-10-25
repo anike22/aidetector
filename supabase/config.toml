@@ -37,3 +37,7 @@ verify_jwt = false
 [functions.partner-detector]
 enabled = true
 verify_jwt = false
+
+[functions.partner-credentials]
+enabled = true
+verify_jwt = false
