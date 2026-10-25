@@ -9,13 +9,19 @@ const url = Deno.env.get('SUPABASE_URL') ?? '';
 const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const db = createClient(url, service, {auth:{persistSession:false}});
 const sha=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-const randomSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(x=>x.toString(16).padStart(2,'0')).join('');
+const resultSecret=Deno.env.get('PARTNER_RESULT_SIGNING_KEY')||'';
+const resultToken=async(id:string)=>{
+  if(resultSecret.length<32)throw new Error('Result signing is not configured');
+  const cryptoKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(resultSecret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const bytes=new Uint8Array(await crypto.subtle.sign('HMAC',cryptoKey,new TextEncoder().encode(id)));
+  return Array.from(bytes).map(x=>x.toString(16).padStart(2,'0')).join('');
+};
 const cors=(req:Request)=>{const origin=req.headers.get('origin')||''; return ['https://www.aidetector.cx','https://aidetector.cx'].includes(origin)?{'Access-Control-Allow-Origin':origin,'Vary':'Origin','Access-Control-Allow-Headers':'authorization,content-type,x-result-token,idempotency-key','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{'Access-Control-Allow-Headers':'authorization,content-type,x-result-token,idempotency-key','Access-Control-Allow-Methods':'GET,POST,OPTIONS'};};
 Deno.serve(async req=>{
   const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...cors(req)}});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors(req)});
   if (req.method!=='POST' && req.method!=='GET') return response({error:'Method not allowed'},405);
-  if (!url || !service) return response({error:'Unavailable'},503);
+  if (!url || !service || resultSecret.length<32) return response({error:'Unavailable'},503);
   try {
     if(req.method==='GET'){
       const u=new URL(req.url);
@@ -44,7 +50,13 @@ Deno.serve(async req=>{
     if(reservation?.status==='pending')return response({error:'Request already processing; retry shortly'},409);
     if(reservation?.status==='failed')return response({error:'Previous request failed; use a new idempotency key'},409);
     // Replays return a stable status only until a safely persisted response replay is implemented.
-    if(reservation?.status==='complete')return response({error:'Completed previously; request the saved result via your first response URL'},409);
+    if(reservation?.status==='complete'){
+      const {data:old,error:oldError}=await db.rpc('partner_api_scan_status',{p_scan:reservation.scan_id});
+      if(oldError||old?.state!=='complete'||!old.summary)return response({error:'Previously completed result expired'},410);
+      return response({request_id:reservation.scan_id,summary:old.summary,
+        result_url:`${origin}/partner-result/${reservation.scan_id}#token=${await resultToken(reservation.scan_id)}`,
+        remaining_requests:reservation.remaining,expires_at:old.expires_at});
+    }
     if(reservation?.status!=='reserved')return response({error:'Unavailable'},503);
     const scanId=reservation.scan_id;
     const balanced=await analyzeAdvancedText(text);
@@ -55,7 +67,7 @@ Deno.serve(async req=>{
       confidenceLevel:balanced.overall.confidenceLevel,
       language:balanced.language.primary?.name||'Unknown',full:balanced
     });
-    const token=randomSecret();
+    const token=await resultToken(scanId);
     const summary={
       balanced_ai_percent:balanced.overall.aiProbability,
       strict_ai_percent:aggressive.ai,
