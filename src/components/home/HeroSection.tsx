@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -6,7 +6,7 @@ import {
   Globe, Activity, Zap, Languages, Sparkles, UserPlus, ArrowUpRight, Lock, Coins,
   Trash2, RefreshCw, Play
 } from 'lucide-react';
-import { PromoVideoModal } from '@/components/promo/PromoVideoModal';
+const PromoVideoModal = lazy(() => import('@/components/promo/PromoVideoModal').then(m => ({ default: m.PromoVideoModal })));
 import { StudentModeToggle } from '@/components/student-policy/StudentModeToggle';
 import { StudentModePanel } from '@/components/student-policy/StudentModePanel';
 import { useNavigate, Link } from 'react-router-dom';
@@ -527,10 +527,14 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <PromoVideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-      />
+      {isVideoModalOpen && (
+        <Suspense fallback={null}>
+          <PromoVideoModal
+            isOpen={isVideoModalOpen}
+            onClose={() => setIsVideoModalOpen(false)}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
