@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: AIDetector.cx Partner Detector API — AIEVERYDAY Pilot
+  version: 0.1.0
+  description: >
+    Proposed integration contract only. This endpoint and credentials are NOT
+    available until server-side quota, saved-result access, and end-to-end
+    verification are deployed. Do not publish this as an active service.
+servers:
+  - url: https://PROJECT_REF.supabase.co/functions/v1
+    description: Placeholder, replace only after production verification
+paths:
+  /partner-detector:
+    post:
+      operationId: analyzePartnerText
+      summary: Analyze text and create a protected on-site result
+      description: >
+        Partner API calls are counted separately from website credits.
+        Result access is time-limited. Detection percentages are estimates,
+        not proof of authorship. Every request must be authenticated and
+        subject to per-partner pilot quota and rate limits.
+      security:
+        - PartnerBearer: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Stable unique identifier for retries of the same request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  minLength: 150
+                  maxLength: 40000
+                  description: Plain text, max 5000 whitespace-delimited words; both limits enforced
+      responses:
+        '200':
+          description: Valid analysis or replay of a successful idempotent request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Missing, invalid or revoked partner credential
+        '403':
+          description: Partner not enabled or scope not granted
+        '409':
+          description: Idempotency key reused with different request content
+        '413':
+          description: Text exceeds size limit
+        '429':
+          description: Pilot quota or burst rate exceeded
+        '503':
+          description: Detector, persistence, or quota infrastructure unavailable; fail closed
+components:
+  securitySchemes:
+    PartnerBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-secret
+      description: Secret issued and shown once to an approved partner
+  schemas:
+    ScanResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, summary, result_url, remaining_requests, expires_at]
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        summary:
+          type: object
+          additionalProperties: false
+          required: [balanced_ai_percent, strict_ai_percent, verdict, disclaimer]
+          properties:
+            balanced_ai_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+            strict_ai_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+            language:
+              type: string
+            verdict:
+              type: string
+              enum: [likely_ai, mixed_or_uncertain, likely_human, insufficient_evidence]
+            disclaimer:
+              type: string
+              example: AI-detection estimates are not proof of authorship.
+        result_url:
+          type: string
+          format: uri
+          description: HTTPS URL on aidetector.cx for the saved scan, never contains submitted text
+        remaining_requests:
+          type: integer
+          minimum: 0
+        expires_at:
+          type: string
+          format: date-time
+x-rollout:
+  partner: AIEVERYDAY
+  pilot_request_limit: 100
+  active: false
+  key_issued: false
+  completion_gates:
+    - Hashed scoped keys with rotation and revocation
+    - Atomic quota and idempotency under concurrency
+    - No website credit deductions
+    - Result page ownership, entitlements, expiry and deletion
+    - Rate and input limits enforced
+    - No detailed analysis in API response
+    - Existing Balanced and Aggressive scoring unchanged
+    - Production end-to-end tests pass before partner receives credentials
