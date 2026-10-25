@@ -54,6 +54,10 @@ begin
    return jsonb_build_object('status',v_scan.state,'scan_id',v_scan.id,'remaining',greatest(0,v_partner.quota-v_partner.used));
  end if;
  if v_partner.used >= v_partner.quota then return jsonb_build_object('status','quota'); end if;
+ -- Rolling burst guard (10 unique requests per minute per partner).
+ if (select count(*) from partner_api.scans where partner_id=v_partner.id and created_at>now()-interval '1 minute') >= 10 then
+   return jsonb_build_object('status','rate_limited');
+ end if;
  insert into partner_api.scans(partner_id,idempotency_key,input_hash)
  values(v_partner.id,p_request,p_input_hash) returning * into v_scan;
  update partner_api.partners set used=used+1 where id=v_partner.id;
