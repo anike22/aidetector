@@ -27,7 +27,7 @@ export default function AICheckerForBloggersPage() {
         'applicationCategory': 'BusinessApplication, EducationalApplication',
         'operatingSystem': 'Web',
         'description': 'Comprehensive AI detector, multilingual plagiarism checker, SEO writing assistant, and authorship verification suite for bloggers and content teams.',
-        'url': 'https://aidetector.cx/ai-checker-for-bloggers',
+        'url': 'https://www.aidetector.cx/ai-checker-for-bloggers',
         'screenshot': 'https://www.aidetector.cx/AI%20Checker%20For%20Bloggers.jpg',
         'image': 'https://www.aidetector.cx/AI%20Checker%20For%20Bloggers.jpg',
         'offers': {
@@ -45,13 +45,13 @@ export default function AICheckerForBloggersPage() {
             '@type': 'ListItem',
             'position': 1,
             'name': 'Home',
-            'item': 'https://aidetector.cx/'
+            'item': 'https://www.aidetector.cx/'
           },
           {
             '@type': 'ListItem',
             'position': 2,
             'name': 'AI Checker for Bloggers',
-            'item': 'https://aidetector.cx/ai-checker-for-bloggers'
+            'item': 'https://www.aidetector.cx/ai-checker-for-bloggers'
           }
         ]
       },
