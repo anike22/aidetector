@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import IntersectObserver from '@/components/common/IntersectObserver';
 import RouteIndexing from '@/components/common/RouteIndexing';
@@ -47,6 +48,7 @@ const App = () => {
                       <SmartAssistant />
                       <div className="flex flex-col min-h-screen">
                         <main className="flex-grow">
+                          <Suspense fallback={<div className="min-h-[50vh]" aria-busy="true" />}>
                           <Routes>
                             {routes.map((route, index) => (
                               <Route
@@ -68,6 +70,7 @@ const App = () => {
                             ))}
                             <Route path="*" element={<Navigate to="/" replace />} />
                           </Routes>
+                          </Suspense>
                         </main>
                       </div>
                       <RouteIndexing />
