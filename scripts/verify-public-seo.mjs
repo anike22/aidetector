@@ -4,6 +4,13 @@ import path from 'node:path';
 const xml = await readFile('dist/sitemap.xml', 'utf8');
 const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([,url]) => url);
 assert.equal(new Set(urls).size, urls.length, 'Duplicate sitemap URLs');
+const robots = await readFile('dist/robots.txt', 'utf8');
+assert(robots.includes('Sitemap: https://www.aidetector.cx/sitemap-index.xml'), 'robots.txt must advertise the full sitemap index');
+const sitemapIndex = await readFile('dist/sitemap-index.xml', 'utf8');
+for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml']) {
+  assert(sitemapIndex.includes(`<loc>https://www.aidetector.cx/${file}</loc>`), `Missing sitemap index entry: ${file}`);
+  await readFile(path.join('dist', file), 'utf8');
+}
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
 for (const url of urls) {
   const parsed = new URL(url);
