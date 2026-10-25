@@ -65,6 +65,9 @@ export default function Navbar() {
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-all"></div>
               <img 
                 src="/brand/aidetector-icon.png" 
+                width={36}
+                height={36}
+                decoding="async"
                 alt="Logo" 
                 className="relative w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl shadow-sm border border-border bg-background"
               />
