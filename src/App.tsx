@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import NotFoundPage from '@/pages/NotFoundPage';
 import IntersectObserver from '@/components/common/IntersectObserver';
 import RouteIndexing from '@/components/common/RouteIndexing';
 import RouteMeta from '@/components/common/RouteMeta';
@@ -68,7 +69,7 @@ const App = () => {
                                 }
                               />
                             ))}
-                            <Route path="*" element={<Navigate to="/" replace />} />
+                            <Route path="*" element={<NotFoundPage />} />
                           </Routes>
                           </Suspense>
                         </main>
