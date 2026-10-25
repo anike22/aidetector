@@ -16,8 +16,8 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import { useEntitlement } from '@/hooks/useEntitlement';
-import { runBalancedDetector, type BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
-import { runAggressiveDetector, type AggressiveDetectorResult } from '@/lib/detection/aggressiveDetectorService';
+import type { BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
+import type { AggressiveDetectorResult } from '@/lib/detection/aggressiveDetectorService';
 import { preserveDraftText, getPreservedDraftText, clearPreservedDraftText } from '@/lib/visitorId';
 import { calculateOperationCreditCost, isTrialEligibleOperation } from '@/lib/entitlements';
 
@@ -166,6 +166,10 @@ export default function HeroSection() {
     setAggressiveResult(null);
 
     try {
+      const [{ runBalancedDetector }, { runAggressiveDetector }] = await Promise.all([
+        import('@/lib/detection/balancedDetectorService'),
+        import('@/lib/detection/aggressiveDetectorService'),
+      ]);
       const bPromise = runBalancedDetector(content);
       const aPromise = bPromise
         .then((b) => runAggressiveDetector(content, b))
