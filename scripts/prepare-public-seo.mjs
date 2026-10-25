@@ -129,7 +129,17 @@ export async function prepare() {
   config.rewrites = [...paths].sort().map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
   config.rewrites.push({source: '/((?!assets/|.*\\.[^/]+$).*)', destination: '/index.html'});
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
-)),
+  config.routes = [
+    {src: '^/technical-seo/?, JSON.stringify(config, null, 2) + '\n');
+  return [...paths];
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) await prepare();
+, status: 410},
+    {src: '^/services/growth-marketing/?, JSON.stringify(config, null, 2) + '\n');
+  return [...paths];
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) await prepare();
+, status: 410},
   ];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
