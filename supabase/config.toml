@@ -32,3 +32,12 @@ verify_jwt = false
 # Custom service/worker authentication in handler.
 [functions.affiliate-onboarding]
 verify_jwt = false
+
+# Partner endpoint uses scoped opaque bearer keys, never Supabase user JWT.
+[functions.partner-detector]
+enabled = true
+verify_jwt = false
+
+[functions.partner-credentials]
+enabled = true
+verify_jwt = false
