@@ -34,6 +34,18 @@ jobs:
             exit 1
           fi
           echo "PASS: invalid partner credentials rejected by live detector."
+      - name: Check malformed request and missing result token fail closed
+        env:
+          ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/partner-malformed -w '%{http_code}' -X POST "$ENDPOINT" -H 'Content-Type: application/json' --data '{')
+          echo "Malformed JSON HTTP status: $status"
+          test "$status" = "400"
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/partner-no-token -w '%{http_code}' "$ENDPOINT?id=11111111-1111-4111-8111-111111111111")
+          echo "Missing result token HTTP status: $status"
+          test "$status" = "404"
+          echo "PASS: malformed input and absent result token handled safely."
 
   authenticated-live:
     if: ${{ github.event_name == 'workflow_dispatch' }}
