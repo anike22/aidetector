@@ -13,7 +13,7 @@ Deno.serve(async req=>{
  if(req.method!=='GET')return respond({error:'Method not allowed'},405);
  if(!url||!service)return respond({error:'Unavailable'},503);
  const auth=req.headers.get('authorization')||'';
- const {data:{user},error:authError}=await db.auth.getUser(auth.replace(/^Bearer\\s+/i,''));
+ const {data:{user},error:authError}=await db.auth.getUser(auth.replace(/^Bearer\s+/i,''));
  if(authError||!user)return respond({error:'Sign in to view full analysis'},401);
  const id=new URL(req.url).searchParams.get('id')||'';
  const token=req.headers.get('x-result-token')||'';
