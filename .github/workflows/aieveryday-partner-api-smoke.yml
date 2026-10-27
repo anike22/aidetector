@@ -1,0 +1,36 @@
+name: AIEVERYDAY partner API live smoke test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aieveryday-partner-api-smoke.yml'
+      - 'supabase/functions/partner-detector/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  negative-auth-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check deployed endpoint rejects invalid credential without using quota
+        env:
+          ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+        run: |
+          set -euo pipefail
+          payload='{"text":"This is synthetic diagnostic input used solely for verifying that the partner detector endpoint rejects an invalid credential while the production partner remains disabled. It contains no private or customer information, and it should not consume any partner quota or create a saved result. The request is intentionally unauthenticated."}'
+          status=$(curl --silent --show-error --location --max-time 25 --output /tmp/partner-response --write-out '%{http_code}' \
+            --request POST "$ENDPOINT" \
+            --header 'Content-Type: application/json' \
+            --header 'Authorization: Bearer invalid_key' \
+            --header 'idempotency-key: 11111111-1111-4111-8111-111111111111' \
+            --data "$payload")
+          echo "Invalid credential HTTP status: $status"
+          if [[ "$status" != "401" ]]; then
+            echo "::error::Expected HTTP 401 (invalid partner credentials), got $status"
+            cat /tmp/partner-response
+            exit 1
+          fi
+          echo "PASS: invalid partner credentials rejected by live detector."
