@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/db/supabase';
 
@@ -9,10 +9,10 @@ export default function PartnerResultPage(){
   const [error,setError]=useState('');
   const [full,setFull]=useState<{detail:unknown;original_text:string}|null>(null);
   const [fullError,setFullError]=useState('');
-  const [secret,setSecret]=useState<string|null>(null);
+  const secretRef = useRef<string|null>(null);
   useEffect(()=>{
     const token=new URLSearchParams(window.location.hash.replace(/^#/, '')).get('token');
-    setSecret(token);
+    secretRef.current=token;
     if(!id||!token){setError('This protected result link is incomplete.');return;}
     // Remove the capability token from address bar and browser history after reading it.
     window.history.replaceState(null,'',window.location.pathname);
@@ -24,11 +24,11 @@ export default function PartnerResultPage(){
     return ()=>controller.abort();
   },[id]);
   const loadFull=async()=>{
-    if(!id||!secret)return;
+    if(!id||!secretRef.current)return;
     const {data:{session}}=await supabase.auth.getSession();
     if(!session){setFullError('Please sign in with an active paid account to view full analysis.');return;}
     const r=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/partner-results?id=${encodeURIComponent(id)}`,{
-      headers:{Authorization:`Bearer ${session.access_token}`,'x-result-token':secret},cache:'no-store'
+      headers:{Authorization:`Bearer ${session.access_token}`,'x-result-token':secretRef.current},cache:'no-store'
     });
     if(!r.ok){setFullError('Full analysis unavailable. Check your subscription or result expiration.');return;}
     setFull(await r.json());
