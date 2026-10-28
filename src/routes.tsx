@@ -1,3 +1,4 @@
+import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
 import MainLayout from '@/components/layouts/MainLayout';
@@ -1380,6 +1381,12 @@ export const routes: RouteConfig[] = [
     name: 'HTML Sitemap (Alias)',
     path: '/sitemap',
     element: <Navigate to="/all-pages" replace />,
+    public: true,
+  },
+  {
+    name: 'Partner Result',
+    path: '/partner-result/:id',
+    element: <PartnerResultPage />,
     public: true,
   },
   {
