@@ -6,6 +6,15 @@ on:
       - '.github/workflows/aieveryday-partner-api-smoke.yml'
       - 'supabase/functions/partner-detector/**'
   workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Choose normal or final quota and revocation tests'
+        required: true
+        default: 'normal'
+        type: choice
+        options:
+          - normal
+          - quota-exhaustion
 
 permissions:
   contents: read
@@ -48,7 +57,7 @@ jobs:
           echo "PASS: malformed input and absent result token handled safely."
 
   authenticated-live:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_mode == 'normal' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
@@ -107,4 +116,35 @@ jobs:
           assert replay['remaining_requests']==original['remaining_requests']
           assert replay['summary']==original['summary']
           print('PASS: replay returned same scan without consuming another request')
+          PY
+
+  quota-exhaustion-live:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_mode == 'quota-exhaustion' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PARTNER_TEST_API_KEY: ${{ secrets.PARTNER_TEST_API_KEY }}
+      ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+    steps:
+      - name: Verify isolated test quota is enforced
+        run: |
+          set -euo pipefail
+          test -n "$PARTNER_TEST_API_KEY"
+          python3 - <<'PY'
+          import concurrent.futures, json, os, subprocess, uuid
+          endpoint=os.environ['ENDPOINT']; key=os.environ['PARTNER_TEST_API_KEY']
+          payload=json.dumps({'text':'This is a synthetic test of partner request quotas and concurrency. '*5})
+          def request(_):
+              cmd=['curl','-sS','--max-time','90','-o','/tmp/partner-quota-'+str(_),'-w','%{http_code}',
+                   '-X','POST',endpoint,'-H','Content-Type: application/json',
+                   '-H','Authorization: Bearer '+key,'-H','idempotency-key: '+str(uuid.uuid4()),'--data',payload]
+              r=subprocess.run(cmd,text=True,capture_output=True)
+              return r.returncode,r.stdout.strip()
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              results=list(pool.map(request,range(5)))
+          print('Concurrent result statuses:',[r[1] for r in results])
+          assert all(rc==0 for rc,_ in results),'HTTP connection failure'
+          assert all(code in ('200','429','503') for _,code in results),'Unexpected response status'
+          assert '429' in [code for _,code in results],'Quota enforcement not observed; do not issue production partner credentials'
+          print('PASS: quota exhaustion enforced under concurrent requests')
           PY
