@@ -1,3 +1,4 @@
+import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
 import MainLayout from '@/components/layouts/MainLayout';
