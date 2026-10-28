@@ -1,0 +1,94 @@
+name: AIEVERYDAY partner API live smoke test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aieveryday-partner-api-smoke.yml'
+      - 'supabase/functions/partner-detector/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  negative-auth-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check deployed endpoint rejects invalid credential without using quota
+        env:
+          ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+        run: |
+          set -euo pipefail
+          payload='{"text":"This is synthetic diagnostic input used solely for verifying that the partner detector endpoint rejects an invalid credential while the production partner remains disabled. It contains no private or customer information, and it should not consume any partner quota or create a saved result. The request is intentionally unauthenticated."}'
+          status=$(curl --silent --show-error --location --max-time 25 --output /tmp/partner-response --write-out '%{http_code}' \
+            --request POST "$ENDPOINT" \
+            --header 'Content-Type: application/json' \
+            --header 'Authorization: Bearer invalid_key' \
+            --header 'idempotency-key: 11111111-1111-4111-8111-111111111111' \
+            --data "$payload")
+          echo "Invalid credential HTTP status: $status"
+          if [[ "$status" != "401" ]]; then
+            echo "::error::Expected HTTP 401 (invalid partner credentials), got $status"
+            cat /tmp/partner-response
+            exit 1
+          fi
+          echo "PASS: invalid partner credentials rejected by live detector."
+      - name: Check malformed request and missing result token fail closed
+        env:
+          ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/partner-malformed -w '%{http_code}' -X POST "$ENDPOINT" -H 'Content-Type: application/json' --data '{')
+          echo "Malformed JSON HTTP status: $status"
+          test "$status" = "400"
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/partner-no-token -w '%{http_code}' "$ENDPOINT?id=11111111-1111-4111-8111-111111111111")
+          echo "Missing result token HTTP status: $status"
+          test "$status" = "404"
+          echo "PASS: malformed input and absent result token handled safely."
+
+  authenticated-live:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PARTNER_TEST_API_KEY: ${{ secrets.PARTNER_TEST_API_KEY }}
+      ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+    steps:
+      - name: Require isolated test credential
+        run: |
+          if [[ -z "$PARTNER_TEST_API_KEY" ]]; then
+            echo "::error::Configure PARTNER_TEST_API_KEY as a repository Actions secret for an isolated one-request test partner."
+            exit 1
+          fi
+      - name: Execute live analysis and validate saved results
+        run: |
+          set -euo pipefail
+          request_id=$(cat /proc/sys/kernel/random/uuid)
+          payload='{"text":"An editor was reviewing an article about a community garden project and carefully checked its descriptions of planting methods, volunteer schedules, soil conditions, and seasonal changes. The article includes varied paragraphs and natural sentence structures. This synthetic testing passage is intended only for validating the secure partner API integration and contains no user information. It should generate one complete analysis and a saved summary available for a limited period."}'
+          status=$(curl --silent --show-error --max-time 100 -o /tmp/aieveryday-response -w '%{http_code}' \
+            -X POST "$ENDPOINT" -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $PARTNER_TEST_API_KEY" \
+            -H "idempotency-key: $request_id" --data "$payload")
+          echo "Authenticated request HTTP status: $status"
+          if [[ "$status" != "200" ]]; then
+            python3 -c 'import json; d=json.load(open("/tmp/aieveryday-response")); print("API error:", d.get("error","redacted"))'
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json,os,subprocess
+          d=json.load(open('/tmp/aieveryday-response'))
+          assert all(k in d for k in ['request_id','summary','result_url','remaining_requests','expires_at']), 'Missing response field'
+          assert 'balanced_ai_percent' in d['summary'] and 'strict_ai_percent' in d['summary'], 'Missing detection scores'
+          assert '/partner-result/' in d['result_url'] and '#token=' in d['result_url'], 'Invalid result URL'
+          from urllib.parse import urlsplit
+          u=urlsplit(d['result_url']); scan_id=u.path.rsplit('/',1)[-1]
+          token=u.fragment.replace('token=','',1)
+          endpoint=os.environ['ENDPOINT']+'?id='+scan_id
+          a=subprocess.run(['curl','-sS','--max-time','25','-o','/tmp/aieveryday-saved','-w','%{http_code}','-H','x-result-token: '+token,endpoint],capture_output=True,text=True,check=True)
+          print('Saved result HTTP status:',a.stdout.strip())
+          assert a.stdout.strip()=='200','Saved result retrieval failed'
+          saved=json.load(open('/tmp/aieveryday-saved'))
+          assert saved, 'Saved result is empty'
+          print('PASS: authenticated analysis and saved result retrieval')
+          PY
