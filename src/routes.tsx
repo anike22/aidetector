@@ -1384,6 +1384,12 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
+    name: 'Partner Result',
+    path: '/partner-result/:id',
+    element: <PartnerResultPage />,
+    public: true,
+  },
+  {
     name: 'Article',
     path: '/:hub/:slug',
     element: <FeatureGate featureSlug="blog"><ArticlePage /></FeatureGate>,
