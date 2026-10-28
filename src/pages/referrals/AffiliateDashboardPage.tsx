@@ -1,3 +1,4 @@
+import PartnerApiControls from '@/components/affiliate/PartnerApiControls';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -216,6 +217,7 @@ export default function AffiliateDashboardPage() {
                     <li>Monitor the separate request quota and rotate or revoke keys from this dashboard when the API is enabled.</li>
                   </ol>
                 </div>
+                <PartnerApiControls />
                 <p className="text-xs text-muted-foreground">The proposed pilot limit is 100 requests, up to 5,000 words per request, pending technical validation. Do not use the public detector endpoint as a partner API.</p>
               </CardContent>
             </Card>
