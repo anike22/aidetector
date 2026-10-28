@@ -15,6 +15,7 @@ on:
         options:
           - normal
           - quota-exhaustion
+          - revoked-key
 
 permissions:
   contents: read
@@ -148,3 +149,21 @@ jobs:
           assert '429' in [code for _,code in results],'Quota enforcement not observed; do not issue production partner credentials'
           print('PASS: quota exhaustion enforced under concurrent requests')
           PY
+
+  revoked-key-live:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_mode == 'revoked-key' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PARTNER_TEST_API_KEY: ${{ secrets.PARTNER_TEST_API_KEY }}
+      ENDPOINT: https://opivtrfgurwndilnbfmm.supabase.co/functions/v1/partner-detector
+    steps:
+      - name: Verify previously active test key is revoked
+        run: |
+          set -euo pipefail
+          test -n "$PARTNER_TEST_API_KEY"
+          payload='{"text":"A synthetic test document is used here to confirm that a revoked API key cannot access the partner detector service. It contains no personal information. The expected response is unauthorized, and no detection or quota usage should occur. We intentionally submit enough text to reach authentication validation."}'
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/revoked-result -w '%{http_code}' -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H "Authorization: Bearer $PARTNER_TEST_API_KEY" -H "idempotency-key: $(cat /proc/sys/kernel/random/uuid)" --data "$payload")
+          echo "Revoked key HTTP status: $status"
+          test "$status" = "401"
+          echo "PASS: revoked partner key rejected by live endpoint."
