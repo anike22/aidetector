@@ -92,3 +92,19 @@ jobs:
           assert saved, 'Saved result is empty'
           print('PASS: authenticated analysis and saved result retrieval')
           PY
+          # Idempotent replay must not increment the request quota.
+          replay_status=$(curl --silent --show-error --max-time 30 -o /tmp/aieveryday-replay -w '%{http_code}' \
+            -X POST "$ENDPOINT" -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $PARTNER_TEST_API_KEY" \
+            -H "idempotency-key: $request_id" --data "$payload")
+          echo "Idempotent replay HTTP status: $replay_status"
+          test "$replay_status" = "200"
+          python3 - <<'PY'
+          import json
+          original=json.load(open('/tmp/aieveryday-response'))
+          replay=json.load(open('/tmp/aieveryday-replay'))
+          assert replay['request_id']==original['request_id']
+          assert replay['remaining_requests']==original['remaining_requests']
+          assert replay['summary']==original['summary']
+          print('PASS: replay returned same scan without consuming another request')
+          PY
