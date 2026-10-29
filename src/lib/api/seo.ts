@@ -184,7 +184,20 @@ export const seoApi = {
     const { data, error } = await supabase.functions.invoke('run-aeo-optimizer', {
       body: { domain_url, project_id: projectId }
     });
-    if (error) throw error;
+    if (error) {
+      // EdgeFunctionHttpError hides the response body unless it is read explicitly.
+      // Surface entitlement, authentication, and operational errors rather than a generic 2xx toast.
+      let reason = error.message;
+      const response = (error as any).context as Response | undefined;
+      if (response && typeof response.clone === 'function') {
+        try {
+          const detail = await response.clone().json();
+          reason = detail.error || detail.message || detail.errors?.[0] || reason;
+        } catch { /* Non-JSON response; retain original error */ }
+      }
+      throw new Error(reason);
+    }
+    if (data?.success === false) throw new Error(data.error || 'AEO analysis could not be completed');
     return data;
   },
 
