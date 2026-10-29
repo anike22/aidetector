@@ -20,7 +20,10 @@ assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SP
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
   assert(config.rewrites.some(r => r.source === route), `Missing registered feature route: ${route}`);
 }
-assert(config.rewrites.some(r => r.source === '/tools/:id'), 'Missing dynamic tool route');
+assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid tool directory route');
+assert(config.rewrites.some(r => r.source === '/ai-tools/ollama'), 'Missing valid tool alias route');
+assert(!config.rewrites.some(r => ['/tools/:id', '/ai-tools/:id'].includes(r.source)), 'Generic tool routes can cause soft 404s');
+assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test'), 'Unknown tool unexpectedly routed');
 assert(config.rewrites.some(r => r.source === '/blog/:slug'), 'Missing dynamic article route');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 

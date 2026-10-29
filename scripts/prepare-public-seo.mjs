@@ -53,8 +53,23 @@ export async function prepare() {
   if (registeredRoutes.length < 150 || !registeredRoutes.includes('/technical-seo') || !registeredRoutes.includes('/services/growth-marketing')) {
     throw new Error('Route inventory incomplete; refusing to alter unknown URL routing');
   }
+  // Generate exact server routes from the same static directory dataset used by the UI.
+  // A wildcard /tools/:id returns HTTP 200 for nonexistent records (soft 404).
+  const directorySource = await readFile(path.join(root, 'src/data/aiDirectoryData.ts'), 'utf8');
+  const directoryIds = [...directorySource.matchAll(/^    (?:id|slug): '([a-z0-9-]+)'/gm)].map(([, id]) => id);
+  const knownDirectoryIds = [...new Set(directoryIds)];
+  if (knownDirectoryIds.length < 10) throw new Error('AI directory inventory incomplete; refusing to change tool routes');
+  for (const id of knownDirectoryIds) {
+    for (const prefix of ['/tools', '/ai-tools']) {
+      config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
+    }
+  }
   for (const route of registeredRoutes) {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
+    if (route === '/tools/:id' || route === '/ai-tools/:id') {
+      // Exact directory routes were generated above; unknown IDs must be HTTP 404.
+      continue;
+    }
     if (route === '/:hub/:slug') {
       for (const hub of ['blog', 'guides', 'research', 'comparisons']) {
         config.rewrites.push({source: `/${hub}/:slug`, destination: '/index.html'});
