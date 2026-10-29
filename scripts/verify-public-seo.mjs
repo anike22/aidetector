@@ -27,6 +27,7 @@ assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test
 assert(config.rewrites.some(r => r.source === '/blog/:slug'), 'Missing dynamic article route');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 
+assert(urls.includes('https://www.aidetector.cx/aeo-optimizer'), 'AEO Optimizer missing from sitemap');
 for (const url of urls) {
   const parsed = new URL(url);
   assert.equal(parsed.origin, 'https://www.aidetector.cx');
