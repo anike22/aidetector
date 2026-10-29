@@ -38,7 +38,15 @@ export async function prepare() {
   const configPath = path.join(root, 'vercel.json');
   const config = JSON.parse(await readFile(configPath, 'utf8'));
   config.rewrites = [...paths].sort().map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
-  config.rewrites.push({source: '/((?!assets/|.*\\.[^/]+$).*)', destination: '/index.html'});
+  // Keep valid feature-controlled, account, and dynamic SPA routes. Unknown URLs fall through to HTTP 404.
+  const routeSource = await readFile(path.join(root, 'src/routes.tsx'), 'utf8');
+  const registeredRoutes = [...routeSource.matchAll(/\\bpath:\\s*['"]([^'"]+)['"]/g)].map(([, route]) => route);
+  if (registeredRoutes.length < 150 || !registeredRoutes.includes('/technical-seo') || !registeredRoutes.includes('/services/growth-marketing')) {
+    throw new Error('Route inventory incomplete; refusing to alter unknown URL routing');
+  }
+  for (const route of registeredRoutes) {
+    if (!paths.has(route)) config.rewrites.push({source: route, destination: '/index.html'});
+  }
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
