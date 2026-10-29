@@ -56,9 +56,19 @@ export default function AffiliateDashboardPage() {
       setCommissions(c);
       setPayouts(p);
       setEarnings(e);
-      const { data: analytics, error: analyticsError } = await supabase.rpc('get_affiliate_product_analytics');
-      if (analyticsError) throw analyticsError;
-      setProductAnalytics((analytics || []).map((row: any) => ({ ...row, revenue: Number(row.revenue || 0), commission: Number(row.commission || 0) })));
+      // Analytics are optional and only available to approved affiliates.
+      // A missing/unauthorized analytics RPC must never block the application form.
+      if (a?.status === 'Approved') {
+        const { data: analytics, error: analyticsError } = await supabase.rpc('get_affiliate_product_analytics');
+        if (analyticsError) {
+          console.warn('Affiliate analytics unavailable:', analyticsError.message);
+          setProductAnalytics([]);
+        } else {
+          setProductAnalytics((analytics || []).map((row: any) => ({ ...row, revenue: Number(row.revenue || 0), commission: Number(row.commission || 0) })));
+        }
+      } else {
+        setProductAnalytics([]);
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to load affiliate data');
     } finally {
