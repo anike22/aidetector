@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { seoApi } from '@/lib/api/seo';
+import PageMeta from '@/components/common/PageMeta';
 
 export default function AEOOptimizerPage() {
   const [domain, setDomain] = useState('');
@@ -30,6 +31,7 @@ export default function AEOOptimizerPage() {
 
   return (
     <div className="flex-1 space-y-6">
+      <PageMeta title="AEO Optimizer: Website Readiness Audit for AI Search | AIDetector.cx" description="Audit your website for answer engine optimization (AEO). Check headings, FAQ schema, metadata, canonical tags, author signals, and content readiness for AI search." canonicalUrl="https://www.aidetector.cx/aeo-optimizer" />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
         <p className="text-muted-foreground mt-1">Assess HTML content readiness for AI answer engines.</p>
