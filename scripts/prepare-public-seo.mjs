@@ -37,6 +37,15 @@ export async function prepare() {
   }
   const configPath = path.join(root, 'vercel.json');
   const config = JSON.parse(await readFile(configPath, 'utf8'));
+  // Preserve established legacy detector URLs with permanent server redirects for crawlers.
+  const seoRedirects = [
+    {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
+    {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
+  ];
+  config.redirects = [
+    ...seoRedirects,
+    ...(config.redirects || []).filter(r => !seoRedirects.some(s => s.source === r.source)),
+  ];
   config.rewrites = [...paths].sort().map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
   // Keep valid feature-controlled, account, and dynamic SPA routes. Unknown URLs fall through to HTTP 404.
   const routeSource = await readFile(path.join(root, 'src/routes.tsx'), 'utf8');
