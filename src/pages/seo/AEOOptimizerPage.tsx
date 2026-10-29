@@ -64,6 +64,7 @@ export default function AEOOptimizerPage() {
             </div>
           </div>
 
+          <p className="text-sm text-muted-foreground">Evidence-based HTML readiness assessment. Scores are heuristics, not measured search visibility or AI citations. Inspect the observed checks before acting.</p>
           <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
             <Card className="col-span-2 md:col-span-2 bg-primary/5 border-primary/20">
               <CardContent className="pt-6 flex flex-col items-center text-center justify-center">
@@ -103,40 +104,41 @@ export default function AEOOptimizerPage() {
             </Card>
           </div>
 
+          {report.aeo_data?.checks && <Card><CardHeader><CardTitle>Observed HTML checks</CardTitle></CardHeader><CardContent><ul className="space-y-2">{report.aeo_data.checks.map((check: any, index: number) => <li key={index} className="text-sm"><strong>{check.pass ? "Passed" : "Needs attention"}: {check.check}</strong> — {check.evidence}</li>)}</ul></CardContent></Card>}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-amber-500" /> AI Platform Visibility
                 </CardTitle>
-                <CardDescription>How often you appear in AI models</CardDescription>
+                <CardDescription>AI-platform appearances are not measured by this HTML audit</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">ChatGPT</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.chatgpt}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.chatgpt ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.chatgpt} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Gemini</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.gemini}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.gemini ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.gemini} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Claude</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.claude}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.claude ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.claude} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Perplexity</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.perplexity}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.perplexity ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.perplexity} className="h-2" />
                 </div>
