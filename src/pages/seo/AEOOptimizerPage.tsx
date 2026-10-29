@@ -32,7 +32,8 @@ export default function AEOOptimizerPage() {
     <div className="flex-1 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
-        <p className="text-muted-foreground mt-1">Optimize content for AI search engines and answer engines.</p>
+        <p className="text-muted-foreground mt-1">Explore content readiness for AI search engines and answer engines.</p>
+        <p className="text-sm text-muted-foreground mt-2" role="note">Requires a Pro entitlement and 30 credits per analysis. Free checks do not cover this tool. Current score outputs are modeled estimates, not measured rankings or verified visibility in ChatGPT, Gemini, Claude, or Perplexity.</p>
       </div>
 
       <Card>
@@ -69,6 +70,7 @@ export default function AEOOptimizerPage() {
               <CardContent className="pt-6 flex flex-col items-center text-center justify-center">
                 <span className="text-sm font-medium text-muted-foreground mb-2">Overall AEO Score</span>
                 <span className="text-6xl font-bold text-primary">{report.overall_aeo_score}</span>
+              <span className="text-xs text-muted-foreground mt-2">Modeled estimate; not independently measured</span>
               </CardContent>
             </Card>
             <Card>
@@ -109,7 +111,7 @@ export default function AEOOptimizerPage() {
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-amber-500" /> AI Platform Visibility
                 </CardTitle>
-                <CardDescription>How often you appear in AI models</CardDescription>
+                <CardDescription>Modeled platform estimates — not observed AI search appearances</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
