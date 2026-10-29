@@ -12,6 +12,15 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
+assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
+for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
+  assert(config.rewrites.some(r => r.source === route), `Missing registered feature route: ${route}`);
+}
+assert(config.rewrites.some(r => r.source === '/tools/:id'), 'Missing dynamic tool route');
+assert(config.rewrites.some(r => r.source === '/blog/:slug'), 'Missing dynamic article route');
+assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
+
 for (const url of urls) {
   const parsed = new URL(url);
   assert.equal(parsed.origin, 'https://www.aidetector.cx');
