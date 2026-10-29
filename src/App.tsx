@@ -57,7 +57,7 @@ const App = () => {
                                 path={route.path}
                                 element={
                                   <>
-                                    {route.path !== '/ai-checker-for-bloggers' && <RouteMeta name={route.name} />}
+                                    {!['/ai-checker-for-bloggers', '/aeo-optimizer'].includes(route.path) && <RouteMeta name={route.name} />}
                                     {route.errorElement ? (
                                     <RouteErrorBoundary fallback={route.errorElement}>
                                       {route.element}
