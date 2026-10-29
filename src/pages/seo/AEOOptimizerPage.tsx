@@ -32,7 +32,8 @@ export default function AEOOptimizerPage() {
     <div className="flex-1 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
-        <p className="text-muted-foreground mt-1">Optimize content for AI search engines and answer engines.</p>
+        <p className="text-muted-foreground mt-1">Assess HTML content readiness for AI answer engines.</p>
+        <p className="text-sm text-muted-foreground mt-2" role="note">Requires a Pro entitlement and 30 credits. Not available using free introductory checks. This analysis measures HTML signals, not actual appearances or rankings in AI answers.</p>
       </div>
 
       <Card>
@@ -59,11 +60,12 @@ export default function AEOOptimizerPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">AEO Results for {report.domain_url}</h2>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => toast.success('Exporting PDF...')}><Download className="w-4 h-4 mr-2" /> Export PDF</Button>
-              <Button variant="outline" onClick={() => toast.success('Exporting CSV...')}><FileText className="w-4 h-4 mr-2" /> Export CSV</Button>
+              
+              
             </div>
           </div>
 
+          <p className="text-sm text-muted-foreground">Evidence-based HTML readiness assessment. Scores are heuristics, not measured search visibility or AI citations. Inspect the observed checks before acting.</p>
           <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
             <Card className="col-span-2 md:col-span-2 bg-primary/5 border-primary/20">
               <CardContent className="pt-6 flex flex-col items-center text-center justify-center">
@@ -103,40 +105,41 @@ export default function AEOOptimizerPage() {
             </Card>
           </div>
 
+          {report.aeo_data?.checks && <Card><CardHeader><CardTitle>Observed HTML checks</CardTitle></CardHeader><CardContent><ul className="space-y-2">{report.aeo_data.checks.map((check: any, index: number) => <li key={index} className="text-sm"><strong>{check.pass ? "Passed" : "Needs attention"}: {check.check}</strong> — {check.evidence}</li>)}</ul></CardContent></Card>}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-amber-500" /> AI Platform Visibility
                 </CardTitle>
-                <CardDescription>How often you appear in AI models</CardDescription>
+                <CardDescription>AI-platform appearances are not measured by this HTML audit</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">ChatGPT</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.chatgpt}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.chatgpt ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.chatgpt} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Gemini</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.gemini}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.gemini ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.gemini} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Claude</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.claude}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.claude ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.claude} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-medium">Perplexity</span>
-                    <span className="font-bold">{report.aeo_data?.platforms?.perplexity}/100</span>
+                    <span className="font-bold">{report.aeo_data?.platforms?.perplexity ?? 'Not measured'}</span>
                   </div>
                   <Progress value={report.aeo_data?.platforms?.perplexity} className="h-2" />
                 </div>
@@ -148,7 +151,7 @@ export default function AEOOptimizerPage() {
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-blue-500" /> Missing Questions & Entities
                 </CardTitle>
-                <CardDescription>Topics your competitors answer but you don't</CardDescription>
+                <CardDescription>Missing on-page signals observed in retrieved HTML, not competitor or search volume data</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -157,13 +160,13 @@ export default function AEOOptimizerPage() {
                     {report.aeo_data?.missing_questions?.map((mq: any, i: number) => (
                       <li key={i} className="flex justify-between items-center text-sm">
                         <span className="truncate max-w-[70%]">{mq.q}</span>
-                        <Badge variant="secondary">{mq.vol} vol</Badge>
+                        <Badge variant="secondary">HTML check</Badge>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-3 border-b pb-2">Missing Entities</h4>
+                  <h4 className="text-sm font-medium mb-3 border-b pb-2">Unverified entities</h4>
                   <ul className="space-y-3">
                     {report.aeo_data?.missing_entities?.map((me: any, i: number) => (
                       <li key={i} className="flex justify-between items-center text-sm">
