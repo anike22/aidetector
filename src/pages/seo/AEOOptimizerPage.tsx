@@ -32,7 +32,8 @@ export default function AEOOptimizerPage() {
     <div className="flex-1 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
-        <p className="text-muted-foreground mt-1">Optimize content for AI search engines and answer engines.</p>
+        <p className="text-muted-foreground mt-1">Assess HTML content readiness for AI answer engines.</p>
+        <p className="text-sm text-muted-foreground mt-2" role="note">Requires a Pro entitlement and 30 credits. Not available using free introductory checks. This analysis measures HTML signals, not actual appearances or rankings in AI answers.</p>
       </div>
 
       <Card>
@@ -59,8 +60,8 @@ export default function AEOOptimizerPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">AEO Results for {report.domain_url}</h2>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => toast.success('Exporting PDF...')}><Download className="w-4 h-4 mr-2" /> Export PDF</Button>
-              <Button variant="outline" onClick={() => toast.success('Exporting CSV...')}><FileText className="w-4 h-4 mr-2" /> Export CSV</Button>
+              
+              
             </div>
           </div>
 
@@ -150,7 +151,7 @@ export default function AEOOptimizerPage() {
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-blue-500" /> Missing Questions & Entities
                 </CardTitle>
-                <CardDescription>Topics your competitors answer but you don't</CardDescription>
+                <CardDescription>Missing on-page signals observed in retrieved HTML, not competitor or search volume data</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -159,13 +160,13 @@ export default function AEOOptimizerPage() {
                     {report.aeo_data?.missing_questions?.map((mq: any, i: number) => (
                       <li key={i} className="flex justify-between items-center text-sm">
                         <span className="truncate max-w-[70%]">{mq.q}</span>
-                        <Badge variant="secondary">{mq.vol} vol</Badge>
+                        <Badge variant="secondary">HTML check</Badge>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-3 border-b pb-2">Missing Entities</h4>
+                  <h4 className="text-sm font-medium mb-3 border-b pb-2">Unverified entities</h4>
                   <ul className="space-y-3">
                     {report.aeo_data?.missing_entities?.map((me: any, i: number) => (
                       <li key={i} className="flex justify-between items-center text-sm">
