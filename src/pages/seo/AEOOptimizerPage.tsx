@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, Zap, MessageSquare, ListChecks, FileText } from 'lucide-react';
+import { Search, Zap, MessageSquare, ShieldCheck, FileText, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ export default function AEOOptimizerPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 w-full min-h-screen bg-background">\n      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
       <PageMeta title="AEO Optimizer: Website Readiness Audit for AI Search | AIDetector.cx" description="Audit your website for answer engine optimization (AEO). Check headings, FAQ schema, metadata, canonical tags, author signals, and content readiness for AI search." canonicalUrl="https://www.aidetector.cx/aeo-optimizer" />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
@@ -40,8 +40,8 @@ export default function AEOOptimizerPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <form onSubmit={handleAudit} className="flex gap-4">
-            <div className="relative flex-1">
+          <form onSubmit={handleAudit} className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Enter domain or URL to optimize for AEO (e.g., example.com)"
@@ -50,13 +50,19 @@ export default function AEOOptimizerPage() {
                 onChange={(e) => setDomain(e.target.value)}
               />
             </div>
-            <Button type="submit" size="lg" disabled={loading}>
+            <Button type="submit" size="lg" disabled={loading} className="sm:shrink-0">
               {loading ? 'Running Analysis...' : 'Run AEO Analysis'}
             </Button>
           </form>
         </CardContent>
       </Card>
 
+      {!report && <section className="grid gap-4 md:grid-cols-3" aria-label="What the audit checks">
+        <Card><CardHeader><CardTitle className="text-lg">Content structure</CardTitle><CardDescription>Heading hierarchy, question-led answers and content depth.</CardDescription></CardHeader></Card>
+        <Card><CardHeader><CardTitle className="text-lg">Search metadata</CardTitle><CardDescription>Page titles, descriptions, canonical signals and structured data.</CardDescription></CardHeader></Card>
+        <Card><CardHeader><CardTitle className="text-lg">Trust signals</CardTitle><CardDescription>Visible author, contact, sources and page credibility signals.</CardDescription></CardHeader></Card>
+      </section>}
+      <p className="text-sm text-muted-foreground">Readiness scores summarize observable HTML checks. They are not measured visibility, citations, traffic or rankings within AI platforms.</p>
       {report && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <div className="flex justify-between items-center">
@@ -183,6 +189,7 @@ export default function AEOOptimizerPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
