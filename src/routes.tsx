@@ -885,7 +885,7 @@ export const routes: RouteConfig[] = [
   {
     name: 'AEO Optimizer',
     path: '/aeo-optimizer',
-    element: <FeatureGate featureSlug="aeo-optimizer"><MainLayout showFooter={false}><AEOOptimizerPage /></MainLayout></FeatureGate>,
+    element: <FeatureGate featureSlug="aeo-optimizer"><MainLayout><AEOOptimizerPage /></MainLayout></FeatureGate>,
     public: true,
   },
   {
