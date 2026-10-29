@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, Zap, MessageSquare, ShieldCheck, FileText, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ export default function AEOOptimizerPage() {
 
   return (
     <div className="flex-1 w-full min-h-screen bg-background">\n      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
-      <PageMeta title="AEO Optimizer: Website Readiness Audit for AI Search | AIDetector.cx" description="Audit your website for answer engine optimization (AEO). Check headings, FAQ schema, metadata, canonical tags, author signals, and content readiness for AI search." canonicalUrl="https://www.aidetector.cx/aeo-optimizer" />
+      <PageMeta title="AEO Optimizer & Answer Engine Optimization Audit | AIDetector.cx" description="Audit your website for answer engine optimization (AEO). Check headings, FAQ schema, metadata, canonical tags, author signals, and content readiness for AI search." canonicalUrl="https://www.aidetector.cx/aeo-optimizer" />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AEO Optimizer</h1>
         <p className="text-muted-foreground mt-1">Assess HTML content readiness for AI answer engines.</p>
@@ -189,6 +190,44 @@ export default function AEOOptimizerPage() {
           </div>
         </div>
       )}
+      <section className="space-y-6" aria-labelledby="aeo-definition">
+        <div className="max-w-3xl space-y-3">
+          <h2 id="aeo-definition" className="text-3xl font-bold tracking-tight">What is answer engine optimization (AEO)?</h2>
+          <p className="leading-7 text-muted-foreground">Answer engine optimization helps make website content understandable to search and AI-powered answer systems. It complements SEO by emphasizing direct answers, descriptive headings, structured data, and credible source information. Neither technical optimization nor a readiness score guarantees placement in AI-generated answers.</p>
+          <p className="leading-7 text-muted-foreground">This AEO checker evaluates observable HTML from the URL you submit. It checks content and metadata signals, not actual ChatGPT citations, Google AI Overviews appearances, traffic, or rankings.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card><CardHeader><CardTitle>Answer-focused content</CardTitle><CardDescription>Use descriptive headings, clear answers to relevant questions, and useful explanations that address search intent.</CardDescription></CardHeader></Card>
+          <Card><CardHeader><CardTitle>Structured data and entities</CardTitle><CardDescription>Use accurate structured data and consistent terminology where appropriate. Schema markup is helpful context, not a ranking guarantee.</CardDescription></CardHeader></Card>
+          <Card><CardHeader><CardTitle>Metadata and canonical signals</CardTitle><CardDescription>Check title tags, descriptions, canonical URLs and indexability signals so important content can be discovered and evaluated.</CardDescription></CardHeader></Card>
+          <Card><CardHeader><CardTitle>Trust and attribution</CardTitle><CardDescription>Clarify authorship, provide contact information and cite verifiable evidence for substantive claims.</CardDescription></CardHeader></Card>
+        </div>
+      </section>
+      <section className="rounded-3xl border bg-muted/40 p-6 sm:p-10 space-y-6" aria-labelledby="aeo-steps">
+        <h2 id="aeo-steps" className="text-3xl font-bold">How the AEO audit works</h2>
+        <ol className="grid gap-5 md:grid-cols-3">
+          <li><strong>1. Submit a public URL</strong><p className="mt-2 text-sm leading-6 text-muted-foreground">Enter a website address to retrieve its publicly accessible HTML.</p></li>
+          <li><strong>2. Inspect the evidence</strong><p className="mt-2 text-sm leading-6 text-muted-foreground">Review observed headings, questions, schema, metadata, canonical and trust signals.</p></li>
+          <li><strong>3. Improve and recheck</strong><p className="mt-2 text-sm leading-6 text-muted-foreground">Update the content and technical markup, then compare the new results. Use Search Console for indexing decisions.</p></li>
+        </ol>
+      </section>
+      <section className="space-y-5" aria-labelledby="aeo-related-tools">
+        <h2 id="aeo-related-tools" className="text-3xl font-bold">AEO and SEO work better together</h2>
+        <p className="max-w-3xl leading-7 text-muted-foreground">AEO focuses on extractable answers and content clarity, while SEO also addresses crawling, search intent, site structure, and discoverability. Use the following tools alongside the AEO Optimizer for a broader publishing workflow.</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card><CardHeader><CardTitle>SEO Assistant</CardTitle><CardDescription>Explore broader technical SEO and content-optimization workflows alongside this on-page AEO audit.</CardDescription></CardHeader><CardContent><Link to="/seo-assistant" className="font-semibold text-primary underline underline-offset-4">Explore SEO Assistant</Link></CardContent></Card>
+          <Card><CardHeader><CardTitle>AI Checker for Bloggers</CardTitle><CardDescription>Review blog content for editorial readiness, originality, readability, and SEO quality before publication.</CardDescription></CardHeader><CardContent><Link to="/ai-checker-for-bloggers" className="font-semibold text-primary underline underline-offset-4">Open AI Checker for Bloggers</Link></CardContent></Card>
+        </div>
+      </section>
+      <section className="space-y-4" aria-labelledby="aeo-questions">
+        <h2 id="aeo-questions" className="text-3xl font-bold">Frequently asked questions about AEO</h2>
+        <div className="space-y-4">
+          <div><h3 className="font-semibold">What does an AEO audit measure?</h3><p className="text-sm leading-6 text-muted-foreground">Observable HTML readiness signals including headings, question coverage, metadata, JSON-LD structured data, and author or trust indicators.</p></div>
+          <div><h3 className="font-semibold">Is AEO different from traditional SEO?</h3><p className="text-sm leading-6 text-muted-foreground">AEO emphasizes answer clarity and content interpretation. Traditional SEO covers broader visibility, including indexing, relevance, and site architecture. Both are complementary.</p></div>
+          <div><h3 className="font-semibold">Can an AEO score guarantee visibility in ChatGPT or Google AI Overviews?</h3><p className="text-sm leading-6 text-muted-foreground">No. A readiness audit is not a direct measurement of AI citations or rankings and cannot guarantee selection by an answer engine.</p></div>
+          <div><h3 className="font-semibold">Does structured data guarantee AI citations?</h3><p className="text-sm leading-6 text-muted-foreground">No. Relevant structured data may help search systems understand content but does not guarantee any search feature or citation.</p></div>
+        </div>
+      </section>
       </div>
     </div>
   );
