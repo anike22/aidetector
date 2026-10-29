@@ -20,6 +20,31 @@ function score(parts: boolean[]): number { return pct(parts.filter(Boolean).leng
 function textOnly(html: string): string {
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi," ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,100000);
 }
+function isPublicIpv4(address: string): boolean {
+  const parts=address.split(".").map(Number);
+  if(parts.length!==4 || parts.some(n=>!Number.isInteger(n)||n<0||n>255)) return false;
+  const [a,b,c]=parts;
+  return a!==0 && a!==10 && a!==127 && a<224 && !(a===100&&b>=64&&b<=127)
+    && !(a===169&&b===254) && !(a===172&&b>=16&&b<=31)
+    && !(a===192&&b===168) && !(a===192&&b===0)
+    && !(a===198&&(b===18||b===19)) && !(a===192&&b===0&&c===2)
+    && !(a===198&&b===51&&c===100) && !(a===203&&b===0&&c===113);
+}
+async function verifyPublicDns(host: string): Promise<void> {
+  // Fail closed if DNS cannot be verified. Disallow private, link-local, or reserved targets.
+  const [a,aaaa]=await Promise.all([
+    Deno.resolveDns(host,"A").catch(()=>[] as string[]),
+    Deno.resolveDns(host,"AAAA").catch(()=>[] as string[])
+  ]);
+  if(!a.length && !aaaa.length) throw new Error("Could not verify the website's public DNS address.");
+  if(a.some(ip=>!isPublicIpv4(ip)) || aaaa.some(ip=> {
+    const normalized=ip.toLowerCase();
+    return normalized==="::1" || normalized==="::" || normalized.startsWith("fc")
+      || normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9")
+      || normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("2001:db8")
+      || normalized.startsWith("::ffff:");
+  })) throw new Error("Private or reserved website addresses are not permitted.");
+}
 async function fetchPage(url: URL): Promise<{html:string;finalUrl:string;httpStatus:number}> {
   const response = await fetch(url.toString(), {
     redirect: "error", signal: AbortSignal.timeout(12000),
@@ -54,6 +79,7 @@ serve(async (req) => {
       const raw=String(ctx.body.domain_url || "").trim();
       if (!raw) throw new Error("Enter a domain or URL.");
       const url=validateUrl(raw);
+      await verifyPublicDns(url.hostname);
       const {html,finalUrl,httpStatus}=await fetchPage(url);
       const visible=textOnly(html);
       const heading1=matches(html,/<h1\b/gi);
