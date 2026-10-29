@@ -45,7 +45,14 @@ export async function prepare() {
     throw new Error('Route inventory incomplete; refusing to alter unknown URL routing');
   }
   for (const route of registeredRoutes) {
-    if (!paths.has(route)) config.rewrites.push({source: route, destination: '/index.html'});
+    // The article route is intentionally broad in React; narrow the server match to real content hubs.
+    if (route === '/:hub/:slug') {
+      for (const hub of ['blog', 'guides', 'research', 'comparisons']) {
+        config.rewrites.push({source: `/${hub}/:slug`, destination: '/index.html'});
+      }
+    } else if (!paths.has(route)) {
+      config.rewrites.push({source: route, destination: '/index.html'});
+    }
   }
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
