@@ -46,10 +46,25 @@ async function verifyPublicDns(host: string): Promise<void> {
   })) throw new Error("Private or reserved website addresses are not permitted.");
 }
 async function fetchPage(url: URL): Promise<{html:string;finalUrl:string;httpStatus:number}> {
-  const response = await fetch(url.toString(), {
-    redirect: "error", signal: AbortSignal.timeout(12000),
-    headers: { "Accept": "text/html", "User-Agent": "AIDetector-AEO-Audit/1.0" }
-  });
+  let current = url;
+  let response: Response | null = null;
+  for (let hop = 0; hop < 4; hop++) {
+    await verifyPublicDns(current.hostname);
+    response = await fetch(current.toString(), {
+      redirect: "manual", signal: AbortSignal.timeout(12000),
+      headers: { "Accept": "text/html", "User-Agent": "AIDetector-AEO-Audit/1.0" }
+    });
+    if (![301,302,303,307,308].includes(response.status)) break;
+    const location = response.headers.get("location");
+    if (!location) throw new Error("Website redirected without a Location header.");
+    const nextUrl = validateUrl(new URL(location, current).toString());
+    const oldHost = current.hostname.replace(/^www\./i,"").toLowerCase();
+    const newHost = nextUrl.hostname.replace(/^www\./i,"").toLowerCase();
+    if (newHost !== oldHost) throw new Error("Website redirects to a different domain; analyze its destination directly.");
+    current = nextUrl;
+    response = null;
+  }
+  if (!response) throw new Error("Website redirected too many times.");
   if (!response.ok) throw new Error("Website fetch returned HTTP " + response.status);
   if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("Target URL did not return HTML.");
   const length = Number(response.headers.get("content-length") || 0);
@@ -70,7 +85,7 @@ async function fetchPage(url: URL): Promise<{html:string;finalUrl:string;httpSta
   const bytes = new Uint8Array(total);
   let offset=0;
   for(const chunk of chunks){ bytes.set(chunk,offset); offset+=chunk.length; }
-  return {html:new TextDecoder().decode(bytes),finalUrl:url.toString(),httpStatus:response.status};
+  return {html:new TextDecoder().decode(bytes),finalUrl:current.toString(),httpStatus:response.status};
 }
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", {headers:corsHeaders});
