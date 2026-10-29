@@ -40,7 +40,7 @@ export async function prepare() {
   config.rewrites = [...paths].sort().map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
   // Keep valid feature-controlled, account, and dynamic SPA routes. Unknown URLs fall through to HTTP 404.
   const routeSource = await readFile(path.join(root, 'src/routes.tsx'), 'utf8');
-  const registeredRoutes = [...routeSource.matchAll(/\\bpath:\\s*['"]([^'"]+)['"]/g)].map(([, route]) => route);
+  const registeredRoutes = [...routeSource.matchAll(/path: *['"]([^'"]+)['"]/g)].map(([, route]) => route);
   if (registeredRoutes.length < 150 || !registeredRoutes.includes('/technical-seo') || !registeredRoutes.includes('/services/growth-marketing')) {
     throw new Error('Route inventory incomplete; refusing to alter unknown URL routing');
   }
