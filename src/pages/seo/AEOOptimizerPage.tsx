@@ -189,6 +189,7 @@ export default function AEOOptimizerPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
