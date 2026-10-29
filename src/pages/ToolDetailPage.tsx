@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,7 @@ export default function ToolDetailPage() {
   if (!product) {
     return (
       <MainLayout>
+        <Helmet><title>AI Tool Not Found | AIDetector.cx</title><meta name="robots" content="noindex, nofollow" /></Helmet>
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
           <div className="text-center max-w-md bg-card border border-border p-8 rounded-2xl shadow-sm">
             <Info className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -147,6 +149,11 @@ export default function ToolDetailPage() {
 
   return (
     <MainLayout>
+      <Helmet>
+        <title>{`${product.name} Review: Features, Pricing, Pros & Cons | AIDetector.cx`}</title>
+        <meta name="description" content={product.description} />
+        <link rel="canonical" href={`https://www.aidetector.cx/tools/${product.id}`} />
+      </Helmet>
       {/* Structured SEO Schema */}
       <script
         type="application/ld+json"
