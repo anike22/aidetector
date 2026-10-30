@@ -51,6 +51,11 @@ for (const url of urls) {
   if (['/', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(parsed.pathname)) {
     assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
   }
+  if (parsed.pathname === '/seo-assistant') {
+    assert(html.includes('SEO Writing Assistant'), 'SEO Assistant must expose a specific SEO title');
+    assert(html.includes('Review keyword usage, readability, headings and content integrity'), 'Missing SEO Assistant description');
+    assert(!html.includes('SEO Assistant. Explore AIDetector.cx tools, guidance and resources for content integrity.'), 'Generic SEO Assistant metadata');
+  }
   if (parsed.pathname === '/ai-checker-for-bloggers') {
     assert(html.includes('<title>AI Checker for Bloggers: Scan &amp; Optimize Content for SEO</title>') || html.includes('<title>AI Checker for Bloggers: Scan & Optimize Content for SEO</title>'), 'Incorrect Bloggers SEO title');
     assert(html.includes('Scan, detect, and fully optimize your blog posts for SEO in one click.'), 'Missing Bloggers SEO description');
