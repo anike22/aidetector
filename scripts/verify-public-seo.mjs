@@ -58,5 +58,32 @@ for (const url of urls) {
   assert(!/name="robots"[^>]*noindex/.test(html), `Noindex: ${url}`);
   assert(!/pagead2\.googlesyndication\.com/.test(html), `Global ad script: ${url}`);
 }
+// Explicitly check distinct metadata for public pages previously classified as duplicates.
+const flaggedPaths = [
+  '/research/ai-detection-accuracy-tests',
+  '/research/gpt-5-vs-gemini-detection',
+  '/comparisons/turnitin-vs-aidetector-cx',
+  '/comparisons/chatgpt-detector-comparison',
+];
+const flaggedTitles = new Set();
+const flaggedDescriptions = new Set();
+for (const pathname of flaggedPaths) {
+  const target = 'https://www.aidetector.cx' + pathname;
+  assert(urls.includes(target), 'Known public article missing from sitemap: ' + pathname);
+  const rewrite = config.rewrites.find(entry => entry.source === pathname);
+  assert(rewrite && rewrite.destination.startsWith('/prerender/'), 'Missing article prerender: ' + pathname);
+  const articleHtml = await readFile(path.join('dist', rewrite.destination), 'utf8');
+  const title = articleHtml.match(/<title>([^<]+)<\\/title>/)?.[1]?.trim();
+  const description = articleHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/)?.[1]?.trim()
+    || articleHtml.match(/<meta[^>]*content="([^"]+)"[^>]*name="description"/)?.[1]?.trim();
+  assert(title && title.length >= 25, 'Missing meaningful title: ' + pathname);
+  assert(description && description.length >= 60, 'Missing meaningful description: ' + pathname);
+  assert(!description.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), 'Generic description: ' + pathname);
+  assert(!flaggedTitles.has(title), 'Duplicate article title: ' + pathname);
+  assert(!flaggedDescriptions.has(description), 'Duplicate article description: ' + pathname);
+  flaggedTitles.add(title);
+  flaggedDescriptions.add(description);
+}
+
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
