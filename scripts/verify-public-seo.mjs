@@ -73,7 +73,7 @@ for (const pathname of flaggedPaths) {
   const rewrite = config.rewrites.find(entry => entry.source === pathname);
   assert(rewrite && rewrite.destination.startsWith('/prerender/'), 'Missing article prerender: ' + pathname);
   const articleHtml = await readFile(path.join('dist', rewrite.destination), 'utf8');
-  const title = articleHtml.match(/<title>([^<]+)<\\/title>/)?.[1]?.trim();
+  const title = articleHtml.split('<title>')[1]?.split('</title>')[0]?.trim();
   const description = articleHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/)?.[1]?.trim()
     || articleHtml.match(/<meta[^>]*content="([^"]+)"[^>]*name="description"/)?.[1]?.trim();
   assert(title && title.length >= 25, 'Missing meaningful title: ' + pathname);
