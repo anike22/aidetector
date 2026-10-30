@@ -71,9 +71,10 @@ export async function prepare() {
       continue;
     }
     if (route === '/:hub/:slug') {
-      for (const hub of ['blog', 'guides', 'research', 'comparisons']) {
-        config.rewrites.push({source: `/${hub}/:slug`, destination: '/index.html'});
-      }
+      // Public articles are enumerated above from published content and prerendered.
+      // Do not serve the generic SPA shell (HTTP 200) for arbitrary missing slugs:
+      // that creates soft-404 and duplicate-canonical indexing problems.
+      continue;
     } else if (!paths.has(route)) {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
