@@ -197,6 +197,10 @@
       "destination": "/api/seo-not-found"
     },
     {
+      "source": "/research/:path*",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
