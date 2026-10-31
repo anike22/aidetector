@@ -12,6 +12,14 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Vercel serves dist/404.html with HTTP 404 for unmatched static routes.
+// Without this file, Vite's SPA fallback may serve the homepage with HTTP 200,
+// causing the soft-404 reports seen for nonexistent research and arbitrary URLs.
+const notFoundHtml = await readFile('dist/404.html', 'utf8');
+assert(notFoundHtml.includes('Page Not Found (404)'), 'Missing explicit 404 document');
+assert(/name="robots"[^>]*content="noindex, follow"/.test(notFoundHtml), '404 document must not be indexed');
+assert(!notFoundHtml.includes('rel="canonical"'), '404 document must not claim the homepage canonical');
+
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
