@@ -52,6 +52,13 @@ for (const excludedPath of ['/tools/12', '/research/language-benchmark-overview'
   assert(config.rewrites.some(route => route.source === excludedPath && route.destination === '/api/seo-not-found'), 'Missing URL must route to HTTP 404 Function: ' + excludedPath);
 }
 
+const unknownGuideIndex = config.rewrites.findIndex(r => r.source === '/guides/:path*' && r.destination === '/api/seo-not-found');
+assert(unknownGuideIndex >= 0, 'Unknown guides must return a real HTTP 404');
+for (const url of urls.filter(u => new URL(u).pathname.startsWith('/guides/'))) {
+  const route = new URL(url).pathname;
+  const knownGuideIndex = config.rewrites.findIndex(r => r.source === route && r.destination === `/prerender${route}/index.html`);
+  assert(knownGuideIndex >= 0 && knownGuideIndex < unknownGuideIndex, `Published guide must precede guide 404 fallback: ${route}`);
+}
 assert(config.rewrites.some(r => r.source === '/studies/:path*' && r.destination === '/api/seo-not-found'), 'Unknown studies must return a real HTTP 404');
 for (const path of ['/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives']) {
   assert(config.rewrites.some(r => r.source === path && r.destination === `/prerender${path}/index.html`), `Known study must precede unknown-study fallback: ${path}`);
