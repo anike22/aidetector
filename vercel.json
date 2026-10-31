@@ -201,6 +201,10 @@
       "destination": "/api/seo-not-found"
     },
     {
+      "source": "/studies/:path*",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
