@@ -205,6 +205,10 @@
       "destination": "/api/seo-not-found"
     },
     {
+      "source": "/guides/:path*",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
