@@ -91,4 +91,23 @@ for (const pathname of flaggedPaths) {
 }
 
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
+// Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
+const videoStudyLinks = [
+  ['src/pages/ai-video-detector/AIVideoDetectorPage.tsx', 'to="/studies/authentic-video-false-positives"', 'to="/guides/authentic-video-false-positives"'],
+  ['src/pages/blog/AuthenticVideoFalsePositiveGuidePage.tsx', 'to="/research"', 'to="/content-hub"'],
+  ['src/pages/blog/WhatsAppCompressionAIDetectionPage.tsx', 'to="/research"', 'to="/content-hub"'],
+  ['src/pages/blog/WhyTikTokFlaggedMyRealVideoPage.tsx', 'to="/research"', 'to="/content-hub"'],
+];
+for (const [file, expected, broken] of videoStudyLinks) {
+  const source = await readFile(file, 'utf8');
+  assert(source.includes(expected), `Missing valid study-cluster link in ${file}: ${expected}`);
+  assert(!source.includes(broken), `Broken study-cluster link returned in ${file}: ${broken}`);
+}
+for (const pathname of ['/research', '/studies/authentic-video-false-positives']) {
+  assert(urls.includes('https://www.aidetector.cx' + pathname), `Study-cluster destination missing from sitemap: ${pathname}`);
+  const rewrite = config.rewrites.find(r => r.source === pathname && r.destination === `/prerender${pathname}/index.html`);
+  assert(rewrite, `Study-cluster destination missing dedicated prerender: ${pathname}`);
+  await readFile(path.join('dist', rewrite.destination), 'utf8');
+}
+
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
