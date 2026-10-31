@@ -16,8 +16,10 @@ for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
-for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
+for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector'], ['/guides/understanding-ai-detection-scores', '/guides/how-ai-detection-works']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
+  assert(!config.rewrites.some(r => r.source === oldPath), `Redirect path must not be rewritten as an HTTP 200: ${oldPath}`);
+  assert(!urls.includes(`https://www.aidetector.cx${oldPath}`), `Redirect path must not be in public sitemap: ${oldPath}`);
 }
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
