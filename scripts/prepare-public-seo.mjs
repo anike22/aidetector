@@ -83,7 +83,7 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
-  // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
+  // Vercel's Vite SPA fallback otherwise serves dist/index.html (HTTP 200) for unknown URLs.\n  // Explicit routes above preserve registered pages; unmatched requests must reach a real 404 Function.\n  config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});\n  // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/login', '/reports/shared'];
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
