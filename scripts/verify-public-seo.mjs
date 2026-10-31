@@ -12,13 +12,32 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Vercel serves dist/404.html with HTTP 404 for unmatched static routes.
+// Without this file, Vite's SPA fallback may serve the homepage with HTTP 200,
+// causing the soft-404 reports seen for nonexistent research and arbitrary URLs.
+const notFoundHtml = await readFile('dist/404.html', 'utf8');
+assert(notFoundHtml.includes('Page Not Found (404)'), 'Missing explicit 404 document');
+assert(/name="robots"[^>]*content="noindex, follow"/.test(notFoundHtml), '404 document must not be indexed');
+assert(!notFoundHtml.includes('rel="canonical"'), '404 document must not claim the homepage canonical');
+
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
-for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
+for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector'], ['/guides/understanding-ai-detection-scores', '/guides/how-ai-detection-works']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
+  assert(!config.rewrites.some(r => r.source === oldPath), `Redirect path must not be rewritten as an HTTP 200: ${oldPath}`);
+  assert(!urls.includes(`https://www.aidetector.cx${oldPath}`), `Redirect path must not be in public sitemap: ${oldPath}`);
 }
+// Vite can silently serve the SPA homepage for unknown paths even when dist/404.html exists.
+const fallbackRoute = config.rewrites.at(-1);
+assert.equal(fallbackRoute?.source, '/(.*)', 'Last rewrite must catch unmatched URLs');
+assert.equal(fallbackRoute?.destination, '/api/seo-not-found', 'Unknown URLs must use the HTTP 404 Function');
+const fallbackSource = await readFile('api/seo-not-found.js', 'utf8');
+assert(fallbackSource.includes('response.statusCode = 404'), 'Not-found Function must return HTTP 404');
+assert(fallbackSource.includes('X-Robots-Tag'), 'Not-found Function must be noindex');
+assert(!urls.includes('https://www.aidetector.cx/api/seo-not-found'), 'Not-found Function must not be indexed');
+
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
@@ -28,6 +47,11 @@ assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid t
 assert(config.rewrites.some(r => r.source === '/ai-tools/ollama'), 'Missing valid tool alias route');
 assert(!config.rewrites.some(r => ['/tools/:id', '/ai-tools/:id'].includes(r.source)), 'Generic tool routes can cause soft 404s');
 assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test'), 'Unknown tool unexpectedly routed');
+for (const excludedPath of ['/tools/12', '/research/language-benchmark-overview', '/research/false-positive-analysis']) {
+  assert(!urls.includes('https://www.aidetector.cx' + excludedPath), 'Missing URL unexpectedly added to sitemap: ' + excludedPath);
+  assert(config.rewrites.some(route => route.source === excludedPath && route.destination === '/api/seo-not-found'), 'Missing URL must route to HTTP 404 Function: ' + excludedPath);
+}
+
 assert(!config.rewrites.some(r => ['/blog/:slug', '/guides/:slug', '/research/:slug', '/comparisons/:slug'].includes(r.source)), 'Unpublished or nonexistent articles must not return the generic SPA shell');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 

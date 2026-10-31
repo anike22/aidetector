@@ -185,6 +185,18 @@
       "destination": "/prerender/wordpress-plugin/index.html"
     },
     {
+      "source": "/research/false-positive-analysis",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/research/language-benchmark-overview",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/tools/12",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }

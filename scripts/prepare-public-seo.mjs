@@ -41,6 +41,8 @@ export async function prepare() {
   const seoRedirects = [
     {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
+    // Google reported this client-only redirect as a soft 404; make it an HTTP redirect.
+    {source: '/guides/understanding-ai-detection-scores', destination: '/guides/how-ai-detection-works', permanent: true},
   ];
   config.redirects = [
     ...seoRedirects,
@@ -66,6 +68,8 @@ export async function prepare() {
   }
   for (const route of registeredRoutes) {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
+    // Server redirects must not also be served as generic 200 SPA pages.
+    if (seoRedirects.some(redirect => redirect.source === route)) continue;
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
@@ -79,6 +83,14 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
+  // Explicitly return 404 for verified missing URLs in the checked-in Vercel config too.
+  // Vercel may read root vercel.json before the production build regenerates it.
+  for (const source of ['/research/false-positive-analysis', '/research/language-benchmark-overview', '/tools/12']) {
+    config.rewrites.push({source, destination: '/api/seo-not-found'});
+  }
+  // Vercel's Vite SPA fallback otherwise serves dist/index.html (HTTP 200) for unknown URLs.
+  // Explicit routes above preserve registered pages; unmatched requests must reach a real 404 Function.
+  config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/login', '/reports/shared'];
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
