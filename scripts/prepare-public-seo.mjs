@@ -83,6 +83,11 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
+  // Explicitly return 404 for verified missing URLs in the checked-in Vercel config too.
+  // Vercel may read root vercel.json before the production build regenerates it.
+  for (const source of ['/research/false-positive-analysis', '/research/language-benchmark-overview', '/tools/12']) {
+    config.rewrites.push({source, destination: '/api/seo-not-found'});
+  }
   // Vercel's Vite SPA fallback otherwise serves dist/index.html (HTTP 200) for unknown URLs.
   // Explicit routes above preserve registered pages; unmatched requests must reach a real 404 Function.
   config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});
