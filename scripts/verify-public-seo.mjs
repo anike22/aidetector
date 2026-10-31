@@ -29,6 +29,15 @@ for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/
   assert(!config.rewrites.some(r => r.source === oldPath), `Redirect path must not be rewritten as an HTTP 200: ${oldPath}`);
   assert(!urls.includes(`https://www.aidetector.cx${oldPath}`), `Redirect path must not be in public sitemap: ${oldPath}`);
 }
+// Vite can silently serve the SPA homepage for unknown paths even when dist/404.html exists.
+const fallbackRoute = config.rewrites.at(-1);
+assert.equal(fallbackRoute?.source, '/(.*)', 'Last rewrite must catch unmatched URLs');
+assert.equal(fallbackRoute?.destination, '/api/seo-not-found', 'Unknown URLs must use the HTTP 404 Function');
+const fallbackSource = await readFile('api/seo-not-found.js', 'utf8');
+assert(fallbackSource.includes('response.statusCode = 404'), 'Not-found Function must return HTTP 404');
+assert(fallbackSource.includes('X-Robots-Tag'), 'Not-found Function must be noindex');
+assert(!urls.includes('https://www.aidetector.cx/api/seo-not-found'), 'Not-found Function must not be indexed');
+
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
