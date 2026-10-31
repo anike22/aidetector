@@ -52,6 +52,10 @@ for (const excludedPath of ['/tools/12', '/research/language-benchmark-overview'
   assert(config.rewrites.some(route => route.source === excludedPath && route.destination === '/api/seo-not-found'), 'Missing URL must route to HTTP 404 Function: ' + excludedPath);
 }
 
+assert(config.rewrites.some(r => r.source === '/studies/:path*' && r.destination === '/api/seo-not-found'), 'Unknown studies must return a real HTTP 404');
+for (const path of ['/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives']) {
+  assert(config.rewrites.some(r => r.source === path && r.destination === `/prerender${path}/index.html`), `Known study must precede unknown-study fallback: ${path}`);
+}
 assert(!config.rewrites.some(r => ['/blog/:slug', '/guides/:slug', '/research/:slug', '/comparisons/:slug'].includes(r.source)), 'Unpublished or nonexistent articles must not return the generic SPA shell');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 
