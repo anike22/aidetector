@@ -28,6 +28,11 @@ assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid t
 assert(config.rewrites.some(r => r.source === '/ai-tools/ollama'), 'Missing valid tool alias route');
 assert(!config.rewrites.some(r => ['/tools/:id', '/ai-tools/:id'].includes(r.source)), 'Generic tool routes can cause soft 404s');
 assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test'), 'Unknown tool unexpectedly routed');
+for (const excludedPath of ['/tools/12', '/research/language-benchmark-overview']) {
+  assert(!urls.includes('https://www.aidetector.cx' + excludedPath), 'Historical excluded URL unexpectedly added to sitemap: ' + excludedPath);
+  assert(!config.rewrites.some(route => route.source === excludedPath), 'Historical excluded URL unexpectedly mapped to a public page: ' + excludedPath);
+}
+
 assert(!config.rewrites.some(r => ['/blog/:slug', '/guides/:slug', '/research/:slug', '/comparisons/:slug'].includes(r.source)), 'Unpublished or nonexistent articles must not return the generic SPA shell');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 
