@@ -88,6 +88,9 @@ export async function prepare() {
   for (const source of ['/research/false-positive-analysis', '/research/language-benchmark-overview', '/tools/12']) {
     config.rewrites.push({source, destination: '/api/seo-not-found'});
   }
+  // The studies hub contains only explicitly prerendered public studies; reject unknown slugs.
+  // This mirrors the checked-in Vercel routing so preview and build-time behavior agree.
+  config.rewrites.push({source: '/studies/:path*', destination: '/api/seo-not-found'});
   // Vercel's Vite SPA fallback otherwise serves dist/index.html (HTTP 200) for unknown URLs.
   // Explicit routes above preserve registered pages; unmatched requests must reach a real 404 Function.
   config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});
