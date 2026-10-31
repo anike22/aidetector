@@ -41,6 +41,8 @@ export async function prepare() {
   const seoRedirects = [
     {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
+    // Google reported this client-only redirect as a soft 404; make it an HTTP redirect.
+    {source: '/guides/understanding-ai-detection-scores', destination: '/guides/how-ai-detection-works', permanent: true},
   ];
   config.redirects = [
     ...seoRedirects,
@@ -66,6 +68,8 @@ export async function prepare() {
   }
   for (const route of registeredRoutes) {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
+    // Server redirects must not also be served as generic 200 SPA pages.
+    if (seoRedirects.some(redirect => redirect.source === route)) continue;
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
