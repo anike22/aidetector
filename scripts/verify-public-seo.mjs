@@ -19,6 +19,16 @@ for (const source of ['/login', '/reports/shared']) {
 for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
 }
+// Old video-study links must permanently redirect to the registered canonical destinations.
+for (const [oldPath, newPath] of [
+  ['/content-hub', '/research'],
+  ['/guides/authentic-video-false-positives', '/studies/authentic-video-false-positives'],
+]) {
+  assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing canonical redirect: ${oldPath}`);
+  assert(!urls.includes('https://www.aidetector.cx' + oldPath), `Legacy URL must not be in sitemap: ${oldPath}`);
+  assert(urls.includes('https://www.aidetector.cx' + newPath), `Canonical destination missing from sitemap: ${newPath}`);
+  assert(!config.rewrites.some(r => r.source === oldPath), `Legacy redirect must not serve a 200 rewrite: ${oldPath}`);
+}
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
