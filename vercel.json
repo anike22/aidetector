@@ -197,6 +197,126 @@
       "destination": "/api/seo-not-found"
     },
     {
+      "source": "/tools/aidetector-cx",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/aidetector-cx",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/chatgpt",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/chatgpt",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/claude",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/claude",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/perplexity",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/perplexity",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/github-copilot",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/github-copilot",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/cursor",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/cursor",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/mistral-ai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/mistral-ai",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/midjourney",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/midjourney",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/elevenlabs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/elevenlabs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/phind",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/phind",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/ollama",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/ollama",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/lm-studio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/lm-studio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/deepseek",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/deepseek",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/whisper",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/whisper",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/:id",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/ai-tools/:id",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/tools/12",
       "destination": "/api/seo-not-found"
     },
