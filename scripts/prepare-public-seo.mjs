@@ -37,6 +37,7 @@ export async function prepare() {
   }
   const configPath = path.join(root, 'vercel.json');
   const config = JSON.parse(await readFile(configPath, 'utf8'));
+  const checkedInRewrites = config.rewrites || [];
   // Vercel can use checked-in routes before build-time generation. Ensure every
   // static public canonical route resolves to its prerendered HTML in both configs.
   for (const pathname of publicPaths) {
@@ -69,6 +70,18 @@ export async function prepare() {
   const directoryIds = [...directorySource.matchAll(/^    (?:id|slug): '([a-z0-9-]+)'/gm)].map(([, id]) => id);
   const knownDirectoryIds = [...new Set(directoryIds)];
   if (knownDirectoryIds.length < 10) throw new Error('AI directory inventory incomplete; refusing to change tool routes');
+  // Vercel may load checked-in rewrites before this script runs. Protect real
+  // directory detail routes and reject unknown IDs in the deployed config too.
+  for (const prefix of ['/tools', '/ai-tools']) {
+    const unknownIndex = checkedInRewrites.findIndex(r => r.source === `${prefix}/:id` && r.destination === '/api/seo-not-found');
+    if (unknownIndex < 0) throw new Error(`Checked-in Vercel config must 404 unknown ${prefix} IDs`);
+    for (const id of knownDirectoryIds) {
+      const knownIndex = checkedInRewrites.findIndex(r => r.source === `${prefix}/${id}` && r.destination === '/index.html');
+      if (knownIndex < 0 || knownIndex >= unknownIndex) {
+        throw new Error(`Checked-in Vercel config must preserve known directory route: ${prefix}/${id}`);
+      }
+    }
+  }
   for (const id of knownDirectoryIds) {
     for (const prefix of ['/tools', '/ai-tools']) {
       config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
