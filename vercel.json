@@ -213,6 +213,16 @@
       "permanent": true
     },
     {
+      "source": "/content-hub",
+      "destination": "/research",
+      "permanent": true
+    },
+    {
+      "source": "/guides/authentic-video-false-positives",
+      "destination": "/studies/authentic-video-false-positives",
+      "permanent": true
+    },
+    {
       "source": "/guides/understanding-ai-detection-scores",
       "destination": "/guides/how-ai-detection-works",
       "permanent": true
