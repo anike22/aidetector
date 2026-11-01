@@ -26,6 +26,13 @@ for (const source of ['/humanizer/processing/:jobId', '/humanizer/alternatives/:
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Private job route missing noindex: ${source}`);
 }
 
+// Database-backed essay templates have no published records in the verified
+// production-connected database. Preserve SPA access but prevent unknown slugs
+// from being indexable until a record-aware HTTP 404/prerender solution exists.
+assert(config.rewrites.some(r => r.source === '/essay-template/:slug' && r.destination === '/index.html'), 'Essay template SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/essay-template/:slug' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Essay template dynamic routes must send HTTP noindex');
+assert(!urls.some(u => new URL(u).pathname.startsWith('/essay-template/')), 'Unverified dynamic essay templates must not enter sitemap');
+
 // Growth Marketing remains hidden/nonindexable by default; never expose the homepage shell as indexable content on this route.
 assert(config.rewrites.some(r => r.source === '/services/growth-marketing' && r.destination === '/index.html'), 'Growth Marketing SPA route must remain functional');
 assert(config.headers.some(h => h.source === '/services/growth-marketing' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Hidden Growth Marketing route must send HTTP noindex');
