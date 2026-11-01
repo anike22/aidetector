@@ -1129,6 +1129,33 @@
       ]
     },
     {
+      "source": "/humanizer/processing/:jobId",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/humanizer/alternatives/:jobId",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/humanizer/result/:jobId",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
       "source": "/humanizer/history/:path*",
       "headers": [
         {
