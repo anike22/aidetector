@@ -1193,6 +1193,15 @@
           "value": "noindex, follow"
         }
       ]
+    },
+    {
+      "source": "/services/growth-marketing",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
     }
   ]
 }
