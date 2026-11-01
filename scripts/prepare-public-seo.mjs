@@ -64,6 +64,20 @@ export async function prepare() {
   if (registeredRoutes.length < 150 || !registeredRoutes.includes('/technical-seo') || !registeredRoutes.includes('/services/growth-marketing')) {
     throw new Error('Route inventory incomplete; refusing to alter unknown URL routing');
   }
+  // Checked-in routing is what Vercel may deploy before this script regenerates
+  // rewrites. Every registered SPA route must survive the unknown-URL 404 guard.
+  const excludedBroadRoutes = new Set(['/tools/:id', '/ai-tools/:id', '/:hub/:slug']);
+  for (const route of registeredRoutes) {
+    if (excludedBroadRoutes.has(route) || seoRedirects.some(redirect => redirect.source === route)) continue;
+    const match = checkedInRewrites.find(rewrite => rewrite.source === route);
+    if (!match || match.destination === '/api/seo-not-found') {
+      throw new Error(`Checked-in Vercel config does not preserve registered route: ${route}`);
+    }
+  }
+  const checkedInFallback = checkedInRewrites.at(-1);
+  if (checkedInFallback?.source !== '/(.*)' || checkedInFallback.destination !== '/api/seo-not-found') {
+    throw new Error('Checked-in Vercel fallback must return genuine HTTP 404 for unknown URLs');
+  }
   // Generate exact server routes from the same static directory dataset used by the UI.
   // A wildcard /tools/:id returns HTTP 200 for nonexistent records (soft 404).
   const directorySource = await readFile(path.join(root, 'src/data/aiDirectoryData.ts'), 'utf8');
