@@ -9,6 +9,10 @@
       "destination": "/prerender/about/index.html"
     },
     {
+      "source": "/aeo-optimizer",
+      "destination": "/prerender/aeo-optimizer/index.html"
+    },
+    {
       "source": "/affiliate-agreement",
       "destination": "/prerender/affiliate-agreement/index.html"
     },
