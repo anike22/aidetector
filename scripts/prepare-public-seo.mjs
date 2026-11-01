@@ -165,6 +165,15 @@ export async function prepare() {
       throw new Error(`Checked-in Vercel config missing hidden commercial route noindex: ${source}`);
     }
   }
+  // Essay template details are database-backed; no published templates currently exist.
+  // Until record-aware HTTP 404 and canonical prerendering are available, keep
+  // the SPA functional but prevent homepage-shell soft-404 pages from indexing.
+  const unverifiedDynamicRoutes = ['/essay-template/:slug'];
+  for (const source of unverifiedDynamicRoutes) {
+    if (!config.headers?.some(entry => entry.source === source && entry.headers?.some(header => header.key === 'X-Robots-Tag' && header.value.includes('noindex')))) {
+      throw new Error(`Checked-in Vercel config missing dynamic-template noindex: ${source}`);
+    }
+  }
   // User-specific humanizer job URLs must stay functional but never be indexed.
   const privateJobRoutes = ['/humanizer/processing/:jobId', '/humanizer/alternatives/:jobId', '/humanizer/result/:jobId'];
   for (const source of privateJobRoutes) {
@@ -172,7 +181,7 @@ export async function prepare() {
       throw new Error(`Checked-in Vercel config missing private job noindex: ${source}`);
     }
   }
-  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...hiddenCommercialRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...privateJobRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...hiddenCommercialRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...unverifiedDynamicRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...privateJobRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
 }
