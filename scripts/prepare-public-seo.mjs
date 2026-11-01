@@ -136,7 +136,14 @@ export async function prepare() {
   config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/login', '/reports/shared'];
-  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
+  // User-specific humanizer job URLs must stay functional but never be indexed.
+  const privateJobRoutes = ['/humanizer/processing/:jobId', '/humanizer/alternatives/:jobId', '/humanizer/result/:jobId'];
+  for (const source of privateJobRoutes) {
+    if (!config.headers?.some(entry => entry.source === source && entry.headers?.some(header => header.key === 'X-Robots-Tag' && header.value.includes('noindex')))) {
+      throw new Error(`Checked-in Vercel config missing private job noindex: ${source}`);
+    }
+  }
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...privateJobRoutes.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
 }
