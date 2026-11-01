@@ -285,8 +285,24 @@
       "destination": "/index.html"
     },
     {
-      "source": "/marketplace/:id",
+      "source": "/marketplace/1",
       "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace/2",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace/3",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace/4",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace/:id",
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/sell",
