@@ -49,6 +49,18 @@ assert(fallbackSource.includes('response.statusCode = 404'), 'Not-found Function
 assert(fallbackSource.includes('X-Robots-Tag'), 'Not-found Function must be noindex');
 assert(!urls.includes('https://www.aidetector.cx/api/seo-not-found'), 'Not-found Function must not be indexed');
 
+// Marketplace products are static: preserve valid product URLs but 404 nonexistent IDs.
+const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
+const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+assert(marketplaceBlock, 'Marketplace product dataset missing');
+const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+assert(marketplaceIds.length >= 4 && new Set(marketplaceIds).size === marketplaceIds.length, 'Invalid marketplace inventory');
+const missingMarketplaceIndex = config.rewrites.findIndex(r => r.source === '/marketplace/:id' && r.destination === '/api/seo-not-found');
+assert(missingMarketplaceIndex >= 0, 'Unknown marketplace products must return HTTP 404');
+for (const id of marketplaceIds) {
+  const knownIndex = config.rewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === '/index.html');
+  assert(knownIndex >= 0 && knownIndex < missingMarketplaceIndex, `Valid marketplace product ${id} must preserve SPA route`);
+}
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
