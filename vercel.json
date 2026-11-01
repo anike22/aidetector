@@ -189,6 +189,650 @@
       "destination": "/prerender/wordpress-plugin/index.html"
     },
     {
+      "source": "/essay-studio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/:essayId/:phase",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/:essayId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/teacher",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/teacher/assignments",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/teacher/assignments/:assignmentId/submissions",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/teacher/submissions/:submissionId/review",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/submit-to/:assignmentId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/submissions/:submissionId/feedback",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/templates",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-studio/archived",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/essay-template/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/humanizer/processing/:jobId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/humanizer/alternatives/:jobId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/humanizer/result/:jobId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/humanizer/history",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/humanizer-quality",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/compare",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/compare",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/compare/:vsPair",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tools/submit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ai-tools/submit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/community",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/community/discussions/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard/progress",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/insights",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/account/email-preferences",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/marketplace/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sell",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/features",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/products",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/moderation",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/articles",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/feature-controls",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/api-health",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/email",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/settings",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/detector-config",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/detector-benchmark",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/detector-feedback",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/lead-capture",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/promo",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/video",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/customer-intelligence",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/customer-intelligence-analytics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/lifecycle",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/customer-lifecycle",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/personalization",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/automation",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/automation/logs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/automation/analytics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/account/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings/preferences",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/newsletter",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reset-password",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reset-password/confirm",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/content-studio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/content-studio/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/payment-success",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/payment-cancel",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/careers",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/press",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/document-intelligence",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/seo-dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/domain-overview",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/seo-projects",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/seo-audit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/technical-seo",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/keyword-research",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/content-strategy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/link-building",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/seo-agent",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/document-workspace",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/projects/new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/projects/:projectId/companies",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/companies/:companyId/decision-makers",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/enrichment",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/outreach/new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/competitor-intelligence",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/crm",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/prospecting/premium-finders",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/seo-consulting",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/ai-consulting",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/conversion-optimization",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/growth-marketing",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/website-development",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/business-website-design",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/seo-website-design",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/custom-website-development",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/ecommerce-website-development",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/landing-page-design",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/website-development/request",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/services/website-development/book-meeting",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/hire-expert",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/case-studies",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/accept-invitation",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/organizations",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/organizations/:orgId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/workspaces/:workspaceId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reports/shared",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reports/:reportId/collaborate",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/enterprise",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/notifications",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/activity",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/organizations/:orgId/classrooms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/classrooms/:classroomId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/organizations/:orgId/clients",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/referrals",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/affiliates/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partner",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/rewards",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/growth-outreach",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/clients-outreach",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/outreach-mail",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/outreach",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/referrals",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/affiliates",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/commissions",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/rewards",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/fraud",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/payouts",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/referral-analytics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/marketing-assets",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/security",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/incidents",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/compliance",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/privacy-requests",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/developer",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/webhooks",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partner/apply",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/apps",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/integrations",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/marketplace",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/webhooks",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/integrations",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/partner-applications",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/authorship/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verified-authorship/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verified-authorship/verify",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verified-authorship/:id/certificate",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verified-authorship/:id/manage",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/authorship/profile",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verified-authorship/profile",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verify/:trackingCode",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/authorship/records/:recordId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/all-pages",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/directory",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sitemap",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partner-result/:id",
+      "destination": "/index.html"
+    },
+    {
       "source": "/research/false-positive-analysis",
       "destination": "/api/seo-not-found"
     },
@@ -333,8 +977,8 @@
       "destination": "/api/seo-not-found"
     },
     {
-      "source": "/((?!assets/|.*\\.[^/]+$).*)",
-      "destination": "/index.html"
+      "source": "/(.*)",
+      "destination": "/api/seo-not-found"
     }
   ],
   "buildCommand": "npm run build:production",
