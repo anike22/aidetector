@@ -71,7 +71,7 @@ export async function prepare() {
   // rather than a rewrite (for example /api-platform -> /api).
   const permanentRedirectSources = new Set(config.redirects.filter(r => r.permanent === true).map(r => r.source));
   for (const route of registeredRoutes) {
-    if (excludedBroadRoutes.has(route) || permanentRedirectSources.has(route)) continue;
+    if (excludedBroadRoutes.has(route) || route === '/marketplace/:id' || permanentRedirectSources.has(route)) continue;
     const match = checkedInRewrites.find(rewrite => rewrite.source === route);
     if (!match || match.destination === '/api/seo-not-found') {
       throw new Error(`Checked-in Vercel config does not preserve registered route: ${route}`);
@@ -99,6 +99,23 @@ export async function prepare() {
       }
     }
   }
+  // Marketplace detail records are static, not database-backed. Reject missing IDs.
+  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
+  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
+  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+  if (marketplaceIds.length < 4 || new Set(marketplaceIds).size !== marketplaceIds.length) {
+    throw new Error('Marketplace product inventory incomplete or duplicate');
+  }
+  const marketplaceUnknownIndex = checkedInRewrites.findIndex(r => r.source === '/marketplace/:id' && r.destination === '/api/seo-not-found');
+  if (marketplaceUnknownIndex < 0) throw new Error('Checked-in Vercel config must 404 unknown marketplace IDs');
+  for (const id of marketplaceIds) {
+    const knownIndex = checkedInRewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === '/index.html');
+    if (knownIndex < 0 || knownIndex >= marketplaceUnknownIndex) {
+      throw new Error(`Checked-in Vercel config must preserve marketplace product ${id}`);
+    }
+    config.rewrites.push({source: `/marketplace/${id}`, destination: '/index.html'});
+  }
   for (const id of knownDirectoryIds) {
     for (const prefix of ['/tools', '/ai-tools']) {
       config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
@@ -108,6 +125,10 @@ export async function prepare() {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     // Server redirects must not also be served as generic 200 SPA pages.
     if (permanentRedirectSources.has(route)) continue;
+    if (route === '/marketplace/:id') {
+      // Exact product IDs above remain functional; reject missing IDs below.
+      continue;
+    }
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
@@ -121,6 +142,7 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
+  config.rewrites.push({source: '/marketplace/:id', destination: '/api/seo-not-found'});
   // Explicitly return 404 for verified missing URLs in the checked-in Vercel config too.
   // Vercel may read root vercel.json before the production build regenerates it.
   for (const source of ['/research/false-positive-analysis', '/research/language-benchmark-overview', '/tools/12']) {
