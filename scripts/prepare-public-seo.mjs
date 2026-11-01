@@ -67,8 +67,11 @@ export async function prepare() {
   // Checked-in routing is what Vercel may deploy before this script regenerates
   // rewrites. Every registered SPA route must survive the unknown-URL 404 guard.
   const excludedBroadRoutes = new Set(['/tools/:id', '/ai-tools/:id', '/:hub/:slug']);
+  // A registered React alias can intentionally be served by an HTTP redirect,
+  // rather than a rewrite (for example /api-platform -> /api).
+  const permanentRedirectSources = new Set(config.redirects.filter(r => r.permanent === true).map(r => r.source));
   for (const route of registeredRoutes) {
-    if (excludedBroadRoutes.has(route) || seoRedirects.some(redirect => redirect.source === route)) continue;
+    if (excludedBroadRoutes.has(route) || permanentRedirectSources.has(route)) continue;
     const match = checkedInRewrites.find(rewrite => rewrite.source === route);
     if (!match || match.destination === '/api/seo-not-found') {
       throw new Error(`Checked-in Vercel config does not preserve registered route: ${route}`);
@@ -104,7 +107,7 @@ export async function prepare() {
   for (const route of registeredRoutes) {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     // Server redirects must not also be served as generic 200 SPA pages.
-    if (seoRedirects.some(redirect => redirect.source === route)) continue;
+    if (permanentRedirectSources.has(route)) continue;
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
