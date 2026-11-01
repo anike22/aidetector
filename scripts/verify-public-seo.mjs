@@ -20,6 +20,12 @@ assert(notFoundHtml.includes('Page Not Found (404)'), 'Missing explicit 404 docu
 assert(/name="robots"[^>]*content="noindex, follow"/.test(notFoundHtml), '404 document must not be indexed');
 assert(!notFoundHtml.includes('rel="canonical"'), '404 document must not claim the homepage canonical');
 
+// Job-specific result and processing routes must not expose private content to crawlers.
+for (const source of ['/humanizer/processing/:jobId', '/humanizer/alternatives/:jobId', '/humanizer/result/:jobId']) {
+  assert(config.rewrites.some(r => r.source === source && r.destination === '/index.html'), `Private job route must remain functional: ${source}`);
+  assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Private job route missing noindex: ${source}`);
+}
+
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
