@@ -26,6 +26,11 @@ for (const source of ['/humanizer/processing/:jobId', '/humanizer/alternatives/:
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Private job route missing noindex: ${source}`);
 }
 
+// Growth Marketing remains hidden/nonindexable by default; never expose the homepage shell as indexable content on this route.
+assert(config.rewrites.some(r => r.source === '/services/growth-marketing' && r.destination === '/index.html'), 'Growth Marketing SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/services/growth-marketing' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Hidden Growth Marketing route must send HTTP noindex');
+assert(!urls.includes('https://www.aidetector.cx/services/growth-marketing'), 'Hidden Growth Marketing route must not enter public sitemap');
+
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
