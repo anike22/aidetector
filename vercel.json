@@ -209,6 +209,14 @@
       "destination": "/prerender/marketplace/4/index.html"
     },
     {
+      "source": "/marketplace/:id",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/marketplace/:id/",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
