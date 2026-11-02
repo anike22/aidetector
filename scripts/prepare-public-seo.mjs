@@ -160,8 +160,8 @@ export async function prepare() {
   config.rewrites.push({source: '/(.*)', destination: '/api/seo-not-found'});
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/login', '/reports/shared'];
-  // Growth Marketing is hidden and nonindexable by default; preserve SPA access but keep crawlers out until an intentional publication release.
-  const hiddenCommercialRoutes = ['/services/growth-marketing'];
+  // Growth Marketing and Technical SEO are not published as public prerender pages. Their SPA shells use homepage metadata, so prevent indexing until a deliberate publication release.
+  const hiddenCommercialRoutes = ['/services/growth-marketing', '/technical-seo'];
   for (const source of hiddenCommercialRoutes) {
     if (!config.headers?.some(entry => entry.source === source && entry.headers?.some(header => header.key === 'X-Robots-Tag' && header.value.includes('noindex')))) {
       throw new Error(`Checked-in Vercel config missing hidden commercial route noindex: ${source}`);
