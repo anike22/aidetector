@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getPayouts, updatePayoutStatus } from '@/lib/referralApi';
+import { getPayouts, updatePayoutStatus, getPayoutBankDetails, type UsdBankDetails } from '@/lib/referralApi';
 import type { Payout, PayoutStatus } from '@/types/referral';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 export default function AdminPayoutsPage() {
   const { profile } = useAuth();
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [bankDetails, setBankDetails] = useState<{ id: string; details: UsdBankDetails | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -29,6 +30,11 @@ export default function AdminPayoutsPage() {
     if (profile?.role === 'admin') load();
   }, [profile]);
 
+  const revealBankDetails = async (id: string) => {
+    try { setBankDetails({ id, details: await getPayoutBankDetails(id) }); }
+    catch { toast.error('Unable to retrieve bank details. Admin access is required.'); }
+  };
+
   const update = async (id: string, status: PayoutStatus) => {
     try {
       await updatePayoutStatus(id, status);
@@ -45,6 +51,11 @@ export default function AdminPayoutsPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Payout Approvals</h1>
+      {bankDetails && <Card><CardHeader><CardTitle>USD bank details for payout {bankDetails.id.slice(0, 8)}</CardTitle></CardHeader><CardContent className="space-y-2">
+        <p className="text-sm">Use only for this payout. Confirm recipient details before processing a transfer.</p>
+        {bankDetails.details ? <dl className="grid gap-2 md:grid-cols-2">{Object.entries(bankDetails.details).filter(([key]) => key !== 'usd_confirmed').map(([key, value]) => <div key={key}><dt className="text-sm text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</dt><dd className="break-all">{String(value || '—')}</dd></div>)}</dl> : <p>No bank details were submitted with this legacy payout.</p>}
+        <Button variant="outline" onClick={() => setBankDetails(null)}>Hide bank details</Button>
+      </CardContent></Card>}
       <Card>
         <CardHeader><CardTitle className="text-base font-medium">Payout requests</CardTitle></CardHeader>
         <CardContent>
@@ -61,6 +72,7 @@ export default function AdminPayoutsPage() {
                   <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
                   <TableCell className="text-muted-foreground text-sm">{formatDistanceToNow(new Date(p.requested_at), { addSuffix: true })}</TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="outline" onClick={() => revealBankDetails(p.id)}>View bank details</Button>
                     {p.status === 'Pending' && <Button size="sm" onClick={() => update(p.id, 'Approved')}>Approve</Button>}
                     {p.status === 'Approved' && <Button size="sm" onClick={() => update(p.id, 'Processing')}>Start Processing</Button>}
                     {(p.status === 'Approved' || p.status === 'Processing') && <Button size="sm" variant="outline" onClick={() => update(p.id, 'Failed')}>Mark Failed</Button>}
