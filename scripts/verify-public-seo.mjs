@@ -16,7 +16,7 @@ const config = JSON.parse(await readFile('vercel.json', 'utf8'));
 const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
 const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
 assert(marketplaceBlock, 'Marketplace product inventory missing');
-const marketplaceIds = [...marketplaceBlock.matchAll(/^\\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
 assert(marketplaceIds.length > 0 && new Set(marketplaceIds).size === marketplaceIds.length, 'Marketplace product inventory invalid');
 for (const id of marketplaceIds) {
   const route = `/marketplace/${id}`;
@@ -25,7 +25,7 @@ for (const id of marketplaceIds) {
   const rewrite = config.rewrites.find(entry => entry.source === route && entry.destination === `/prerender${route}/index.html`);
   assert(rewrite, `Marketplace product missing dedicated prerender: ${route}`);
   const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
-  const name = marketplaceBlock.match(new RegExp(`id: '${id}',\\\\s*name: '([^']+)'`))?.[1];
+  const name = marketplaceBlock.match(new RegExp(`id: '${id}',\\\s*name: '([^']+)'`))?.[1];
   assert(name && html.includes(name), `Marketplace product HTML missing product name: ${route}`);
   assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product title missing: ${route}`);
   assert(html.includes(`href="${url}"`), `Marketplace product canonical missing: ${route}`);
