@@ -10,8 +10,8 @@ const AUTHORITY_AREAS = [
     description: 'Educational content about AI detection, scores, and best practices for educators and writers.',
     links: [
       { label: 'How AI Detection Works', to: '/guides/how-ai-detection-works' },
-      { label: 'Best Practices for Educators', to: '/guides/best-practices-for-educators' },
-      { label: 'Multilingual Detection Guide', to: '/guides/multilingual-detection-guide' },
+      { label: 'Why Essays Get Flagged as AI', to: '/guides/why-was-my-essay-flagged-as-ai' },
+      { label: 'Words That Trigger AI Detection', to: '/guides/words-that-trigger-ai-detection' },
     ],
   },
   {
@@ -20,9 +20,9 @@ const AUTHORITY_AREAS = [
     icon: Microscope,
     description: 'Original benchmarks, detection methodology, and language-specific performance studies.',
     links: [
-      { label: 'How Our Dual-Engine Works', to: '/research/dual-engine-detection-methodology' },
-      { label: 'Language Benchmark Overview', to: '/research/language-benchmark-overview' },
-      { label: 'False-Positive Analysis', to: '/research/false-positive-analysis' },
+      { label: 'AI Detection Accuracy Tests', to: '/research/ai-detection-accuracy-tests' },
+      { label: 'GPT vs Gemini Detection', to: '/research/gpt-5-vs-gemini-detection' },
+      { label: 'Authentic Video False Positives', to: '/studies/authentic-video-false-positives' },
     ],
   },
   {
@@ -31,9 +31,8 @@ const AUTHORITY_AREAS = [
     icon: Scale,
     description: 'Feature breakdowns and use-case comparisons with other AI detection products.',
     links: [
-      { label: 'Balanced vs Aggressive Mode', to: '/comparisons/balanced-vs-aggressive-detection' },
-      { label: 'AIDetector.cx vs Turnitin', to: '/comparisons/aidetector-vs-turnitin' },
-      { label: 'Detector Comparison Table', to: '/comparisons/ai-detector-comparison' },
+      { label: 'ChatGPT Detector Comparison', to: '/comparisons/chatgpt-detector-comparison' },
+      { label: 'AIDetector.cx vs Turnitin', to: '/comparisons/turnitin-vs-aidetector-cx' },
     ],
   },
 ];

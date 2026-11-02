@@ -14,7 +14,7 @@ export const AuthenticVideoFalsePositiveGuidePage: React.FC = () => {
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Link to="/" className="hover:underline">Home</Link>
         <span>/</span>
-        <Link to="/content-hub" className="hover:underline">Research & Studies</Link>
+        <Link to="/research" className="hover:underline">Research & Studies</Link>
         <span>/</span>
         <span className="text-foreground">False-Positive Prevention Guide</span>
       </div>

@@ -228,7 +228,7 @@ export const WhatsAppCompressionAIDetectionPage: React.FC = () => {
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-foreground">
             <Link to="/" className="hover:text-primary transition-colors">Home</Link>
             <span>/</span>
-            <Link to="/content-hub" className="hover:text-primary transition-colors">Research & Studies</Link>
+            <Link to="/research" className="hover:text-primary transition-colors">Research & Studies</Link>
             <span>/</span>
             <span className="text-foreground font-medium">WhatsApp Video Compression</span>
           </nav>

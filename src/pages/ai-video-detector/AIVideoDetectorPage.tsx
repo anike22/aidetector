@@ -1539,7 +1539,7 @@ export default function AIVideoDetectorPage() {
               <p className="text-[11px] text-muted-foreground">How 480p downscaling affects optical flow velocity and residual noise.</p>
             </Link>
 
-            <Link to="/guides/authentic-video-false-positives" className="p-3.5 rounded-xl border border-border bg-muted/20 hover:border-primary transition-colors block space-y-1">
+            <Link to="/studies/authentic-video-false-positives" className="p-3.5 rounded-xl border border-border bg-muted/20 hover:border-primary transition-colors block space-y-1">
               <div className="font-semibold text-foreground flex items-center justify-between">
                 <span>False-Positive Defense Guide</span>
                 <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />

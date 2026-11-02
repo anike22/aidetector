@@ -19,6 +19,16 @@ for (const source of ['/login', '/reports/shared']) {
 for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
 }
+// Old video-study links must permanently redirect to the registered canonical destinations.
+for (const [oldPath, newPath] of [
+  ['/content-hub', '/research'],
+  ['/guides/authentic-video-false-positives', '/studies/authentic-video-false-positives'],
+]) {
+  assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing canonical redirect: ${oldPath}`);
+  assert(!urls.includes('https://www.aidetector.cx' + oldPath), `Legacy URL must not be in sitemap: ${oldPath}`);
+  assert(urls.includes('https://www.aidetector.cx' + newPath), `Canonical destination missing from sitemap: ${newPath}`);
+  assert(!config.rewrites.some(r => r.source === oldPath), `Legacy redirect must not serve a 200 rewrite: ${oldPath}`);
+}
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
@@ -91,4 +101,23 @@ for (const pathname of flaggedPaths) {
 }
 
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
+// Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
+const videoStudyLinks = [
+  ['src/pages/ai-video-detector/AIVideoDetectorPage.tsx', 'to="/studies/authentic-video-false-positives"', 'to="/guides/authentic-video-false-positives"'],
+  ['src/pages/blog/AuthenticVideoFalsePositiveGuidePage.tsx', 'to="/research"', 'to="/content-hub"'],
+  ['src/pages/blog/WhatsAppCompressionAIDetectionPage.tsx', 'to="/research"', 'to="/content-hub"'],
+  ['src/pages/blog/WhyTikTokFlaggedMyRealVideoPage.tsx', 'to="/research"', 'to="/content-hub"'],
+];
+for (const [file, expected, broken] of videoStudyLinks) {
+  const source = await readFile(file, 'utf8');
+  assert(source.includes(expected), `Missing valid study-cluster link in ${file}: ${expected}`);
+  assert(!source.includes(broken), `Broken study-cluster link returned in ${file}: ${broken}`);
+}
+for (const pathname of ['/research', '/studies/authentic-video-false-positives']) {
+  assert(urls.includes('https://www.aidetector.cx' + pathname), `Study-cluster destination missing from sitemap: ${pathname}`);
+  const rewrite = config.rewrites.find(r => r.source === pathname && r.destination === `/prerender${pathname}/index.html`);
+  assert(rewrite, `Study-cluster destination missing dedicated prerender: ${pathname}`);
+  await readFile(path.join('dist', rewrite.destination), 'utf8');
+}
+
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
