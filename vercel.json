@@ -412,6 +412,15 @@
           "value": "noindex, follow"
         }
       ]
+    },
+    {
+      "source": "/technical-seo",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
     }
   ]
 }
