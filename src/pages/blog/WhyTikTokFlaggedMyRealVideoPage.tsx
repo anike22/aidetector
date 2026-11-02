@@ -429,7 +429,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
                 </p>
                 <Link to="/ai-video-detector" className="block">
                   <Button size="sm" className="w-full text-xs font-semibold gap-1.5">
-                    Analyze a video <ArrowRight className="w-3.5 h-3.5" />
+                    Try the AI video detector <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
                 <p className="text-[11px] text-muted-foreground text-center">
@@ -1072,7 +1072,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
                   <div className="space-y-2 pt-2">
                     <Link to="/ai-video-detector" className="block">
                       <Button className="w-full text-xs font-semibold gap-2">
-                        Analyze a video <ArrowRight className="w-4 h-4" />
+                        Try the AI video detector <ArrowRight className="w-4 h-4" />
                       </Button>
                     </Link>
                     <p className="text-[11px] text-muted-foreground text-center">
