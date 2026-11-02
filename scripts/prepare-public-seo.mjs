@@ -11,6 +11,13 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Marketplace entries are static records. Prerender only IDs present in the source inventory.
+  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
+  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
+  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+  if (marketplaceIds.length === 0 || new Set(marketplaceIds).size !== marketplaceIds.length) throw new Error('Marketplace product inventory incomplete or duplicated');
+  for (const id of marketplaceIds) paths.add(`/marketplace/${id}`);
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
@@ -78,6 +85,9 @@ export async function prepare() {
   }
   for (const route of registeredRoutes) {
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
+    // Marketplace detail routes are served only for known static product IDs above.
+    // Do not send unknown IDs to the generic SPA shell (HTTP 200 soft 404).
+    if (route === '/marketplace/:id') continue;
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
