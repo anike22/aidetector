@@ -1220,6 +1220,15 @@
       ]
     },
     {
+      "source": "/technical-seo",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
       "source": "/essay-template/:slug",
       "headers": [
         {
