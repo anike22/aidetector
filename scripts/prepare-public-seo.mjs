@@ -37,6 +37,18 @@ export async function prepare() {
   }
   const configPath = path.join(root, 'vercel.json');
   const config = JSON.parse(await readFile(configPath, 'utf8'));
+  // Vercel deploys the checked-in routing file; the generated build config alone
+  // cannot establish that public canonical URLs serve their prerendered HTML.
+  // Catch omissions such as /aeo-optimizer before this script overwrites vercel.json.
+  for (const pathname of publicPaths) {
+    const expected = `/prerender${pathname === '/' ? '/home' : pathname}/index.html`;
+    assertCheckedInPublicRewrite(pathname, expected);
+  }
+  function assertCheckedInPublicRewrite(pathname, expected) {
+    if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
+      throw new Error(`Checked-in vercel.json missing public prerender rewrite: ${pathname} -> ${expected}`);
+    }
+  }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
   const seoRedirects = [
     {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
