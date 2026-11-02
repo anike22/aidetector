@@ -61,6 +61,12 @@ export async function prepare() {
     const expected = `/prerender/marketplace/${id}/index.html`;
     assertCheckedInPublicRewrite(pathname, expected);
   }
+  const unknownMarketplaceIndex = config.rewrites.findIndex(route => route.source === '/marketplace/:id' && route.destination === '/api/seo-not-found');
+  if (unknownMarketplaceIndex < 0) throw new Error('Checked-in vercel.json must return HTTP 404 for unknown Marketplace IDs');
+  for (const id of marketplaceIds) {
+    const knownIndex = config.rewrites.findIndex(route => route.source === `/marketplace/${id}` && route.destination === `/prerender/marketplace/${id}/index.html`);
+    if (knownIndex < 0 || knownIndex >= unknownMarketplaceIndex) throw new Error(`Known Marketplace route must precede unknown-ID 404: ${id}`);
+  }
   function assertCheckedInPublicRewrite(pathname, expected) {
     if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
       throw new Error(`Checked-in vercel.json missing public prerender rewrite: ${pathname} -> ${expected}`);
@@ -94,6 +100,13 @@ export async function prepare() {
     }
   }
   for (const route of registeredRoutes) {
+    if (route === '/marketplace/:id') {
+      // Only IDs in the checked-in public product inventory are valid detail pages.
+      // Exact product prerenders are inserted first; unknown IDs must return a real 404.
+      config.rewrites.push({source: route, destination: '/api/seo-not-found'});
+      config.rewrites.push({source: route + '/', destination: '/api/seo-not-found'});
+      continue;
+    }
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
