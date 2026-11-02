@@ -118,6 +118,16 @@ for (const {id, name} of marketplaceProducts) {
   assert(html.includes(`href="${target}"`), `Marketplace product self-canonical missing: ${pathname}`);
   assert(html.includes(name), `Marketplace product content missing from initial HTML: ${pathname}`);
 }
+// Unknown Marketplace IDs must not fall through to the generic SPA shell.
+const unknownMarketplace404 = config.rewrites.findIndex(entry => entry.source === '/marketplace/:id' && entry.destination === '/api/seo-not-found');
+assert(unknownMarketplace404 >= 0, 'Unknown Marketplace IDs must route to the genuine HTTP 404 handler');
+assert(config.rewrites.some(entry => entry.source === '/marketplace/:id/' && entry.destination === '/api/seo-not-found'), 'Trailing-slash Marketplace IDs must return HTTP 404');
+for (const {id} of marketplaceProducts) {
+  const knownIndex = config.rewrites.findIndex(entry => entry.source === `/marketplace/${id}` && entry.destination === `/prerender/marketplace/${id}/index.html`);
+  assert(knownIndex >= 0 && knownIndex < unknownMarketplace404, `Known Marketplace product must precede unknown-ID 404: ${id}`);
+}
+const notFoundHandler = await readFile('api/seo-not-found.js', 'utf8');
+assert(/statusCode = 404/.test(notFoundHandler) && /X-Robots-Tag/.test(notFoundHandler), 'Marketplace missing-record handler must send HTTP 404 and noindex');
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 // Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
 const videoStudyLinks = [
