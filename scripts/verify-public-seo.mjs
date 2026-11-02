@@ -12,6 +12,22 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Confirmed removed editorial URLs must return a genuine HTTP 404, not the SPA homepage.
+const confirmedRemovedPaths = [
+  '/research/false-positive-analysis',
+  '/blog/chatgpt-5-claude-3-5-gemini-ai-detection',
+  '/blog/how-our-ai-detector-works',
+  '/blog/perplexity-ai-detection-predictable-next-word-choices',
+  '/blog/simply-humanizer-undetectable-ai-trick-scanners',
+  '/blog/what-percentage-of-ai-detection-is-allowed-in-college',
+  '/research/avoid-false-positives-institutional-ai-detectors',
+];
+for (const pathname of confirmedRemovedPaths) {
+  assert(!urls.includes('https://www.aidetector.cx' + pathname), 'Removed URL must stay out of the public sitemap: ' + pathname);
+  for (const suffix of ['', '/']) {
+    assert(config.rewrites.some(r => r.source === pathname + suffix && r.destination === '/api/seo-not-found'), 'Removed URL must route to the HTTP 404 handler: ' + pathname + suffix);
+  }
+}
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
