@@ -100,6 +100,24 @@ for (const pathname of flaggedPaths) {
   flaggedDescriptions.add(description);
 }
 
+// Marketplace detail pages are public, static products and must expose product-specific initial HTML.
+const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
+const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+assert(marketplaceBlock, 'Marketplace product inventory missing');
+const marketplaceProducts = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',\s*\n\s+name: '([^']+)'/gm)]
+  .map(([, id, name]) => ({id, name}));
+assert(marketplaceProducts.length >= 4 && new Set(marketplaceProducts.map(p => p.id)).size === marketplaceProducts.length, 'Marketplace product inventory incomplete or duplicate');
+for (const {id, name} of marketplaceProducts) {
+  const pathname = `/marketplace/${id}`;
+  const target = `https://www.aidetector.cx${pathname}`;
+  assert(urls.includes(target), `Marketplace product missing from sitemap: ${pathname}`);
+  const rewrite = config.rewrites.find(entry => entry.source === pathname);
+  assert(rewrite?.destination === `/prerender/marketplace/${id}/index.html`, `Marketplace product missing dedicated prerender: ${pathname}`);
+  const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
+  assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product title missing or generic: ${pathname}`);
+  assert(html.includes(`href="${target}"`), `Marketplace product self-canonical missing: ${pathname}`);
+  assert(html.includes(name), `Marketplace product content missing from initial HTML: ${pathname}`);
+}
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 // Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
 const videoStudyLinks = [
