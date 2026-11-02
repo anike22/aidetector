@@ -12,6 +12,25 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Marketplace detail pages are public only for IDs in the static product inventory.
+const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
+const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+assert(marketplaceBlock, 'Marketplace product inventory missing');
+const marketplaceIds = [...marketplaceBlock.matchAll(/^\\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+assert(marketplaceIds.length > 0 && new Set(marketplaceIds).size === marketplaceIds.length, 'Marketplace product inventory invalid');
+for (const id of marketplaceIds) {
+  const route = `/marketplace/${id}`;
+  const url = `https://www.aidetector.cx${route}`;
+  assert(urls.includes(url), `Marketplace product missing from sitemap: ${route}`);
+  const rewrite = config.rewrites.find(entry => entry.source === route && entry.destination === `/prerender${route}/index.html`);
+  assert(rewrite, `Marketplace product missing dedicated prerender: ${route}`);
+  const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
+  const name = marketplaceBlock.match(new RegExp(`id: '${id}',\\\\s*name: '([^']+)'`))?.[1];
+  assert(name && html.includes(name), `Marketplace product HTML missing product name: ${route}`);
+  assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product title missing: ${route}`);
+  assert(html.includes(`href="${url}"`), `Marketplace product canonical missing: ${route}`);
+}
+assert(!config.rewrites.some(entry => entry.source === '/marketplace/:id'), 'Unknown Marketplace IDs must not fall back to the SPA homepage');
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
