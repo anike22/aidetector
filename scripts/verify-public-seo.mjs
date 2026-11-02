@@ -34,6 +34,8 @@ assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SP
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
   assert(config.rewrites.some(r => r.source === route), `Missing registered feature route: ${route}`);
 }
+assert(config.headers.some(h => h.source === '/services/growth-marketing' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Hidden Growth Marketing route must send HTTP noindex');
+assert(!urls.includes('https://www.aidetector.cx/services/growth-marketing'), 'Hidden Growth Marketing route must remain out of the public sitemap');
 assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid tool directory route');
 assert(config.rewrites.some(r => r.source === '/ai-tools/ollama'), 'Missing valid tool alias route');
 assert(!config.rewrites.some(r => ['/tools/:id', '/ai-tools/:id'].includes(r.source)), 'Generic tool routes can cause soft 404s');
