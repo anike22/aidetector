@@ -12,12 +12,72 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+// Vercel serves dist/404.html with HTTP 404 for unmatched static routes.
+// Without this file, Vite's SPA fallback may serve the homepage with HTTP 200,
+// causing the soft-404 reports seen for nonexistent research and arbitrary URLs.
+const notFoundHtml = await readFile('dist/404.html', 'utf8');
+assert(notFoundHtml.includes('Page Not Found (404)'), 'Missing explicit 404 document');
+assert(/name="robots"[^>]*content="noindex, follow"/.test(notFoundHtml), '404 document must not be indexed');
+assert(!notFoundHtml.includes('rel="canonical"'), '404 document must not claim the homepage canonical');
+
+// Job-specific result and processing routes must not expose private content to crawlers.
+for (const source of ['/humanizer/processing/:jobId', '/humanizer/alternatives/:jobId', '/humanizer/result/:jobId']) {
+  assert(config.rewrites.some(r => r.source === source && r.destination === '/index.html'), `Private job route must remain functional: ${source}`);
+  assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Private job route missing noindex: ${source}`);
+}
+
+// Database-backed essay templates have no published records in the verified
+// production-connected database. Preserve SPA access but prevent unknown slugs
+// from being indexable until a record-aware HTTP 404/prerender solution exists.
+assert(config.rewrites.some(r => r.source === '/essay-template/:slug' && r.destination === '/index.html'), 'Essay template SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/essay-template/:slug' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Essay template dynamic routes must send HTTP noindex');
+assert(!urls.some(u => new URL(u).pathname.startsWith('/essay-template/')), 'Unverified dynamic essay templates must not enter sitemap');
+
+// Technical SEO is feature-gated and currently serves homepage initial HTML; keep its SPA route functional but nonindexable until dedicated publication/prerender is ready.
+assert(config.rewrites.some(r => r.source === '/technical-seo' && r.destination === '/index.html'), 'Technical SEO SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/technical-seo' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Unpublished Technical SEO route must send HTTP noindex');
+assert(!urls.includes('https://www.aidetector.cx/technical-seo'), 'Unpublished Technical SEO route must not enter public sitemap');
+
+// Growth Marketing remains hidden/nonindexable by default; never expose the homepage shell as indexable content on this route.
+assert(config.rewrites.some(r => r.source === '/services/growth-marketing' && r.destination === '/index.html'), 'Growth Marketing SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/services/growth-marketing' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Hidden Growth Marketing route must send HTTP noindex');
+assert(!urls.includes('https://www.aidetector.cx/services/growth-marketing'), 'Hidden Growth Marketing route must not enter public sitemap');
+
 for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
-for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
+for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector'], ['/guides/understanding-ai-detection-scores', '/guides/how-ai-detection-works']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
+  assert(!config.rewrites.some(r => r.source === oldPath), `Redirect path must not be rewritten as an HTTP 200: ${oldPath}`);
+  assert(!urls.includes(`https://www.aidetector.cx${oldPath}`), `Redirect path must not be in public sitemap: ${oldPath}`);
+}
+// Vite can silently serve the SPA homepage for unknown paths even when dist/404.html exists.
+const fallbackRoute = config.rewrites.at(-1);
+assert.equal(fallbackRoute?.source, '/(.*)', 'Last rewrite must catch unmatched URLs');
+assert.equal(fallbackRoute?.destination, '/api/seo-not-found', 'Unknown URLs must use the HTTP 404 Function');
+const fallbackSource = await readFile('api/seo-not-found.js', 'utf8');
+assert(fallbackSource.includes('response.statusCode = 404'), 'Not-found Function must return HTTP 404');
+assert(fallbackSource.includes('X-Robots-Tag'), 'Not-found Function must be noindex');
+assert(!urls.includes('https://www.aidetector.cx/api/seo-not-found'), 'Not-found Function must not be indexed');
+
+// Marketplace products are static: preserve valid product URLs but 404 nonexistent IDs.
+const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
+const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+assert(marketplaceBlock, 'Marketplace product dataset missing');
+const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+assert(marketplaceIds.length >= 4 && new Set(marketplaceIds).size === marketplaceIds.length, 'Invalid marketplace inventory');
+const missingMarketplaceIndex = config.rewrites.findIndex(r => r.source === '/marketplace/:id' && r.destination === '/api/seo-not-found');
+assert(missingMarketplaceIndex >= 0, 'Unknown marketplace products must return HTTP 404');
+for (const id of marketplaceIds) {
+  const knownIndex = config.rewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === `/prerender/marketplace/${id}/index.html`);
+  assert(knownIndex >= 0 && knownIndex < missingMarketplaceIndex, `Valid marketplace product ${id} must have its own prerender before the 404 fallback`);
+  assert(urls.includes(`https://www.aidetector.cx/marketplace/${id}`), `Marketplace product ${id} missing from public sitemap`);
+  const html = await readFile(`dist/prerender/marketplace/${id}/index.html`, 'utf8');
+  const name = marketplaceBlock.match(new RegExp(`id: '${id}',\\s*name: '([^']+)'`))?.[1];
+  assert(name && html.includes(name), `Marketplace product ${id} initial HTML lacks product content`);
+  assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product ${id} missing specific initial HTML title`);
+  assert(html.includes(`href="https://www.aidetector.cx/marketplace/${id}"`), `Marketplace product ${id} missing self-canonical`);
 }
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
@@ -28,6 +88,22 @@ assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid t
 assert(config.rewrites.some(r => r.source === '/ai-tools/ollama'), 'Missing valid tool alias route');
 assert(!config.rewrites.some(r => ['/tools/:id', '/ai-tools/:id'].includes(r.source)), 'Generic tool routes can cause soft 404s');
 assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test'), 'Unknown tool unexpectedly routed');
+for (const excludedPath of ['/tools/12', '/research/language-benchmark-overview', '/research/false-positive-analysis']) {
+  assert(!urls.includes('https://www.aidetector.cx' + excludedPath), 'Missing URL unexpectedly added to sitemap: ' + excludedPath);
+  assert(config.rewrites.some(route => route.source === excludedPath && route.destination === '/api/seo-not-found'), 'Missing URL must route to HTTP 404 Function: ' + excludedPath);
+}
+
+const unknownGuideIndex = config.rewrites.findIndex(r => r.source === '/guides/:path*' && r.destination === '/api/seo-not-found');
+assert(unknownGuideIndex >= 0, 'Unknown guides must return a real HTTP 404');
+for (const url of urls.filter(u => new URL(u).pathname.startsWith('/guides/'))) {
+  const route = new URL(url).pathname;
+  const knownGuideIndex = config.rewrites.findIndex(r => r.source === route && r.destination === `/prerender${route}/index.html`);
+  assert(knownGuideIndex >= 0 && knownGuideIndex < unknownGuideIndex, `Published guide must precede guide 404 fallback: ${route}`);
+}
+assert(config.rewrites.some(r => r.source === '/studies/:path*' && r.destination === '/api/seo-not-found'), 'Unknown studies must return a real HTTP 404');
+for (const path of ['/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives']) {
+  assert(config.rewrites.some(r => r.source === path && r.destination === `/prerender${path}/index.html`), `Known study must precede unknown-study fallback: ${path}`);
+}
 assert(!config.rewrites.some(r => ['/blog/:slug', '/guides/:slug', '/research/:slug', '/comparisons/:slug'].includes(r.source)), 'Unpublished or nonexistent articles must not return the generic SPA shell');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 
