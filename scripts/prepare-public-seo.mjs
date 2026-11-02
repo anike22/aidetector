@@ -11,6 +11,16 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Marketplace detail records are static, not database-backed. Reject missing IDs.
+  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
+  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
+  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+  if (marketplaceIds.length < 4 || new Set(marketplaceIds).size !== marketplaceIds.length) {
+    throw new Error('Marketplace product inventory incomplete or duplicate');
+  }
+  // Only verified static marketplace records are eligible for public prerendering.
+  for (const id of marketplaceIds) paths.add(`/marketplace/${id}`);
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
@@ -99,22 +109,14 @@ export async function prepare() {
       }
     }
   }
-  // Marketplace detail records are static, not database-backed. Reject missing IDs.
-  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
-  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
-  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
-  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
-  if (marketplaceIds.length < 4 || new Set(marketplaceIds).size !== marketplaceIds.length) {
-    throw new Error('Marketplace product inventory incomplete or duplicate');
-  }
   const marketplaceUnknownIndex = checkedInRewrites.findIndex(r => r.source === '/marketplace/:id' && r.destination === '/api/seo-not-found');
   if (marketplaceUnknownIndex < 0) throw new Error('Checked-in Vercel config must 404 unknown marketplace IDs');
   for (const id of marketplaceIds) {
-    const knownIndex = checkedInRewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === '/index.html');
+    const knownIndex = checkedInRewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === `/prerender/marketplace/${id}/index.html`);
     if (knownIndex < 0 || knownIndex >= marketplaceUnknownIndex) {
       throw new Error(`Checked-in Vercel config must preserve marketplace product ${id}`);
     }
-    config.rewrites.push({source: `/marketplace/${id}`, destination: '/index.html'});
+    // Exact canonical prerender rewrite already generated from paths above.
   }
   for (const id of knownDirectoryIds) {
     for (const prefix of ['/tools', '/ai-tools']) {

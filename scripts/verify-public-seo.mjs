@@ -65,8 +65,14 @@ assert(marketplaceIds.length >= 4 && new Set(marketplaceIds).size === marketplac
 const missingMarketplaceIndex = config.rewrites.findIndex(r => r.source === '/marketplace/:id' && r.destination === '/api/seo-not-found');
 assert(missingMarketplaceIndex >= 0, 'Unknown marketplace products must return HTTP 404');
 for (const id of marketplaceIds) {
-  const knownIndex = config.rewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === '/index.html');
-  assert(knownIndex >= 0 && knownIndex < missingMarketplaceIndex, `Valid marketplace product ${id} must preserve SPA route`);
+  const knownIndex = config.rewrites.findIndex(r => r.source === `/marketplace/${id}` && r.destination === `/prerender/marketplace/${id}/index.html`);
+  assert(knownIndex >= 0 && knownIndex < missingMarketplaceIndex, `Valid marketplace product ${id} must have its own prerender before the 404 fallback`);
+  assert(urls.includes(`https://www.aidetector.cx/marketplace/${id}`), `Marketplace product ${id} missing from public sitemap`);
+  const html = await readFile(`dist/prerender/marketplace/${id}/index.html`, 'utf8');
+  const name = marketplaceBlock.match(new RegExp(`id: '${id}',\\s*name: '([^']+)'`))?.[1];
+  assert(name && html.includes(name), `Marketplace product ${id} initial HTML lacks product content`);
+  assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product ${id} missing specific initial HTML title`);
+  assert(html.includes(`href="https://www.aidetector.cx/marketplace/${id}"`), `Marketplace product ${id} missing self-canonical`);
 }
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
 assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
