@@ -100,6 +100,22 @@ for (const pathname of flaggedPaths) {
   flaggedDescriptions.add(description);
 }
 
+// Validate article identity, not just a canonical manufactured by prerendering.
+// A homepage shell at an article URL must fail the SEO build even if its canonical is unique.
+const knownArticleIdentity = {
+  '/research/ai-detection-accuracy-tests': /AI Detection Accuracy Tests/i,
+  '/research/gpt-5-vs-gemini-detection': /GPT-5(?:\.5)? vs (?:Google )?Gemini/i,
+  '/comparisons/turnitin-vs-aidetector-cx': /Turnitin vs AIDetector/i,
+  '/comparisons/chatgpt-detector-comparison': /ChatGPT Detector Comparison/i,
+};
+for (const [route, expectedHeading] of Object.entries(knownArticleIdentity)) {
+  const html = await readFile(path.join('dist', 'prerender', route, 'index.html'), 'utf8');
+  const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, ' ').replace(/&[^;]+;/g, ' ').trim() || '';
+  assert(expectedHeading.test(h1), `Wrong article or homepage shell prerendered at ${route}: ${h1.slice(0,120)}`);
+  const title = html.match(/<title>([^<]*)<\/title>/i)?.[1] || '';
+  assert(!/^(AI Detector|AIDetector\.cx|Home)\b/i.test(title), `Homepage SEO title on article ${route}`);
+  assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic article description at ${route}`);
+}
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 // Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
 const videoStudyLinks = [
