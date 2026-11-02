@@ -193,6 +193,10 @@
       "destination": "/api/seo-not-found"
     },
     {
+      "source": "/research/false-positive-analysis/",
+      "destination": "/api/seo-not-found"
+    },
+    {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
