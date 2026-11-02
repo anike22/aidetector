@@ -91,6 +91,21 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
+  // Exact 404 routes for confirmed removed editorial URLs. Keep both slash forms ahead of any SPA fallback.
+  const confirmedRemovedPaths = [
+    '/research/false-positive-analysis',
+    '/blog/chatgpt-5-claude-3-5-gemini-ai-detection',
+    '/blog/how-our-ai-detector-works',
+    '/blog/perplexity-ai-detection-predictable-next-word-choices',
+    '/blog/simply-humanizer-undetectable-ai-trick-scanners',
+    '/blog/what-percentage-of-ai-detection-is-allowed-in-college',
+    '/research/avoid-false-positives-institutional-ai-detectors',
+  ];
+  for (const pathname of confirmedRemovedPaths) {
+    for (const suffix of ['', '/']) {
+      config.rewrites.push({source: pathname + suffix, destination: '/api/seo-not-found'});
+    }
+  }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/login', '/reports/shared', '/technical-seo'];
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
