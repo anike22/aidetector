@@ -1,4 +1,4 @@
-// Return a genuine HTTP 404 for a confirmed missing public record.
+// Return a genuine HTTP 404 for a confirmed removed public URL.
 export default function handler(_request, response) {
   response.statusCode = 404;
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
