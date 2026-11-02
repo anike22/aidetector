@@ -11,11 +11,17 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Child sitemaps already own their guide, research, comparison, and blog URLs.
+  // Keep a separate set so the root sitemap contains only URLs not listed in a child sitemap.
+  const childSitemapPaths = new Set();
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
       const pathname = new URL(url).pathname;
-      if (pathname !== '/guides/understanding-ai-detection-scores') paths.add(pathname);
+      if (pathname !== '/guides/understanding-ai-detection-scores') {
+        paths.add(pathname);
+        childSitemapPaths.add(pathname);
+      }
     }
   }
   if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
@@ -27,7 +33,8 @@ export async function prepare() {
       if (['blog', 'guides', 'research', 'comparisons'].includes(article.hub) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(article.slug)) paths.add(`/${article.hub}/${article.slug}`);
     }
   }
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + [...paths].sort().map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
+  const rootSitemapPaths = [...paths].filter(pathname => !childSitemapPaths.has(pathname));
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + rootSitemapPaths.sort().map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
   await writeFile(path.join(root, 'public/sitemap.xml'), xml);
   for (const name of [...maps, 'sitemap-index.xml']) {
     let xml = await readFile(path.join(root, 'public', name), 'utf8');
