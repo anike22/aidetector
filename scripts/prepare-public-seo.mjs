@@ -11,6 +11,15 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Marketplace detail records are static: prerender only IDs present in the checked-in inventory.
+  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
+  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
+  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+  if (marketplaceIds.length < 4 || new Set(marketplaceIds).size !== marketplaceIds.length) {
+    throw new Error('Marketplace product inventory incomplete or duplicate');
+  }
+  for (const id of marketplaceIds) paths.add(`/marketplace/${id}`);
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
@@ -42,6 +51,14 @@ export async function prepare() {
   // Catch omissions such as /aeo-optimizer before this script overwrites vercel.json.
   for (const pathname of publicPaths) {
     const expected = `/prerender${pathname === '/' ? '/home' : pathname}/index.html`;
+    assertCheckedInPublicRewrite(pathname, expected);
+  }
+  if (!config.rewrites?.some(route => route.source === '/marketplace' && route.destination === '/index.html')) {
+    throw new Error('Checked-in vercel.json missing Marketplace hub application route');
+  }
+  for (const id of marketplaceIds) {
+    const pathname = `/marketplace/${id}`;
+    const expected = `/prerender/marketplace/${id}/index.html`;
     assertCheckedInPublicRewrite(pathname, expected);
   }
   function assertCheckedInPublicRewrite(pathname, expected) {
