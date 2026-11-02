@@ -33,6 +33,11 @@ assert(config.rewrites.some(r => r.source === '/essay-template/:slug' && r.desti
 assert(config.headers.some(h => h.source === '/essay-template/:slug' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Essay template dynamic routes must send HTTP noindex');
 assert(!urls.some(u => new URL(u).pathname.startsWith('/essay-template/')), 'Unverified dynamic essay templates must not enter sitemap');
 
+// Technical SEO is feature-gated and currently serves homepage initial HTML; keep its SPA route functional but nonindexable until dedicated publication/prerender is ready.
+assert(config.rewrites.some(r => r.source === '/technical-seo' && r.destination === '/index.html'), 'Technical SEO SPA route must remain functional');
+assert(config.headers.some(h => h.source === '/technical-seo' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Unpublished Technical SEO route must send HTTP noindex');
+assert(!urls.includes('https://www.aidetector.cx/technical-seo'), 'Unpublished Technical SEO route must not enter public sitemap');
+
 // Growth Marketing remains hidden/nonindexable by default; never expose the homepage shell as indexable content on this route.
 assert(config.rewrites.some(r => r.source === '/services/growth-marketing' && r.destination === '/index.html'), 'Growth Marketing SPA route must remain functional');
 assert(config.headers.some(h => h.source === '/services/growth-marketing' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Hidden Growth Marketing route must send HTTP noindex');
