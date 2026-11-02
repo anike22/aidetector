@@ -5,6 +5,10 @@
       "destination": "/prerender/home/index.html"
     },
     {
+      "source": "/((?!assets/|.*\\.[^/]+$).*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/about",
       "destination": "/prerender/about/index.html"
     },
@@ -129,6 +133,22 @@
       "destination": "/prerender/humanizer/index.html"
     },
     {
+      "source": "/marketplace/1",
+      "destination": "/prerender/marketplace/1/index.html"
+    },
+    {
+      "source": "/marketplace/2",
+      "destination": "/prerender/marketplace/2/index.html"
+    },
+    {
+      "source": "/marketplace/3",
+      "destination": "/prerender/marketplace/3/index.html"
+    },
+    {
+      "source": "/marketplace/4",
+      "destination": "/prerender/marketplace/4/index.html"
+    },
+    {
       "source": "/plagiarism-checker",
       "destination": "/prerender/plagiarism-checker/index.html"
     },
@@ -187,10 +207,6 @@
     {
       "source": "/wordpress-plugin",
       "destination": "/prerender/wordpress-plugin/index.html"
-    },
-    {
-      "source": "/((?!assets/|.*\\.[^/]+$).*)",
-      "destination": "/index.html"
     }
   ],
   "buildCommand": "npm run build:production",
