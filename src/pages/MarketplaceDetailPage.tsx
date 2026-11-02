@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
+import PageMeta from '@/components/common/PageMeta';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -115,6 +116,12 @@ export default function MarketplaceDetailPage() {
 
   return (
     <MainLayout>
+      <PageMeta
+        title={`${product.name} | AIDetector.cx Marketplace`}
+        description={product.description}
+        canonicalUrl={`https://www.aidetector.cx/marketplace/${product.id}`}
+        ogImage={product.image}
+      />
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-10">
         {/* Back */}
         <Link to="/marketplace" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
