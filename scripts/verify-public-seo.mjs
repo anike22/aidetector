@@ -16,6 +16,8 @@ for (const source of ['/login', '/reports/shared']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
+assert(config.headers.some(h => h.source === '/essay-template/:path*' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Unpublished Essay Template details must send HTTP noindex');
+assert(!urls.some(url => new URL(url).pathname.startsWith('/essay-template/')), 'Unpublished Essay Template details must stay out of the public sitemap');
 for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
 }
