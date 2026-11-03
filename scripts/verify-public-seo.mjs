@@ -12,7 +12,7 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
-for (const source of ['/login', '/reports/shared']) {
+for (const source of ['/login', '/reports/shared', '/marketplace', '/marketplace/']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
@@ -100,6 +100,34 @@ for (const pathname of flaggedPaths) {
   flaggedDescriptions.add(description);
 }
 
+// Marketplace detail pages are public, static products and must expose product-specific initial HTML.
+const marketplaceSource = await readFile('src/data/siteData.ts', 'utf8');
+const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+assert(marketplaceBlock, 'Marketplace product inventory missing');
+const marketplaceProducts = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',\s*\n\s+name: '([^']+)'/gm)]
+  .map(([, id, name]) => ({id, name}));
+assert(marketplaceProducts.length >= 4 && new Set(marketplaceProducts.map(p => p.id)).size === marketplaceProducts.length, 'Marketplace product inventory incomplete or duplicate');
+for (const {id, name} of marketplaceProducts) {
+  const pathname = `/marketplace/${id}`;
+  const target = `https://www.aidetector.cx${pathname}`;
+  assert(urls.includes(target), `Marketplace product missing from sitemap: ${pathname}`);
+  const rewrite = config.rewrites.find(entry => entry.source === pathname);
+  assert(rewrite?.destination === `/prerender/marketplace/${id}/index.html`, `Marketplace product missing dedicated prerender: ${pathname}`);
+  const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
+  assert(html.includes(`<title>${name} | AIDetector.cx Marketplace</title>`), `Marketplace product title missing or generic: ${pathname}`);
+  assert(html.includes(`href="${target}"`), `Marketplace product self-canonical missing: ${pathname}`);
+  assert(html.includes(name), `Marketplace product content missing from initial HTML: ${pathname}`);
+}
+// Unknown Marketplace IDs must not fall through to the generic SPA shell.
+const unknownMarketplace404 = config.rewrites.findIndex(entry => entry.source === '/marketplace/:id' && entry.destination === '/api/seo-not-found');
+assert(unknownMarketplace404 >= 0, 'Unknown Marketplace IDs must route to the genuine HTTP 404 handler');
+assert(config.rewrites.some(entry => entry.source === '/marketplace/:id/' && entry.destination === '/api/seo-not-found'), 'Trailing-slash Marketplace IDs must return HTTP 404');
+for (const {id} of marketplaceProducts) {
+  const knownIndex = config.rewrites.findIndex(entry => entry.source === `/marketplace/${id}` && entry.destination === `/prerender/marketplace/${id}/index.html`);
+  assert(knownIndex >= 0 && knownIndex < unknownMarketplace404, `Known Marketplace product must precede unknown-ID 404: ${id}`);
+}
+const notFoundHandler = await readFile('api/seo-not-found.js', 'utf8');
+assert(/statusCode = 404/.test(notFoundHandler) && /X-Robots-Tag/.test(notFoundHandler), 'Marketplace missing-record handler must send HTTP 404 and noindex');
 assert.equal(await readFile('dist/index.html', 'utf8'), await readFile('dist/prerender/home/index.html', 'utf8'), 'Root entry must contain rendered homepage');
 // Guard internal links in the AI video study cluster against reintroducing nonexistent destinations.
 const videoStudyLinks = [

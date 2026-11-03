@@ -11,6 +11,15 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Marketplace detail records are static: prerender only IDs present in the checked-in inventory.
+  const marketplaceSource = await readFile(path.join(root, 'src/data/siteData.ts'), 'utf8');
+  const marketplaceBlock = marketplaceSource.split('export const MARKETPLACE_PRODUCTS: MarketplaceProduct[] = [')[1]?.split('];')[0];
+  if (!marketplaceBlock) throw new Error('Marketplace product inventory missing');
+  const marketplaceIds = [...marketplaceBlock.matchAll(/^\s+id: '([a-z0-9-]+)',/gm)].map(([, id]) => id);
+  if (marketplaceIds.length < 4 || new Set(marketplaceIds).size !== marketplaceIds.length) {
+    throw new Error('Marketplace product inventory incomplete or duplicate');
+  }
+  for (const id of marketplaceIds) paths.add(`/marketplace/${id}`);
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
@@ -43,6 +52,20 @@ export async function prepare() {
   for (const pathname of publicPaths) {
     const expected = `/prerender${pathname === '/' ? '/home' : pathname}/index.html`;
     assertCheckedInPublicRewrite(pathname, expected);
+  }
+  if (!config.rewrites?.some(route => route.source === '/marketplace' && route.destination === '/index.html')) {
+    throw new Error('Checked-in vercel.json missing Marketplace hub application route');
+  }
+  for (const id of marketplaceIds) {
+    const pathname = `/marketplace/${id}`;
+    const expected = `/prerender/marketplace/${id}/index.html`;
+    assertCheckedInPublicRewrite(pathname, expected);
+  }
+  const unknownMarketplaceIndex = config.rewrites.findIndex(route => route.source === '/marketplace/:id' && route.destination === '/api/seo-not-found');
+  if (unknownMarketplaceIndex < 0) throw new Error('Checked-in vercel.json must return HTTP 404 for unknown Marketplace IDs');
+  for (const id of marketplaceIds) {
+    const knownIndex = config.rewrites.findIndex(route => route.source === `/marketplace/${id}` && route.destination === `/prerender/marketplace/${id}/index.html`);
+    if (knownIndex < 0 || knownIndex >= unknownMarketplaceIndex) throw new Error(`Known Marketplace route must precede unknown-ID 404: ${id}`);
   }
   function assertCheckedInPublicRewrite(pathname, expected) {
     if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
@@ -77,6 +100,13 @@ export async function prepare() {
     }
   }
   for (const route of registeredRoutes) {
+    if (route === '/marketplace/:id') {
+      // Only IDs in the checked-in public product inventory are valid detail pages.
+      // Exact product prerenders are inserted first; unknown IDs must return a real 404.
+      config.rewrites.push({source: route, destination: '/api/seo-not-found'});
+      config.rewrites.push({source: route + '/', destination: '/api/seo-not-found'});
+      continue;
+    }
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
@@ -92,7 +122,7 @@ export async function prepare() {
     }
   }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
-  const privateExactPaths = ['/login', '/reports/shared', '/technical-seo'];
+  const privateExactPaths = ['/login', '/reports/shared', '/technical-seo', '/marketplace', '/marketplace/'];
   config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','essay-studio','content-studio','organizations','workspaces','reports','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}))];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
