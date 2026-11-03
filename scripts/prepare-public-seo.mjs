@@ -53,7 +53,7 @@ export async function prepare() {
   }
   function assertCheckedInPublicRewrite(pathname, expected) {
     if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
-      throw new Error(\`Checked-in vercel.json missing public prerender rewrite: \${pathname} -> \${expected}\`);
+      throw new Error('Checked-in vercel.json missing public prerender rewrite: ' + pathname + ' -> ' + expected);
     }
   }
   // Vercel uses the checked-in vercel.json for deployment routing. Verify the
