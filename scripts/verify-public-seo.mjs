@@ -50,7 +50,10 @@ for (const [oldPath, newPath] of [
   assert(!config.rewrites.some(r => r.source === oldPath), `Legacy redirect must not serve a 200 rewrite: ${oldPath}`);
 }
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
-assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Blanket SPA rewrite can cause soft 404s');
+// This is the generated prerender-only verification config. The deployment-time
+// checked-in vercel.json is separately checked for exact 404 precedence in
+// prepare-public-seo.mjs before its rewrite list is regenerated.
+assert(!config.rewrites.some(r => r.source.includes('((?!assets/')), 'Generated prerender verification config must not retain the blanket SPA fallback');
 for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant']) {
   assert(config.rewrites.some(r => r.source === route), `Missing registered feature route: ${route}`);
 }
