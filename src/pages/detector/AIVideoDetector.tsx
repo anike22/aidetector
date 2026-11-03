@@ -18,6 +18,7 @@ import { executeRealVideoForensics } from '@/lib/videoDetection/videoForensicEng
 import { downloadVideoJsonReport, openPrintableVideoEvidenceReport } from '@/lib/videoDetection/videoReportGenerator';
 import type { VideoAnalysisResult, VideoAnalysisMode, VideoJobStatus } from '@/lib/videoDetection/types';
 import { VIDEO_MODE_CONFIGS, VIDEO_INGESTION_LIMITS } from '@/lib/videoDetection/config';
+import { validateVideoUpload } from '@/lib/videoDetection/videoIngestionEngine';
 import VideoTimelineOverlay from '@/components/detector/VideoTimelineOverlay';
 import OriginalVsPublishedVideoComparator from '@/components/detector/OriginalVsPublishedVideoComparator';
 import LiveCallDeepfakeProtection from '@/components/detector/LiveCallDeepfakeProtection';
@@ -109,6 +110,7 @@ export default function AIVideoDetector() {
   };
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState<string>('');
   const [progressPercent, setProgressPercent] = useState<number>(0);
@@ -132,6 +134,7 @@ export default function AIVideoDetector() {
       }
       setFile(f);
       setResult(null);
+      setPreviewError(false);
       setPreview(URL.createObjectURL(f));
     }
   };
@@ -173,23 +176,20 @@ export default function AIVideoDetector() {
   const handleAnalyze = async () => {
     if (!file) return;
 
+    // Use the existing ingestion validator's duration fallback instead of blocking
+    // analysis when this browser cannot decode the preview codec.
     let durationSeconds: number;
     try {
-      durationSeconds = await new Promise<number>((resolve, reject) => {
-        const video = document.createElement('video');
-        const url = URL.createObjectURL(file);
-        const timer = setTimeout(() => finish(new Error('Video duration could not be read.')), 15000);
-        const finish = (error?: Error) => {
-          clearTimeout(timer); URL.revokeObjectURL(url);
-          if (error) reject(error); else resolve(video.duration);
-        };
-        video.preload = 'metadata';
-        video.onloadedmetadata = () => Number.isFinite(video.duration) && video.duration > 0
-          ? finish() : finish(new Error('Video duration is invalid.'));
-        video.onerror = () => finish(new Error('Video could not be opened.'));
-        video.src = url;
-      });
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'Invalid video'); return; }
+      const validation = await validateVideoUpload(file);
+      if (!validation.valid) {
+        toast.error(validation.errorMessage || 'Invalid video file.');
+        return;
+      }
+      durationSeconds = validation.estimatedDurationSeconds || 10;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Invalid video');
+      return;
+    }
     const reservation = await reserveVideoScan(mode, Math.ceil(durationSeconds));
     if (!reservation.allowed) {
       if (!user) {
@@ -450,8 +450,17 @@ export default function AIVideoDetector() {
                         ref={videoRef}
                         src={preview}
                         controls
+                        playsInline
+                        preload="metadata"
+                        onError={() => setPreviewError(true)}
+                        onLoadedData={() => setPreviewError(false)}
                         className="w-full h-full object-contain"
                       />
+                      {previewError && (
+                        <div className="absolute inset-x-2 bottom-2 rounded-md bg-black/75 px-3 py-2 text-center text-xs text-white">
+                          Preview is unavailable in this browser or for this video codec. You can still run forensic analysis.
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-3">
                       <div>
