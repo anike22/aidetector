@@ -53,7 +53,33 @@ export async function prepare() {
   }
   function assertCheckedInPublicRewrite(pathname, expected) {
     if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
-      throw new Error(`Checked-in vercel.json missing public prerender rewrite: ${pathname} -> ${expected}`);
+      throw new Error(\`Checked-in vercel.json missing public prerender rewrite: \${pathname} -> \${expected}\`);
+    }
+  }
+  // Vercel uses the checked-in vercel.json for deployment routing. Verify the
+  // confirmed-removed URL handlers before this script replaces rewrites with
+  // the generated prerender-only config used by local build verification.
+  const confirmedRemovedPaths = [
+    '/research/false-positive-analysis',
+    '/blog/chatgpt-5-claude-3-5-gemini-ai-detection',
+    '/blog/how-our-ai-detector-works',
+    '/blog/perplexity-ai-detection-predictable-next-word-choices',
+    '/blog/simply-humanizer-undetectable-ai-trick-scanners',
+    '/blog/what-percentage-of-ai-detection-is-allowed-in-college',
+    '/research/avoid-false-positives-institutional-ai-detectors',
+  ];
+  const fallbackIndex = config.rewrites.findIndex(route =>
+    route.source === '/((?!assets/|.*\\.[^/]+$).*)' && route.destination === '/index.html'
+  );
+  if (fallbackIndex < 0) throw new Error('Checked-in vercel.json is missing the existing SPA fallback');
+  for (const pathname of confirmedRemovedPaths) {
+    for (const suffix of ['', '/']) {
+      const routeIndex = config.rewrites.findIndex(route =>
+        route.source === pathname + suffix && route.destination === '/api/seo-not-found'
+      );
+      if (routeIndex < 0 || routeIndex >= fallbackIndex) {
+        throw new Error('Checked-in vercel.json must route confirmed-removed URL before the SPA fallback: ' + pathname + suffix);
+      }
     }
   }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
@@ -98,16 +124,7 @@ export async function prepare() {
       config.rewrites.push({source: route, destination: '/index.html'});
     }
   }
-  // Exact 404 routes for confirmed removed editorial URLs. Keep both slash forms ahead of any SPA fallback.
-  const confirmedRemovedPaths = [
-    '/research/false-positive-analysis',
-    '/blog/chatgpt-5-claude-3-5-gemini-ai-detection',
-    '/blog/how-our-ai-detector-works',
-    '/blog/perplexity-ai-detection-predictable-next-word-choices',
-    '/blog/simply-humanizer-undetectable-ai-trick-scanners',
-    '/blog/what-percentage-of-ai-detection-is-allowed-in-college',
-    '/research/avoid-false-positives-institutional-ai-detectors',
-  ];
+  // Keep the same exact removed-URL handlers in the generated prerender verification config.
   for (const pathname of confirmedRemovedPaths) {
     for (const suffix of ['', '/']) {
       config.rewrites.push({source: pathname + suffix, destination: '/api/seo-not-found'});
