@@ -4,8 +4,27 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 const dist = path.resolve('dist');
-const xml = await readFile(path.join(dist, 'sitemap.xml'), 'utf8');
-const paths = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([, url]) => new URL(url).pathname);
+const indexXml = await readFile(path.join(dist, 'sitemap-index.xml'), 'utf8');
+const sitemapUrls = [...indexXml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([, url]) => new URL(url));
+if (sitemapUrls.length === 0) throw new Error('Sitemap index contains no child sitemaps');
+const sitemapPaths = sitemapUrls.map(url => url.pathname);
+if (new Set(sitemapPaths).size !== sitemapPaths.length) throw new Error('Duplicate sitemap entries in sitemap index');
+const publicPathSet = new Set();
+for (const sitemapUrl of sitemapUrls) {
+  if (sitemapUrl.origin !== 'https://www.aidetector.cx' || !/^\/sitemap(?:-[a-z0-9-]+)?\.xml$/.test(sitemapUrl.pathname)) {
+    throw new Error(`Unexpected sitemap URL in index: ${sitemapUrl.href}`);
+  }
+  const sitemapXml = await readFile(path.join(dist, sitemapUrl.pathname.slice(1)), 'utf8');
+  for (const [, url] of sitemapXml.matchAll(/<loc>(.*?)<\/loc>/g)) {
+    const parsed = new URL(url);
+    if (parsed.origin !== 'https://www.aidetector.cx' || parsed.search || parsed.hash) {
+      throw new Error(`Unexpected public URL in sitemap: ${parsed.href}`);
+    }
+    publicPathSet.add(parsed.pathname);
+  }
+}
+const paths = [...publicPathSet].sort();
+if (paths.length === 0) throw new Error('Sitemap index contains no public URLs');
 const shell = await readFile(path.join(dist, 'index.html'));
 const server = createServer(async (req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;

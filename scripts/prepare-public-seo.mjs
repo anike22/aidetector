@@ -11,11 +11,17 @@ export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/a
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
+  // Child sitemaps already own their guide, research, comparison, and blog URLs.
+  // Keep a separate set so the root sitemap contains only URLs not listed in a child sitemap.
+  const childSitemapPaths = new Set();
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
       const pathname = new URL(url).pathname;
-      if (pathname !== '/guides/understanding-ai-detection-scores') paths.add(pathname);
+      if (pathname !== '/guides/understanding-ai-detection-scores') {
+        paths.add(pathname);
+        childSitemapPaths.add(pathname);
+      }
     }
   }
   if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
@@ -27,7 +33,8 @@ export async function prepare() {
       if (['blog', 'guides', 'research', 'comparisons'].includes(article.hub) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(article.slug)) paths.add(`/${article.hub}/${article.slug}`);
     }
   }
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + [...paths].sort().map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
+  const rootSitemapPaths = [...paths].filter(pathname => !childSitemapPaths.has(pathname));
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + rootSitemapPaths.sort().map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
   await writeFile(path.join(root, 'public/sitemap.xml'), xml);
   for (const name of [...maps, 'sitemap-index.xml']) {
     let xml = await readFile(path.join(root, 'public', name), 'utf8');
@@ -46,7 +53,33 @@ export async function prepare() {
   }
   function assertCheckedInPublicRewrite(pathname, expected) {
     if (!config.rewrites?.some(route => route.source === pathname && route.destination === expected)) {
-      throw new Error(`Checked-in vercel.json missing public prerender rewrite: ${pathname} -> ${expected}`);
+      throw new Error('Checked-in vercel.json missing public prerender rewrite: ' + pathname + ' -> ' + expected);
+    }
+  }
+  // Vercel uses the checked-in vercel.json for deployment routing. Verify the
+  // confirmed-removed URL handlers before this script replaces rewrites with
+  // the generated prerender-only config used by local build verification.
+  const confirmedRemovedPaths = [
+    '/research/false-positive-analysis',
+    '/blog/chatgpt-5-claude-3-5-gemini-ai-detection',
+    '/blog/how-our-ai-detector-works',
+    '/blog/perplexity-ai-detection-predictable-next-word-choices',
+    '/blog/simply-humanizer-undetectable-ai-trick-scanners',
+    '/blog/what-percentage-of-ai-detection-is-allowed-in-college',
+    '/research/avoid-false-positives-institutional-ai-detectors',
+  ];
+  const fallbackIndex = config.rewrites.findIndex(route =>
+    route.source === '/((?!assets/|.*\\.[^/]+$).*)' && route.destination === '/index.html'
+  );
+  if (fallbackIndex < 0) throw new Error('Checked-in vercel.json is missing the existing SPA fallback');
+  for (const pathname of confirmedRemovedPaths) {
+    for (const suffix of ['', '/']) {
+      const routeIndex = config.rewrites.findIndex(route =>
+        route.source === pathname + suffix && route.destination === '/api/seo-not-found'
+      );
+      if (routeIndex < 0 || routeIndex >= fallbackIndex) {
+        throw new Error('Checked-in vercel.json must route confirmed-removed URL before the SPA fallback: ' + pathname + suffix);
+      }
     }
   }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
@@ -89,6 +122,12 @@ export async function prepare() {
       continue;
     } else if (!paths.has(route)) {
       config.rewrites.push({source: route, destination: '/index.html'});
+    }
+  }
+  // Keep the same exact removed-URL handlers in the generated prerender verification config.
+  for (const pathname of confirmedRemovedPaths) {
+    for (const suffix of ['', '/']) {
+      config.rewrites.push({source: pathname + suffix, destination: '/api/seo-not-found'});
     }
   }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.

@@ -54,23 +54,23 @@
     },
     {
       "source": "/blog/chatgpt-5-claude-3-5-gemini-ai-detection",
-      "destination": "/prerender/blog/chatgpt-5-claude-3-5-gemini-ai-detection/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/blog/how-our-ai-detector-works",
-      "destination": "/prerender/blog/how-our-ai-detector-works/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/blog/perplexity-ai-detection-predictable-next-word-choices",
-      "destination": "/prerender/blog/perplexity-ai-detection-predictable-next-word-choices/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/blog/simply-humanizer-undetectable-ai-trick-scanners",
-      "destination": "/prerender/blog/simply-humanizer-undetectable-ai-trick-scanners/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/blog/what-percentage-of-ai-detection-is-allowed-in-college",
-      "destination": "/prerender/blog/what-percentage-of-ai-detection-is-allowed-in-college/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/chrome-extension",
@@ -150,7 +150,7 @@
     },
     {
       "source": "/research/avoid-false-positives-institutional-ai-detectors",
-      "destination": "/prerender/research/avoid-false-positives-institutional-ai-detectors/index.html"
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/research/gpt-5-vs-gemini-detection",
@@ -187,6 +187,38 @@
     {
       "source": "/wordpress-plugin",
       "destination": "/prerender/wordpress-plugin/index.html"
+    },
+    {
+      "source": "/research/false-positive-analysis",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/research/false-positive-analysis/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/blog/chatgpt-5-claude-3-5-gemini-ai-detection/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/blog/how-our-ai-detector-works/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/blog/perplexity-ai-detection-predictable-next-word-choices/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/blog/simply-humanizer-undetectable-ai-trick-scanners/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/blog/what-percentage-of-ai-detection-is-allowed-in-college/",
+      "destination": "/api/seo-not-found"
+    },
+    {
+      "source": "/research/avoid-false-positives-institutional-ai-detectors/",
+      "destination": "/api/seo-not-found"
     },
     {
       "source": "/((?!assets/|.*\\.[^/]+$).*)",
