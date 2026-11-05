@@ -258,6 +258,11 @@
       "source": "/tools/4",
       "destination": "/tools/",
       "permanent": true
+    },
+    {
+      "source": "/tools/2",
+      "destination": "/tools/",
+      "permanent": true
     }
   ],
   "headers": [
