@@ -84,7 +84,13 @@ export default function ContentHubPage({ hub }: { hub: ContentHub }) {
   }, [hub]);
 
   const mergedPosts = useMemo(() => {
-    const list = [...BLOG_POSTS.filter((p) => p.hub === hub)];
+    // The archive contains the canonical static editorial articles in their own hubs,
+    // but no static entries assigned to "blog". Keep /blog useful when the blog_posts
+    // table has no published blog-hub rows by surfacing those existing articles here.
+    // Each card retains its original hub so its link still opens the canonical article URL.
+    const list = hub === 'blog'
+      ? [...BLOG_POSTS]
+      : [...BLOG_POSTS.filter((p) => p.hub === hub)];
     for (const dbp of dbPosts) {
       const idx = list.findIndex((p) => p.id === dbp.slug);
       const post: BlogPost = {
