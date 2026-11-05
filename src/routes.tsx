@@ -33,6 +33,7 @@ const CustomerIntelligencePage = lazy(() => import('./pages/admin/CustomerIntell
 const PrivacyControlsPage = lazy(() => import('./pages/account/PrivacyControlsPage'));
 const ContentHubPage = lazy(() => import('./pages/ContentHubPage'));
 const ArticlePage = lazy(() => import('./pages/ArticlePage'));
+const DualEngineDetectionMethodologyPage = lazy(() => import('./pages/research/DualEngineDetectionMethodologyPage'));
 const GonePage = lazy(() => import('./pages/GonePage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const NewsletterPage = lazy(() => import('./pages/NewsletterPage'));
@@ -687,6 +688,12 @@ export const routes: RouteConfig[] = [
     name: 'Understanding AI Detection Scores Redirect',
     path: '/guides/understanding-ai-detection-scores',
     element: <Navigate to="/guides/how-ai-detection-works" replace />,
+    public: true,
+  },
+  {
+    name: 'Dual-Engine Detection Methodology',
+    path: '/research/dual-engine-detection-methodology',
+    element: <DualEngineDetectionMethodologyPage />,
     public: true,
   },
   {
