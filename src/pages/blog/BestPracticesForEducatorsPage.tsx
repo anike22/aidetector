@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
-import { BookOpen, ShieldCheck, Users, MessageCircle, ClipboardCheck, GraduationCap, Lightbulb, Scale, FileText, Search, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { BookOpen, ShieldCheck, Users, MessageCircle, ClipboardCheck, GraduationCap, Lightbulb, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 const faqs = [
   { q: 'Can an AI detector prove that a student used ChatGPT?', a: 'No. An AI detector estimates whether text resembles patterns associated with AI-generated writing. It cannot establish who wrote a passage, which tool was used, or whether a student violated a policy. Use a result only as a prompt for further review.' },
