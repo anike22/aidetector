@@ -42,5 +42,12 @@
     <description>Learn how AI detectors identify machine-generated text through perplexity, burstiness, entropy, neural classifiers, and ensemble models.</description>
     <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
   </item>
+  <item>
+    <title>Best Practices for Educators: AI Detection, Academic Integrity and Responsible AI Use</title>
+    <link>https://www.aidetector.cx/guides/best-practices-for-educators</link>
+    <guid isPermaLink="true">https://www.aidetector.cx/guides/best-practices-for-educators</guid>
+    <description>Practical guidance for teachers on fair AI detection, Turnitin and GPTZero comparisons, classroom AI policies, student privacy, assessment design and responsible AI literacy.</description>
+    <pubDate>Thu, 05 Nov 2026 00:00:00 +0000</pubDate>
+  </item>
 </channel>
 </rss>
