@@ -37,7 +37,7 @@ import {
   ScrollText,
 } from 'lucide-react';
 
-const CANONICAL_URL = 'https://www.aidetector.cx/blog/best-ai-detector';
+const CANONICAL_URL = 'https://www.aidetector.cx/guides/best-ai-detector';
 const OG_IMAGE = '/brand/aidetector-icon.png';
 
 const SITE_NAME = 'AIDetector.cx';
@@ -619,7 +619,7 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
-    { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://www.aidetector.cx/blog' },
+    { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://www.aidetector.cx/guides' },
     { '@type': 'ListItem', position: 3, name: 'Best AI Detector', item: CANONICAL_URL },
   ],
 };
