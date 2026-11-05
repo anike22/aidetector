@@ -1,6 +1,7 @@
 import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
+const BestPracticesForEducatorsPage = lazy(() => import('./pages/blog/BestPracticesForEducatorsPage'));
 import MainLayout from '@/components/layouts/MainLayout';
 import type { ReactNode } from 'react';
 import HomePage from './pages/HomePage';
@@ -1394,6 +1395,12 @@ export const routes: RouteConfig[] = [
     name: 'Partner Result',
     path: '/partner-result/:id',
     element: <PartnerResultPage />,
+    public: true,
+  },
+  {
+    name: 'Best Practices for Educators',
+    path: '/guides/best-practices-for-educators',
+    element: <BestPracticesForEducatorsPage />,
     public: true,
   },
   {
