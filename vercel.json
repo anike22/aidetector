@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/essay-studio",
+      "destination": "/prerender/essay-studio/index.html"
+    },
+    {
+      "source": "/essay-studio/templates",
+      "destination": "/prerender/essay-studio/templates/index.html"
+    },
+    {
       "source": "/",
       "destination": "/prerender/home/index.html"
     },
@@ -271,15 +279,6 @@
     },
     {
       "source": "/settings/:path*",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
-      "source": "/essay-studio/:path*",
       "headers": [
         {
           "key": "X-Robots-Tag",
