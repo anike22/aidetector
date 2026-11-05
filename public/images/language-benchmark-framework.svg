@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">Multilingual AI detection benchmark framework</title>
+<desc id="desc">Language samples flow through dataset validation, detector evaluation and responsible human review, with benchmark metrics shown at the bottom.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef5ff"/><stop offset="1" stop-color="#f5f0ff"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#1e293b" flood-opacity=".10"/></filter>
+</defs>
+<rect width="1200" height="560" rx="28" fill="url(#bg)"/>
+<g font-family="Inter,Arial,sans-serif">
+  <text x="64" y="66" fill="#172554" font-size="25" font-weight="700">A fair multilingual benchmark has four stages</text>
+  <text x="64" y="98" fill="#475569" font-size="16">Do not confuse supported languages with measured reliability.</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="150" width="238" height="220" rx="20" fill="#fff"/>
+    <rect x="342" y="150" width="238" height="220" rx="20" fill="#fff"/>
+    <rect x="624" y="150" width="238" height="220" rx="20" fill="#fff"/>
+    <rect x="906" y="150" width="238" height="220" rx="20" fill="#fff"/>
+  </g>
+  <g fill="url(#blue)">
+    <circle cx="179" cy="205" r="34"/><circle cx="461" cy="205" r="34"/><circle cx="743" cy="205" r="34"/><circle cx="1025" cy="205" r="34"/>
+  </g>
+  <g fill="#fff" font-size="25" font-weight="700" text-anchor="middle">
+    <text x="179" y="214">01</text><text x="461" y="214">02</text><text x="743" y="214">03</text><text x="1025" y="214">04</text>
+  </g>
+  <g fill="#172554" font-size="19" font-weight="700" text-anchor="middle">
+    <text x="179" y="270">Language samples</text><text x="461" y="270">Verified labels</text><text x="743" y="270">Detector metrics</text><text x="1025" y="270">Human review</text>
+  </g>
+  <g fill="#64748b" font-size="14" text-anchor="middle">
+    <text x="179" y="300"><tspan x="179">Scripts, dialects,</tspan><tspan x="179" dy="20">genres and lengths</tspan></text>
+    <text x="461" y="300"><tspan x="461">Human, AI and</tspan><tspan x="461" dy="20">mixed-authorship sets</tspan></text>
+    <text x="743" y="300"><tspan x="743">Precision, recall,</tspan><tspan x="743" dy="20">FPR and calibration</tspan></text>
+    <text x="1025" y="300"><tspan x="1025">Context, fairness</tspan><tspan x="1025" dy="20">and limitations</tspan></text>
+  </g>
+  <g stroke="#64748b" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M303 260h32m-9-9 9 9-9 9"/><path d="M585 260h32m-9-9 9 9-9 9"/><path d="M867 260h32m-9-9 9 9-9 9"/>
+  </g>
+  <rect x="60" y="410" width="1084" height="92" rx="18" fill="#172554"/>
+  <g fill="#fff" text-anchor="middle">
+    <text x="195" y="446" font-size="14" opacity=".75">FALSE POSITIVE RATE</text><text x="195" y="478" font-size="23" font-weight="700">Human text flagged</text>
+    <text x="465" y="446" font-size="14" opacity=".75">RECALL</text><text x="465" y="478" font-size="23" font-weight="700">AI text detected</text>
+    <text x="735" y="446" font-size="14" opacity=".75">PRECISION</text><text x="735" y="478" font-size="23" font-weight="700">Flags that are correct</text>
+    <text x="1005" y="446" font-size="14" opacity=".75">CALIBRATION</text><text x="1005" y="478" font-size="23" font-weight="700">Confidence quality</text>
+  </g>
+</g>
+</svg>
