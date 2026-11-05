@@ -17,17 +17,12 @@ export default function TurnitinVsAIDetectorPage() {
       "@type": "Organization",
       "name": "AIDetector.cx Research Team"
     },
-    "reviewedBy": {
-      "@type": "Person",
-      "name": "Dr. Elena Vasquez",
-      "jobTitle": "Computational Linguistics Advisor"
-    },
-    "publisher": {
+"publisher": {
       "@type": "Organization",
       "name": "AIDetector.cx"
     },
     "datePublished": "2026-06-01",
-    "dateModified": "2026-06-01"
+    "dateModified": "2026-11-05"
   };
 
   const faqSchema = {
@@ -74,8 +69,8 @@ export default function TurnitinVsAIDetectorPage() {
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aidetector.cx/" },
-      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://aidetector.cx/blog" },
-      { "@type": "ListItem", "position": 3, "name": "Turnitin vs AIDetector.cx", "item": "https://aidetector.cx/comparisons/turnitin-vs-aidetector-cx" }
+      { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": "https://www.aidetector.cx/comparisons" },
+      { "@type": "ListItem", "position": 3, "name": "Turnitin vs AIDetector.cx", "item": "https://www.aidetector.cx/comparisons/turnitin-vs-aidetector-cx" }
     ]
   };
 
@@ -93,7 +88,7 @@ export default function TurnitinVsAIDetectorPage() {
         <nav className="flex text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRight className="w-4 h-4 mx-2" />
-          <Link to="/blog" className="hover:text-primary transition-colors">Blog</Link>
+          <Link to="/comparisons" className="hover:text-primary transition-colors">Comparisons</Link>
           <ChevronRight className="w-4 h-4 mx-2" />
           <span className="text-foreground">Turnitin vs AIDetector.cx</span>
         </nav>
@@ -102,14 +97,13 @@ export default function TurnitinVsAIDetectorPage() {
         <header className="mb-12">
           <div className="flex flex-wrap items-center gap-4 mb-6">
             <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-semibold">Comparison</span>
-            <span className="text-sm text-muted-foreground">Updated: June 2026</span>
-            <span className="text-sm text-muted-foreground flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Reviewed by Dr. Elena Vasquez</span>
+            <span className="text-sm text-muted-foreground">Updated: November 2026</span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight text-navy">
             Turnitin vs AIDetector.cx: <span className="text-transparent bg-clip-text bg-gradient-primary">Which Platform Wins in 2026?</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Turnitin dominates academic integrity. AIDetector.cx serves publishers, SEO agencies, recruiters, and individual writers who need fast, public, and flexible AI detection. We compare accuracy, workflows, pricing, and real-world fit for every major audience.
+            Turnitin is established for institutional academic-integrity workflows. AIDetector.cx is a public-facing content-integrity platform for writers, publishers, and businesses. This comparison focuses on documented product capabilities, access models, and practical use cases—not an unsupported claim that one detector is universally more accurate.
           </p>
           <div className="flex flex-wrap items-center gap-6 p-6 bg-card rounded-2xl border border-border/50">
             <div className="flex items-center gap-3">
@@ -123,11 +117,6 @@ export default function TurnitinVsAIDetectorPage() {
             </div>
             <div className="h-10 w-px bg-border hidden md:block"></div>
             <div>
-              <p className="text-sm text-muted-foreground">Technical Reviewer</p>
-              <p className="font-semibold">Dr. Elena Vasquez</p>
-            </div>
-            <div className="h-10 w-px bg-border hidden md:block"></div>
-            <div>
               <p className="text-sm text-muted-foreground">Reading Time</p>
               <p className="font-semibold">22 min read</p>
             </div>
@@ -136,18 +125,9 @@ export default function TurnitinVsAIDetectorPage() {
 
         {/* Trust badges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium">Independent methodology</span>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium">Transparent limitations disclosed</span>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium">Cross-linked to related guides</span>
-          </div>
+          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-500" /><span className="text-sm font-medium">Product capabilities compared</span></div>
+          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-500" /><span className="text-sm font-medium">Detection limitations explained</span></div>
+          <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-500" /><span className="text-sm font-medium">Use-case-based guidance</span></div>
         </div>
 
         {/* Table of Contents */}
@@ -201,7 +181,7 @@ export default function TurnitinVsAIDetectorPage() {
           </p>
           <h3 className="text-2xl font-bold mt-8 mb-4">How the AI Writing Report Works</h3>
           <p>
-            When a document is submitted, Turnitin's AI detector analyzes the text at the sentence level. It produces a percentage indicating the proportion of the document that may be AI-generated. The report is embedded inside the familiar Similarity Report interface, making it easy for educators to review both plagiarism and AI concerns in one view.
+            Turnitin's AI Writing Report identifies qualifying prose that its model estimates may be AI-generated or AI-paraphrased. Its coverage has eligibility and language limitations; it is not a reliable classifier for every kind of text, such as code, poetry, or short and unconventional writing. The AI-writing percentage is separate from the Similarity Score.
           </p>
           <p>
             Because Turnitin operates at the institutional level, it also maintains detailed audit logs, roster syncing, and assignment-level settings that K-12 schools and universities require for compliance and academic fairness.
@@ -227,12 +207,12 @@ export default function TurnitinVsAIDetectorPage() {
           </p>
           <h3 className="text-2xl font-bold mt-8 mb-4">APIs and Batch Scanning</h3>
           <p>
-            For businesses that process large volumes of content, AIDetector.cx offers a <Link to="/api" className="text-primary underline">public API</Link> and batch upload capabilities. This enables automated content verification inside custom CMS pipelines, editorial tools, and marketplace moderation systems. Enterprise plans add dedicated support, service-level agreements, and custom model tuning options.
+            Developers can review the <Link to="/api" className="text-primary underline">AIDetector.cx API</Link> for supported programmatic workflows. Available integrations, plan limits, support commitments, and enterprise terms should be checked against the current product and pricing pages; this comparison does not assume unverified batch-processing, service-level, or custom-model-tuning features.
           </p>
 
           <h2 id="feature-comparison" className="text-3xl font-bold mt-16 mb-8">4. Feature Comparison Tables</h2>
           <p>
-            The table below summarizes how Turnitin and AIDetector.cx compare across the features that matter most to different users. All ratings reflect publicly documented capabilities and our independent testing in June 2026.
+            The table below compares product positioning and publicly described workflows. It does not assign accuracy grades: detector performance depends on the document, language, model version, and evaluation method.
           </p>
 
           <div className="overflow-x-auto my-10 not-prose">
@@ -246,9 +226,9 @@ export default function TurnitinVsAIDetectorPage() {
               </TableHeader>
               <TableBody>
                 <TableRow><TableCell className="font-medium">Primary Audience</TableCell><TableCell>Schools & Universities</TableCell><TableCell className="text-primary font-medium">Publishers, SEO, Businesses</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">AI Detection Accuracy (Raw AI)</TableCell><TableCell>High</TableCell><TableCell className="text-primary font-medium">Very High</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Humanized AI Detection</TableCell><TableCell>Moderate</TableCell><TableCell className="text-primary font-medium">High</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">False Positive Rate</TableCell><TableCell>Moderate</TableCell><TableCell className="text-primary font-medium">Low</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">AI Detection</TableCell><TableCell>AI Writing Report for eligible submissions</TableCell><TableCell className="text-primary font-medium">Dedicated AI-content analysis</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Accuracy claims</TableCell><TableCell>Must be assessed on a matched, documented test set</TableCell><TableCell>Must be assessed on a matched, documented test set</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">False-positive risk</TableCell><TableCell>Possible; results require human review</TableCell><TableCell>Possible; results require human review</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">Plagiarism Detection</TableCell><TableCell className="text-primary font-medium">Yes (Extensive DB)</TableCell><TableCell>Yes</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">Public Sign-Up</TableCell><TableCell>No (Institutional)</TableCell><TableCell className="text-primary font-medium">Yes</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">API Access</TableCell><TableCell>Limited / Enterprise</TableCell><TableCell className="text-primary font-medium">Yes</TableCell></TableRow>
@@ -272,68 +252,38 @@ export default function TurnitinVsAIDetectorPage() {
               </TableHeader>
               <TableBody>
                 <TableRow><TableCell className="font-medium">Free Tier</TableCell><TableCell>No</TableCell><TableCell className="text-emerald-600 font-medium">Yes (Free Basic Scans)</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Pro / Individual Tier</TableCell><TableCell>No</TableCell><TableCell className="text-emerald-600 font-medium">Yes ($12/mo)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Individual Plans</TableCell><TableCell>Institutional access model; availability varies</TableCell><TableCell className="text-emerald-600 font-medium">See current <Link to="/pricing" className="underline">pricing</Link></TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">Enterprise Tier</TableCell><TableCell>Custom Quote</TableCell><TableCell className="text-emerald-600 font-medium">Custom Quote</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Integrations</TableCell><TableCell>Canvas, Moodle, Blackboard</TableCell><TableCell className="text-emerald-600 font-medium">WordPress, Chrome Extension</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Integrations</TableCell><TableCell>Institutional LMS integrations</TableCell><TableCell className="text-emerald-600 font-medium">Check current <Link to="/integrations" className="underline">integration availability</Link></TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">Developer API</TableCell><TableCell>Restricted to Partners</TableCell><TableCell className="text-emerald-600 font-medium">Public API Available</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Support Channels</TableCell><TableCell>Institutional Ticketing</TableCell><TableCell className="text-emerald-600 font-medium">24/7 Priority Support for Pro</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Support</TableCell><TableCell>Institutional support model</TableCell><TableCell className="text-emerald-600 font-medium">See current plan terms</TableCell></TableRow>
               </TableBody>
             </Table>
           </div>
 
-          <h3 className="text-2xl font-bold mt-12 mb-4">Supported AI Models Comparison</h3>
-          <p>
-            Both platforms update their detection models as new AI writing systems emerge. However, their test coverage and reporting differ. AIDetector.cx tends to publish detailed per-model detection statistics, while Turnitin reports are embedded within institutional release notes.
-          </p>
+          <h3 className="text-2xl font-bold mt-12 mb-4">AI Model Coverage and Detection Limits</h3>
+          <p>Neither platform should be described as identifying the exact model that wrote a passage unless that capability is explicitly documented and independently validated. AI detectors estimate whether text has characteristics associated with AI generation; they do not provide dependable model fingerprints. Model coverage and performance can change as providers update their systems.</p>
           <div className="overflow-x-auto my-8 not-prose">
             <Table>
-              <TableHeader>
-                <TableRow className="bg-muted"><TableHead>Model Family</TableHead><TableHead>Turnitin</TableHead><TableHead>AIDetector.cx</TableHead></TableRow>
-              </TableHeader>
+              <TableHeader><TableRow className="bg-muted"><TableHead>Question</TableHead><TableHead>Turnitin</TableHead><TableHead>AIDetector.cx</TableHead></TableRow></TableHeader>
               <TableBody>
-                <TableRow><TableCell className="font-medium">GPT-4 / GPT-4o</TableCell><TableCell>Detected</TableCell><TableCell className="text-emerald-600 font-medium">Detected</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">GPT-5.5</TableCell><TableCell>Detected</TableCell><TableCell className="text-emerald-600 font-medium">Detected</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Gemini 2.0</TableCell><TableCell>Detected</TableCell><TableCell className="text-emerald-600 font-medium">Detected</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Claude 3.5</TableCell><TableCell>Detected</TableCell><TableCell className="text-emerald-600 font-medium">Detected</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Humanized Outputs</TableCell><TableCell>Mixed</TableCell><TableCell className="text-emerald-600 font-medium">Higher confidence</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Exact model identification</TableCell><TableCell>Not claimed here</TableCell><TableCell>Not claimed here</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">AI-generated text assessment</TableCell><TableCell>Yes, within report eligibility limits</TableCell><TableCell>Yes, as a core platform function</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Heavily edited or humanized text</TableCell><TableCell>Detection is not guaranteed</TableCell><TableCell>Detection is not guaranteed</TableCell></TableRow>
               </TableBody>
             </Table>
           </div>
 
-          <h2 id="accuracy-testing" className="text-3xl font-bold mt-16 mb-6">5. Real Accuracy Testing Methodology</h2>
-          <p>
-            We built a controlled dataset of 350 documents spanning human essays, ChatGPT outputs, GPT-5.5 drafts, Gemini articles, Claude 3.5 summaries, edited AI text, and humanized AI text. Each document was submitted to both Turnitin (via a demo institutional sandbox) and AIDetector.cx. We measured true positives, false positives, true negatives, and false negatives.
-          </p>
-          <h3 className="text-2xl font-bold mt-8 mb-4">Document Categories</h3>
-          <ul>
-            <li><strong>Human Essays (n=100):</strong> Undergraduate-level argumentative essays from publicly available academic datasets.</li>
-            <li><strong>Raw AI (n=100):</strong> Outputs from GPT-4o, GPT-5.5, Gemini, and Claude with zero editing.</li>
-            <li><strong>Edited AI (n=75):</strong> AI drafts rewritten by human editors to add personal voice and variance.</li>
-            <li><strong>Humanized AI (n=75):</strong> AI drafts processed through popular humanization tools to evade detection.</li>
-          </ul>
-          <h3 className="text-2xl font-bold mt-8 mb-4">Results Summary</h3>
-          <div className="overflow-x-auto my-8 not-prose">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted"><TableHead>Metric</TableHead><TableHead>Turnitin</TableHead><TableHead>AIDetector.cx</TableHead></TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow><TableCell className="font-medium">Raw AI Recall</TableCell><TableCell>~97%</TableCell><TableCell>~99%</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Edited AI Recall</TableCell><TableCell>~72%</TableCell><TableCell>~89%</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Humanized AI Recall</TableCell><TableCell>~58%</TableCell><TableCell>~84%</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">False Positive Rate</TableCell><TableCell>~3.5%</TableCell><TableCell>~1.2%</TableCell></TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          <p>
-            These numbers should be interpreted cautiously. Detector performance changes as language models are updated. A 2026 benchmark is a snapshot, not a guarantee. Use these figures to understand relative strengths, not absolute truth.
-          </p>
+          <h2 id="accuracy-testing" className="text-3xl font-bold mt-16 mb-6">5. Accuracy and Benchmark Transparency</h2>
+          <p>We are not publishing a head-to-head accuracy winner in this comparison. A fair comparison requires the same document set, language mix, text-length rules, product versions, thresholds, and access conditions for both systems, together with the underlying labeled records and reproducible calculations. Those materials are not presented on this page, so numerical superiority claims would be premature.</p>
+          <p>AIDetector.cx has a separate <Link to="/research/ai-detection-accuracy-tests" className="text-primary underline">AI detection benchmark overview</Link>. That research page describes a 400-document evaluation. Its figures should be read as the platform's published benchmark results, not as a substitute for independently reproducible evidence or a guarantee of performance on a particular document. The earlier 350-document description and comparative figures have been removed from this page because they did not match the separate benchmark's stated corpus.</p>
+          <p>For any detector, meaningful evaluation should disclose the source and labels of the documents, sample sizes by category, model versions, languages, thresholds, false-positive and false-negative counts, and confidence intervals. Performance should be tested again when the detector or underlying language models change.</p>
 
           <h2 id="pros-cons" className="text-3xl font-bold mt-16 mb-8">6. Pros and Cons</h2>
           <div className="grid md:grid-cols-2 gap-6 not-prose mb-8">
             <Card className="border-emerald-200/50"><CardHeader><CardTitle className="text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-5 h-5"/> Turnitin Strengths</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Deep institutional integration with LMS platforms.</p><p>Combines similarity and AI reports in one workflow.</p><p>Trusted by universities for decades.</p><p>Strong audit and compliance controls.</p></CardContent></Card>
             <Card className="border-rose-200/50"><CardHeader><CardTitle className="text-rose-700 flex items-center gap-2"><XCircle className="w-5 h-5"/> Turnitin Limitations</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Not available to individual users.</p><p>Long procurement cycles for institutions.</p><p>Can flag structured human writing as AI.</p><p>Limited humanizer and API flexibility.</p></CardContent></Card>
-            <Card className="border-emerald-200/50"><CardHeader><CardTitle className="text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-5 h-5"/> AIDetector.cx Strengths</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Instant public access and sign-up.</p><p>Strong detection of edited and humanized AI.</p><p>Integrated humanizer, plagiarism, and SEO tools.</p><p>Robust API and batch processing.</p></CardContent></Card>
+            <Card className="border-emerald-200/50"><CardHeader><CardTitle className="text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-5 h-5"/> AIDetector.cx Strengths</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Instant public access and sign-up.</p><p>Public access for individual and commercial users.</p><p>Integrated humanizer, plagiarism, and SEO tools.</p><p>API documentation for supported programmatic workflows.</p></CardContent></Card>
             <Card className="border-rose-200/50"><CardHeader><CardTitle className="text-rose-700 flex items-center gap-2"><XCircle className="w-5 h-5"/> AIDetector.cx Limitations</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Not integrated with academic LMS systems.</p><p>Designed for commercial, not classroom, workflows.</p><p>Enterprise support requires higher-tier plans.</p></CardContent></Card>
           </div>
 
@@ -343,9 +293,9 @@ export default function TurnitinVsAIDetectorPage() {
           </p>
           <div className="space-y-6 not-prose">
             <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-primary"/> Universities and K-12 Schools</h3><p className="text-sm text-muted-foreground m-0"><strong>Winner: Turnitin.</strong> Institutional integration, LMS workflows, and compliance requirements make Turnitin the practical choice for academic settings. AIDetector.cx can supplement teacher workflows but will not replace Turnitin's campus infrastructure.</p></CardContent></Card>
-            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><Building2 className="w-5 h-5 text-primary"/> SEO Agencies and Publishers</h3><p className="text-sm text-muted-foreground m-0"><strong>Winner: AIDetector.cx.</strong> Public access, batch scanning, API integration, and the ability to humanize and optimize content make AIDetector.cx far more suitable for high-volume content workflows.</p></CardContent></Card>
-            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><Briefcase className="w-5 h-5 text-primary"/> Recruiters and HR Teams</h3><p className="text-sm text-muted-foreground m-0"><strong>Winner: AIDetector.cx.</strong> Fast one-off scans of cover letters and writing samples, plus clear probability reports, make it ideal for recruitment workflows.</p></CardContent></Card>
-            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><PenTool className="w-5 h-5 text-primary"/> Freelance Writers and Students</h3><p className="text-sm text-muted-foreground m-0"><strong>Winner: AIDetector.cx.</strong> Individual users cannot purchase Turnitin directly, while AIDetector.cx offers free trials and affordable plans for personal use.</p></CardContent></Card>
+            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><Building2 className="w-5 h-5 text-primary"/> SEO Agencies and Publishers</h3><p className="text-sm text-muted-foreground m-0"><strong>Practical fit: AIDetector.cx.</strong> Public access and its integrated content tools make it relevant to publishers and SEO teams. Confirm API limits and any bulk-processing requirements against current product documentation before choosing a plan.</p></CardContent></Card>
+            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><Briefcase className="w-5 h-5 text-primary"/> Recruiters and HR Teams</h3><p className="text-sm text-muted-foreground m-0"><strong>Potential fit: AIDetector.cx.</strong> Public access can make it easier to review writing samples, but an AI-detection score should never be used by itself to make hiring decisions.</p></CardContent></Card>
+            <Card className="border-border"><CardContent className="p-6"><h3 className="text-lg font-bold mb-2 flex items-center gap-2"><PenTool className="w-5 h-5 text-primary"/> Freelance Writers and Students</h3><p className="text-sm text-muted-foreground m-0"><strong>Practical fit: AIDetector.cx.</strong> It offers a public sign-up path for individual users. Check current pricing and remember that AI-detection results are estimates, not proof of authorship.</p></CardContent></Card>
           </div>
 
           <div className="bg-card border-2 border-primary/20 rounded-2xl p-8 text-center my-12 not-prose">
@@ -362,8 +312,8 @@ export default function TurnitinVsAIDetectorPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div><h3 className="text-lg font-semibold mb-2">Is AIDetector.cx better than Turnitin?</h3><p className="text-sm text-muted-foreground">Neither is universally better. Turnitin is optimized for institutional academic workflows; AIDetector.cx is optimized for public, commercial, and agency workflows.</p></div>
             <div><h3 className="text-lg font-semibold mb-2">Can students use Turnitin directly?</h3><p className="text-sm text-muted-foreground">Usually no. Turnitin is licensed to institutions, and students submit through their school's LMS portal.</p></div>
-            <div><h3 className="text-lg font-semibold mb-2">Does Turnitin detect GPT-5.5?</h3><p className="text-sm text-muted-foreground">Turnitin updates its models to detect newer AI outputs, but no detector is perfect, especially against heavily edited or humanized text.</p></div>
-            <div><h3 className="text-lg font-semibold mb-2">Which has fewer false positives?</h3><p className="text-sm text-muted-foreground">In our testing, AIDetector.cx produced fewer false positives on structured human writing and ESL text, though results vary by dataset.</p></div>
+            <div><h3 className="text-lg font-semibold mb-2">Can either tool identify the exact AI model?</h3><p className="text-sm text-muted-foreground">An AI-detection result should not be treated as a reliable fingerprint of the specific model that generated a passage.</p></div>
+            <div><h3 className="text-lg font-semibold mb-2">Which has fewer false positives?</h3><p className="text-sm text-muted-foreground">This page does not establish a verified head-to-head winner. False-positive rates depend on the test corpus, language, text type, model version, and threshold.</p></div>
             <div><h3 className="text-lg font-semibold mb-2">Does AIDetector.cx check plagiarism?</h3><p className="text-sm text-muted-foreground">Yes. AIDetector.cx includes a <Link to="/plagiarism-checker" className="text-primary underline">Plagiarism Checker</Link> alongside AI detection and humanization tools.</p></div>
             <div><h3 className="text-lg font-semibold mb-2">Can I use AIDetector.cx for academic integrity?</h3><p className="text-sm text-muted-foreground">It can supplement educator workflows, but it does not integrate with LMS systems the way Turnitin does.</p></div>
             <div><h3 className="text-lg font-semibold mb-2">Which tool is best for SEO agencies?</h3><p className="text-sm text-muted-foreground">AIDetector.cx, due to its API, batch scanning, humanizer, and SEO content optimization features.</p></div>
@@ -374,7 +324,7 @@ export default function TurnitinVsAIDetectorPage() {
         {/* Editorial policy */}
         <div className="mt-12 p-6 bg-muted/50 rounded-2xl border border-border text-sm text-muted-foreground">
           <h3 className="font-semibold text-foreground mb-2">Editorial Policy & Fact-Check Statement</h3>
-          <p className="mb-2">This comparison is based on publicly available product documentation, independent hands-on testing in June 2026, and interviews with educators and content professionals. We do not accept payment for placement, and limitations are disclosed transparently.</p>
+          <p className="mb-2">This editorial comparison summarizes product positioning and publicly described workflows. It does not claim an independent head-to-head accuracy study, and it does not publish unverified reviewer credentials, interviews, or test results. Product features, pricing, and availability can change; verify current details on the linked product pages.</p>
           <p className="m-0">AI detection is probabilistic. No score should be treated as absolute evidence of misconduct or AI authorship.</p>
         </div>
 
