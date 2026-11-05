@@ -32,7 +32,7 @@ import {
   MessageSquareQuote,
 } from 'lucide-react';
 
-const CANONICAL_URL = 'https://www.aidetector.cx/blog/words-that-trigger-ai-detection';
+const CANONICAL_URL = 'https://www.aidetector.cx/guides/words-that-trigger-ai-detection';
 const OG_IMAGE = '/brand/aidetector-icon.png';
 const SITE_NAME = 'AIDetector.cx';
 
@@ -673,7 +673,7 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
-    { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://www.aidetector.cx/blog' },
+    { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://www.aidetector.cx/guides' },
     { '@type': 'ListItem', position: 3, name: 'Words That Trigger AI Detection', item: CANONICAL_URL },
   ],
 };
