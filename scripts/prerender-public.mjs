@@ -1,24 +1,19 @@
 import { chromium } from 'playwright';
 import serverChromium from '@sparticuz/chromium';
-import { createServer } from 'node:http';
+import { preview } from 'vite';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 const dist = path.resolve('dist');
 const xml = await readFile(path.join(dist, 'sitemap.xml'), 'utf8');
 const paths = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([, url]) => new URL(url).pathname);
-const shell = await readFile(path.join(dist, 'index.html'));
-const server = createServer(async (req, res) => {
-  const pathname = new URL(req.url, 'http://localhost').pathname;
-  const file = path.resolve(dist, '.' + pathname);
-  try {
-    if (!file.startsWith(dist + path.sep)) throw new Error('Invalid path');
-    const data = await readFile(file);
-    const type = {'.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'}[path.extname(file)] || 'application/octet-stream';
-    res.setHeader('Content-Type', type); res.end(data);
-  } catch { res.setHeader('Content-Type', 'text/html'); res.end(shell); }
+// Serve the production build with Vite's own preview server. This keeps SPA
+// fallback, MIME types and asset handling identical to the built application.
+const previewServer = await preview({
+  preview: { host: '127.0.0.1', port: 0, strictPort: true },
 });
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const address = previewServer.httpServer.address();
+if (!address || typeof address === 'string') throw new Error('Unable to determine prerender preview server address');
+const origin = `http://127.0.0.1:${address.port}`;
 let browser;
 try {
   browser = await chromium.launch({headless:true, executablePath:await serverChromium.executablePath(), args:serverChromium.args.filter(arg => !['--single-process', '--disable-web-security', '--allow-running-insecure-content'].includes(arg))});
@@ -131,5 +126,5 @@ try {
   await writeFile(path.join(dist, 'index.html'), await readFile(path.join(dist, 'prerender/home/index.html')));
 } finally {
   await browser?.close();
-  await new Promise(resolve => server.close(resolve));
+  await previewServer?.close();
 }
