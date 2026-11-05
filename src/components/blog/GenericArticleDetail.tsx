@@ -39,6 +39,17 @@ const hubLabels: Record<ContentHub, string> = {
   blog: 'Blog',
 };
 
+const STUDY_ARTICLE_IDS = new Set([
+  'why-tiktok-flagged-my-real-video',
+  'whatsapp-compression-ai-video',
+  'authentic-video-false-positives',
+]);
+
+function getArticlePath(post: Pick<BlogPost, 'id' | 'slug' | 'hub'>) {
+  if (STUDY_ARTICLE_IDS.has(post.id)) return `/studies/${post.id}`;
+  return `/${post.hub}/${post.slug || post.id}`;
+}
+
 const categoryColors: Record<string, string> = {
   'AI Detection': 'bg-primary/10 text-primary border-primary/20',
   SEO: 'bg-warning/10 text-warning border-warning/20',
@@ -322,7 +333,7 @@ function RecommendedTools() {
 
 export default function GenericArticleDetail({ post }: { post: BlogPost }) {
   const [activeId, setActiveId] = useState('');
-  const articleUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const articleUrl = `https://www.aidetector.cx/${post.hub}/${post.slug || post.id}`;
   const toc = useMemo(() => buildToc(post), [post]);
   const contentRef = useRef<HTMLDivElement>(null);
   const readTime = post.readTime || `${estimateReadTime(post.contentHtml || post.content)} min read`;
@@ -387,13 +398,13 @@ export default function GenericArticleDetail({ post }: { post: BlogPost }) {
           '@type': 'ListItem',
           position: 1,
           name: 'Home',
-          item: 'https://aidetector.cx/',
+          item: 'https://www.aidetector.cx/',
         },
         {
           '@type': 'ListItem',
           position: 2,
           name: hubLabels[post.hub],
-          item: `https://aidetector.cx/${post.hub}`,
+          item: `https://www.aidetector.cx/${post.hub}`, 
         },
         {
           '@type': 'ListItem',
@@ -556,7 +567,7 @@ export default function GenericArticleDetail({ post }: { post: BlogPost }) {
                     <h2 className="text-lg font-bold text-navy mb-5">Related Articles</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                       {related.map((rel) => (
-                        <Link to={`/${rel.hub}/${rel.id}`} key={rel.id}>
+                        <Link to={getArticlePath(rel)} key={rel.id}>
                           <Card className="h-full flex flex-col border-border shadow-card hover:shadow-hover transition-shadow group overflow-hidden">
                             <div className="aspect-[16/9]">
                               <ArticleImage src={rel.image} alt={rel.title} containerClassName="w-full h-full" loading="lazy" />

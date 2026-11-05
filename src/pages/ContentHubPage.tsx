@@ -40,8 +40,8 @@ const HUB_META: Record<
     title: 'Blog · AIDetector.cx',
     headline: 'Blog',
     description:
-      'AI industry news, product updates, model releases, AI regulations, company announcements, and feature launches.',
-    cta: 'Stay current with the latest news and updates from the world of AI detection.',
+      'Explore practical AI detection guides, original research, detector comparisons, and video-forensics studies focused on content integrity.',
+    cta: 'Browse evidence-led guides, research, comparisons, and video-forensics studies from AIDetector.cx.',
   },
 };
 
@@ -57,6 +57,16 @@ const categoryColors: Record<string, string> = {
 };
 
 const PAGE_SIZE = 9;
+const STUDY_ARTICLE_IDS = new Set([
+  'why-tiktok-flagged-my-real-video',
+  'whatsapp-compression-ai-video',
+  'authentic-video-false-positives',
+]);
+
+function getArticlePath(post: Pick<BlogPost, 'id' | 'slug' | 'hub'>) {
+  if (STUDY_ARTICLE_IDS.has(post.id)) return `/studies/${post.id}`;
+  return `/${post.hub}/${post.slug || post.id}`;
+}
 
 export default function ContentHubPage({ hub }: { hub: ContentHub }) {
   const [search, setSearch] = useState('');
@@ -148,11 +158,11 @@ export default function ContentHubPage({ hub }: { hub: ContentHub }) {
       '@type': 'CollectionPage',
       name: meta.headline,
       description: meta.description,
-      url: typeof window !== 'undefined' ? window.location.href : `https://aidetector.cx/${hub}`,
+      url: `https://www.aidetector.cx/${hub}`, 
       hasPart: filtered.map((p) => ({
         '@type': 'Article',
         headline: p.title,
-        url: `https://aidetector.cx/${p.hub}/${p.id}`,
+        url: `https://www.aidetector.cx${getArticlePath(p)}`, 
       })),
     }),
     [meta, hub, filtered]
@@ -173,7 +183,7 @@ export default function ContentHubPage({ hub }: { hub: ContentHub }) {
       <PageMeta
         title={meta.title}
         description={meta.description}
-        canonicalUrl={`https://aidetector.cx/${hub}`}
+        canonicalUrl={`https://www.aidetector.cx/${hub}`}
         ogTitle={meta.headline}
         ogDescription={meta.description}
         ogType="website"
@@ -212,7 +222,7 @@ export default function ContentHubPage({ hub }: { hub: ContentHub }) {
         </div>
 
         {featured && (
-          <Link to={`/${featured.hub}/${featured.id}`} className="block mb-12">
+          <Link to={getArticlePath(featured)} className="block mb-12">
             <Card className="border-border shadow-card hover:shadow-hover transition-shadow overflow-hidden group">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="aspect-[4/3] md:aspect-auto">
@@ -264,7 +274,7 @@ export default function ContentHubPage({ hub }: { hub: ContentHub }) {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginated.map((post) => (
-                <Link to={`/${post.hub}/${post.id}`} key={post.id}>
+                <Link to={getArticlePath(post)} key={post.id}>
                   <Card className="h-full flex flex-col border-border shadow-card hover:shadow-hover transition-shadow overflow-hidden group">
                     <div className="aspect-[16/9]">
                       <ArticleImage src={post.image} alt={post.title} containerClassName="w-full h-full" loading="lazy" />
