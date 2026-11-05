@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
-import { Activity, BookOpen, BrainCircuit, CheckCircle2, ChevronRight, CircleHelp, Globe2, Languages, Scale, ShieldCheck } from 'lucide-react';
+import { Activity, BookOpen, ChevronRight, CircleHelp, Languages, Scale, ShieldCheck } from 'lucide-react';
 
 const canonicalUrl = 'https://www.aidetector.cx/research/language-benchmark-overview';
 
