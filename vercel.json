@@ -248,6 +248,21 @@
       "source": "/guides/understanding-ai-detection-scores",
       "destination": "/guides/how-ai-detection-works",
       "permanent": true
+    },
+    {
+      "source": "/tools/12",
+      "destination": "/tools/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/4",
+      "destination": "/tools/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/2",
+      "destination": "/tools/",
+      "permanent": true
     }
   ],
   "headers": [
