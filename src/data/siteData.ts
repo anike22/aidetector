@@ -192,6 +192,111 @@ export const BLOG_POSTS: BlogPost[] = [
     image: 'https://hzjnrmxwzkeaodvusszx.supabase.co/storage/v1/object/public/images/uploads/z3xhjuonmp.webp',
   },
   {
+    id: 'avoid-false-positives-institutional-ai-detectors',
+    hub: 'research',
+    title: 'How to Avoid False Positives in Institutional AI Detectors',
+    excerpt: 'A practical, evidence-aware guide for students, educators and institutions: understand why human writing can be misclassified, preserve authorship evidence, and use AI detector results fairly.',
+    category: 'AI Detection',
+    author: 'AIDetector.cx Research Team',
+    authorAvatar: '⚖️',
+    date: 'November 5, 2026',
+    readTime: '12 min read',
+    image: null,
+    contentHtml: `
+      <p class="lead">An AI detector can raise a question about a document, but its score cannot establish who wrote it. False positives—human-written work incorrectly flagged as AI-generated—can have serious consequences when institutions treat an automated signal as a verdict. The safest response is a combination of careful interpretation, transparent writing practices, reliable process records and fair human review.</p>
+      <p>This guide develops the original article's advice into practical steps for writers and institutional decision-makers. It does not promise that any writing style can guarantee a particular detector result. No wording trick, sentence-length pattern or editing technique can reliably prove authorship or prevent every false positive.</p>
+      <h2 id="what-a-false-positive-means">What a false positive means</h2>
+      <p>A false positive occurs when a detector classifies human-authored text as likely AI-generated. A false negative is the reverse: AI-generated text is classified as human-written. These are different error types, and a system can perform well on one while still making mistakes on the other.</p>
+      <p>Most AI detectors estimate whether patterns in a submitted text resemble patterns associated with machine-generated writing. Depending on the system, analysis may consider statistical regularities, token or phrase distributions, sentence-level patterns, or learned classifier features. The output is an estimate based on the text and model—not direct access to the author's process, identity, intent or drafting history.</p>
+      <p>For that reason, an AI score should not be described as proof of misconduct. It should be treated as one limited signal that may justify a conversation or further review, subject to the institution's published policy and the tool's documented limitations.</p>
+      <h2 id="why-human-writing-can-be-flagged">Why authentic human writing can be flagged</h2>
+      <h3 id="predictable-or-formulaic-prose">Predictable or formulaic prose</h3>
+      <p>Some legitimate writing follows familiar structures: lab reports, literature reviews, policy summaries, technical documentation and standard academic essays. Repeated terminology, conventional transitions and consistent formatting can make this work statistically regular. Regularity alone does not show that AI produced it.</p>
+      <h3 id="language-proficiency-and-editing">Language proficiency, editing and translation</h3>
+      <p>Writers may use clear, concise or grammatically consistent language because of their education, professional experience, proofreading, accessibility needs, translation or language-learning support. A detector may respond to surface patterns without knowing why those patterns are present. Institutions should therefore avoid treating non-native English writing, polished prose or a particular writing style as evidence of AI use.</p>
+      <h3 id="short-and-specialist-text">Short texts and specialist material</h3>
+      <p>Very short passages provide less material for analysis. Formulae, citations, code, technical definitions, quoted material, templates and discipline-specific vocabulary can also affect the text being assessed. Before interpreting a result, check whether the tool supports the document type, language and length submitted.</p>
+      <h3 id="human-and-ai-assisted-revision">Human revision and permitted assistance</h3>
+      <p>Human editing can make writing more consistent, while permitted assistive tools—such as spellcheckers, grammar support, dictation and translation—may change surface features. Institutional policies differ on which uses are allowed. A detector generally cannot determine from a score alone whether a particular use complied with a policy.</p>
+      <h2 id="practices-for-authentic-writing">Practices that support authentic writing</h2>
+      <p>The goal is not to write unnaturally to influence a detector. It is to produce work that accurately represents the writer's understanding and follows the applicable rules.</p>
+      <ul>
+        <li><strong>Develop the argument yourself.</strong> Start with your own question, outline, interpretation and evidence. Make sure you can explain why each section belongs in the final work.</li>
+        <li><strong>Use specific evidence.</strong> Support claims with relevant sources, data, examples or documented observations. Check that quotations and references are accurate.</li>
+        <li><strong>Explain your reasoning.</strong> Show how you move from evidence to conclusion instead of relying on generic statements or unsupported summaries.</li>
+        <li><strong>Revise for clarity, not detector evasion.</strong> Improve structure, precision and readability while preserving your actual meaning and voice. Do not add errors or distort prose to chase a score.</li>
+        <li><strong>Follow the institution's AI policy.</strong> Check what is permitted for brainstorming, research, translation, editing, coding and drafting. Disclose assistance when required.</li>
+      </ul>
+      <h2 id="keep-a-writing-process-record">Keep a record of the writing process</h2>
+      <p>Process evidence can help explain how a document developed. It is not an automatic guarantee of authorship, but it gives a reviewer more context than a detector score alone.</p>
+      <ul>
+        <li>Keep dated outlines, research notes, source lists and early drafts.</li>
+        <li>Use version history in tools such as Google Docs or Microsoft Word when available.</li>
+        <li>Retain meaningful revision milestones and feedback, rather than manufacturing a history after a concern is raised.</li>
+        <li>Keep assignment instructions and relevant policy guidance so you can explain which tools were allowed.</li>
+        <li>Protect private information: share only the records relevant to the review and use the institution's approved submission channel.</li>
+      </ul>
+      <p>If you are asked to explain your work, be prepared to discuss your research question, sources, argument, drafting choices and revisions in your own words. Do not fabricate drafts, timestamps or evidence.</p>
+      <h2 id="what-to-do-if-your-work-is-flagged">What to do if your work is flagged</h2>
+      <ol>
+        <li><strong>Ask for the exact result.</strong> Request the tool name, version if available, date of analysis, text that was assessed, score explanation and any highlighted passages.</li>
+        <li><strong>Check the scope.</strong> Confirm that the correct document and language were submitted and that the text meets the tool's minimum length and supported-content requirements.</li>
+        <li><strong>Read the policy.</strong> Identify the specific rule allegedly breached and distinguish prohibited generation from permitted assistance such as spelling or accessibility support.</li>
+        <li><strong>Provide relevant process evidence.</strong> Share authentic drafts, notes, version history, sources or feedback that help explain how the work was produced.</li>
+        <li><strong>Request human review.</strong> Ask that the result be considered alongside the work itself, the assignment context and your explanation—not used as the sole basis for a penalty.</li>
+        <li><strong>Keep a written record.</strong> Save the notification, your response and the outcome, and follow the institution's appeal process if needed.</li>
+      </ol>
+      <h2 id="guidance-for-institutions">Guidance for schools, universities and certification bodies</h2>
+      <p>Institutions should design procedures around the consequences of error. A detector can support an inquiry, but a fair process needs safeguards for both false positives and false negatives.</p>
+      <ul>
+        <li><strong>Publish clear rules.</strong> Explain permitted and prohibited AI uses, disclosure expectations, the role of automated tools and the review or appeal process.</li>
+        <li><strong>Do not use a detector score as sole evidence.</strong> Require independent contextual assessment before reaching an adverse conclusion.</li>
+        <li><strong>Train reviewers.</strong> Explain false-positive and false-negative risks, supported languages, document-length limits and the meaning of the tool's output.</li>
+        <li><strong>Preserve procedural fairness.</strong> Tell the writer what evidence is being considered, allow a meaningful response and provide an impartial route to challenge a decision.</li>
+        <li><strong>Evaluate tools locally.</strong> Test representative writing from the institution's disciplines, languages and student population. Measure false-positive rates on verified human-written samples, not just overall accuracy.</li>
+        <li><strong>Monitor outcomes.</strong> Record error patterns, review overturned decisions and reassess the tool when its model, settings or the institution's use case changes.</li>
+        <li><strong>Minimize data exposure.</strong> Review vendor retention, privacy, security and access terms before uploading student or employee work.</li>
+      </ul>
+      <h2 id="understand-detector-metrics">Understand the metrics before relying on a score</h2>
+      <p>Overall accuracy alone can conceal important failure modes. Institutions evaluating a detector should examine at least:</p>
+      <ul>
+        <li><strong>False-positive rate:</strong> the share of verified human-written samples incorrectly flagged.</li>
+        <li><strong>False-negative rate:</strong> the share of AI-generated samples incorrectly treated as human-written.</li>
+        <li><strong>Precision:</strong> among samples flagged as AI-generated, the share that are actually AI-generated in the test set.</li>
+        <li><strong>Recall:</strong> among AI-generated samples in the test set, the share the detector correctly identifies.</li>
+      </ul>
+      <p>Results depend on the composition of the evaluation dataset, the definition of AI-generated, the language, document length, model version and threshold. A benchmark on one collection of essays does not automatically predict performance on another institution's assignments. Ask vendors for class-specific results and test with representative, properly labelled material.</p>
+      <h2 id="responsible-use-of-ai-tools">Use AI tools transparently and within policy</h2>
+      <p>Where institutional rules permit AI assistance, use it in ways that support rather than replace your own learning and judgment. Verify factual claims and references, rewrite nothing merely to conceal tool use, and disclose assistance in the manner required by the assignment or organization. Where AI use is prohibited, do not use it for that task.</p>
+      <p>There is no universal disclosure rule: requirements vary by institution, course, employer and assessment. When uncertain, ask the responsible instructor or administrator before submitting the work.</p>
+      <h2 id="key-takeaway">Key takeaway</h2>
+      <p>False positives cannot be eliminated by changing a writer's vocabulary or sentence rhythm. The more reliable safeguards are authentic work, honest disclosure, preserved process records, careful tool evaluation and fair human review. Institutions should treat detector outputs as fallible indicators—not as conclusive proof of authorship or misconduct.</p>
+      <h2 id="frequently-asked-questions">Frequently asked questions</h2>
+      <h3 id="can-a-human-written-essay-be-flagged-as-ai">Can a human-written essay be flagged as AI-generated?</h3>
+      <p>Yes. AI detectors can make false-positive errors. A result should be interpreted in context and should not, by itself, establish who wrote a document.</p>
+      <h3 id="does-good-grammar-trigger-ai-detection">Does good grammar trigger AI detection?</h3>
+      <p>Clear or consistent writing may share surface patterns with some generated text, but good grammar is not proof of AI use. Writing style alone cannot establish authorship.</p>
+      <h3 id="can-version-history-prove-i-wrote-my-work">Can version history prove I wrote my work?</h3>
+      <p>Version history can provide useful evidence of a document's development, especially when considered with notes, drafts and the writer's explanation. No single record is conclusive in every case.</p>
+      <h3 id="should-institutions-punish-students-based-on-an-ai-score">Should institutions punish students based on an AI score?</h3>
+      <p>An automated score alone is not a sound basis for a misconduct finding. Institutions should apply their published rules, consider corroborating evidence, give the writer an opportunity to respond and provide a fair review process.</p>
+      <h3 id="how-can-an-institution-test-a-detector">How can an institution test an AI detector?</h3>
+      <p>Use a representative, verified dataset; separate human and AI-written samples; evaluate false-positive and false-negative rates as well as precision and recall; document thresholds and versions; and repeat testing when the tool or use case changes.</p>
+      <h2 id="further-reading">Further reading</h2>
+      <ul>
+        <li><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noopener noreferrer">NIST AI Risk Management Framework</a> — a framework for identifying and managing AI system risks.</li>
+        <li><a href="https://unesdoc.unesco.org/ark:/48223/pf0000386693" target="_blank" rel="noopener noreferrer">UNESCO: Guidance for Generative AI in Education and Research</a> — considerations for responsible use of generative AI in education.</li>
+      </ul>
+    `,
+    faq: [
+      { question: 'Can a human-written essay be flagged as AI-generated?', answer: 'Yes. AI detectors can make false-positive errors. A result should be interpreted in context and should not, by itself, establish who wrote a document.' },
+      { question: 'Does good grammar trigger AI detection?', answer: 'Clear or consistent writing may share surface patterns with some generated text, but good grammar is not proof of AI use. Writing style alone cannot establish authorship.' },
+      { question: 'Can version history prove I wrote my work?', answer: 'Version history can provide useful evidence of a document\'s development, especially when considered with notes, drafts and the writer\'s explanation. No single record is conclusive in every case.' },
+      { question: 'Should institutions punish students based on an AI score?', answer: 'An automated score alone is not a sound basis for a misconduct finding. Institutions should apply their published rules, consider corroborating evidence, give the writer an opportunity to respond and provide a fair review process.' },
+      { question: 'How can an institution test an AI detector?', answer: 'Use a representative, verified dataset; separate human and AI-written samples; evaluate false-positive and false-negative rates as well as precision and recall; document thresholds and versions; and repeat testing when the tool or use case changes.' }
+    ],
+  },
+  {
     id: 'chatgpt-detector-comparison',
     hub: 'comparisons',
     title: 'ChatGPT Detector Comparison: GPT-4 vs GPT-5.5',
