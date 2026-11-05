@@ -14,7 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowUpDown, X, Sparkles, SlidersHorizontal, SearchX, ArrowRightLeft, ShieldCheck, Check } from 'lucide-react';
 import { AI_DIRECTORY_PRODUCTS, getPopularComparisons } from '@/data/aiDirectoryData';
 import type { DirectoryProduct, DirectoryFilterState, DirectorySortOption } from '@/types/directory';
-import { generateDirectoryItemListSchema } from '@/lib/directorySeo';
+import { generateDirectoryItemListSchema, generateBreadcrumbSchema } from '@/lib/directorySeo';
+import PageMeta from '@/components/common/PageMeta';
 
 export default function ToolsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -233,10 +234,17 @@ export default function ToolsPage() {
 
   return (
     <MainLayout>
-      {/* Structured SEO Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      <PageMeta
+        title="AI Tools Directory: Compare AI Software, Features & Pricing | AIDetector.cx"
+        description="Explore and compare AI tools for writing, coding, research, design, marketing and productivity. Review features, pricing, platforms and alternatives in one directory."
+        canonicalUrl="https://www.aidetector.cx/tools"
+        schemas={[
+          itemListSchema,
+          generateBreadcrumbSchema([
+            { name: 'Home', url: 'https://www.aidetector.cx/' },
+            { name: 'AI Tools Directory', url: 'https://www.aidetector.cx/tools' },
+          ]),
+        ]}
       />
 
       <div className="min-h-screen bg-background pb-24">
@@ -247,6 +255,16 @@ export default function ToolsPage() {
           onSelectProduct={prod => navigate(`/tools/${prod.id}`)}
           totalProductsCount={AI_DIRECTORY_PRODUCTS.length}
         />
+
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-5 border-b border-border/70" aria-labelledby="tools-directory-intro">
+          <h2 id="tools-directory-intro" className="text-base font-semibold text-foreground mb-2">
+            Explore and compare AI tools by category and use case
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground max-w-5xl">
+            Browse AI software for writing, coding, research, design, marketing, automation and productivity. Compare each tool’s documented features, pricing model, supported platforms and alternatives before choosing a solution.
+            If you are looking specifically for an AI text detector, visit our <Link to="/detector" className="text-primary hover:underline">AI Detector</Link>. For a research-led look at multilingual AI detector language support and evaluation, see the <Link to="/research/language-benchmark-overview" className="text-primary hover:underline">multilingual AI detector benchmark overview</Link>.
+          </p>
+        </section>
 
         {/* Data-Driven Category Navigation */}
         <CategoryPills
