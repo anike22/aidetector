@@ -205,6 +205,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/comparisons/ai-detector-comparison",
+      "destination": "/tools",
+      "permanent": true
+    },
+    {
       "source": "/comparisons/aidetector-vs-turnitin",
       "destination": "/comparisons/turnitin-vs-aidetector-cx",
       "permanent": true
