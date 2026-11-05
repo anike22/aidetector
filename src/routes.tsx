@@ -1130,6 +1130,7 @@ export const routes: RouteConfig[] = [
     name: 'Shared Reports',
     path: '/reports/shared',
     element: <SharedReportsPage />,
+    public: true,
   },
   {
     name: 'Report Collaboration',
