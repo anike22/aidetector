@@ -1,9 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 
-// Public Essay Studio landing and template pages are crawlable. Individual essays,
-// teacher workspaces, submissions and archived records remain outside the index.
-const privateRoute = /^\/(admin|dashboard|account|settings|auth|login|signup|register|reset-password|payment-success|payment-cancel|content-studio|document-workspace|seo-dashboard|seo-projects|seo-agent|prospecting|organizations|workspaces|reports|notifications|activity|classrooms|referrals|affiliates|partner|rewards|webhooks)(\/|$)|^\/humanizer\/(history|processing|alternatives|result)(\/|$)|^\/api\/dashboard(\/|$)|^\/authorship\/(dashboard|profile|records)(\/|$)|^\/verified-authorship\/(register|profile|[^/]+\/(manage|certificate))(\/|$)/;
+// Public feature landing pages remain crawlable. Workspace-specific records,
+// collaboration sessions, and account areas stay outside the search index.
+const privateRoute = /^\/(admin|dashboard|account|settings|auth|login|signup|register|reset-password|payment-success|payment-cancel|content-studio|document-workspace|seo-dashboard|seo-projects|seo-agent|prospecting|organizations|workspaces|reports(?!\/shared(?:\/|$))|notifications|activity|classrooms|referrals|affiliates|partner|rewards|webhooks)(\/|$)|^\/humanizer\/(history|processing|alternatives|result)(\/|$)|^\/api\/dashboard(\/|$)|^\/authorship\/(dashboard|profile|records)(\/|$)|^\/verified-authorship\/(register|profile|[^/]+\/(manage|certificate))(\/|$)/;
 const privateEssayRoute = /^\/essay-studio\/(?!templates(?:\/|$)).+/;
 
 export default function RouteIndexing() {
