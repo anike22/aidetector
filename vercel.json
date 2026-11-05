@@ -5,10 +5,6 @@
       "destination": "/prerender/home/index.html"
     },
     {
-      "source": "/((?!assets/|.*\\.[^/]+$).*)",
-      "destination": "/index.html"
-    },
-    {
       "source": "/about",
       "destination": "/prerender/about/index.html"
     },
@@ -203,6 +199,10 @@
     {
       "source": "/wordpress-plugin",
       "destination": "/prerender/wordpress-plugin/index.html"
+    },
+    {
+      "source": "/((?!assets/|.*\\.[^/]+$).*)",
+      "destination": "/index.html"
     }
   ],
   "buildCommand": "npm run build:production",
