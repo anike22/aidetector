@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import { DirectoryHero } from '@/components/directory/DirectoryHero';
@@ -231,12 +232,39 @@ export default function ToolsPage() {
     return generateDirectoryItemListSchema(AI_DIRECTORY_PRODUCTS);
   }, []);
 
+  const breadcrumbSchema = useMemo(() => ({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
+      { '@type': 'ListItem', position: 2, name: 'AI Tools Directory', item: 'https://www.aidetector.cx/tools' },
+    ],
+  }), []);
+
   return (
     <MainLayout>
+      <Helmet>
+        <title>AI Tools Directory: Compare AI Software & Platforms | AIDetector.cx</title>
+        <meta name="description" content="Explore and compare AI tools for writing, research, coding, marketing, design and productivity. Review features, pricing, platforms and alternatives in one directory." />
+        <link rel="canonical" href="https://www.aidetector.cx/tools" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="AIDetector.cx" />
+        <meta property="og:title" content="AI Tools Directory: Compare AI Software & Platforms" />
+        <meta property="og:description" content="Explore and compare AI tools for writing, research, coding, marketing, design and productivity." />
+        <meta property="og:url" content="https://www.aidetector.cx/tools" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="AI Tools Directory | AIDetector.cx" />
+        <meta name="twitter:description" content="Explore and compare AI tools for writing, research, coding, marketing, design and productivity." />
+      </Helmet>
       {/* Structured SEO Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
       <div className="min-h-screen bg-background pb-24">
@@ -478,6 +506,21 @@ export default function ToolsPage() {
             </div>
           </div>
         </div>
+
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 border-t border-border" aria-labelledby="tools-directory-guide">
+          <div className="max-w-4xl space-y-4">
+            <h2 id="tools-directory-guide" className="text-xl sm:text-2xl font-bold text-foreground">Explore and compare AI tools by what you need to do</h2>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+              This AI tools directory brings together software for writing, research, coding, marketing, design, video, automation and everyday productivity. Browse by category, search for a product or use case, and compare available product information such as features, pricing models, supported platforms and published limitations. Product details can change, so check each provider's official website before making a purchasing or deployment decision.
+            </p>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+              If your priority is checking whether text may contain AI-generated writing, start with our <Link to="/detector" className="font-medium text-primary hover:underline">AI text detector</Link>. For a deeper explanation of language coverage and evaluation, read the <Link to="/research/language-benchmark-overview" className="font-medium text-primary hover:underline">multilingual AI detector benchmark overview</Link>. These resources cover a focused detection use case, while this directory helps you discover a broader range of AI software.
+            </p>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+              A directory listing is a starting point, not an endorsement or a guarantee of performance. Compare tools against your own requirements, review privacy and data-retention terms, and test important workflows before relying on a product for business, education or other high-impact decisions.
+            </p>
+          </div>
+        </section>
 
         {/* Persistent Bottom Comparison Tray */}
         <ComparisonTray />
