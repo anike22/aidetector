@@ -205,6 +205,16 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/ai-tools",
+      "destination": "/tools",
+      "permanent": true
+    },
+    {
+      "source": "/ai-tools/:path*",
+      "destination": "/tools/:path*",
+      "permanent": true
+    },
+    {
       "source": "/comparisons/ai-detector-comparison",
       "destination": "/tools",
       "permanent": true
