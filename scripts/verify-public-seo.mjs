@@ -12,10 +12,13 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
-for (const source of ['/login', '/reports/shared']) {
+for (const source of ['/login']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
   assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
 }
+assert(urls.includes('https://www.aidetector.cx/reports/shared'), 'Shared reports feature page missing from sitemap');
+assert(config.rewrites.some(r => r.source === '/reports/shared' && r.destination === '/prerender/reports/shared/index.html'), 'Shared reports page missing dedicated prerender');
+assert(config.headers.some(h => h.source === '/reports/:reportId/collaborate' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Individual collaboration reports must remain noindex');
 for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
 }
@@ -46,7 +49,7 @@ for (const route of ['/research/ai-detection-accuracy-tests', '/research/gpt-5-v
   assert(urls.includes(`https://www.aidetector.cx${route}`), `Known indexed-content candidate missing: ${route}`);
   assert(config.rewrites.some(r => r.source === route && r.destination === `/prerender${route}/index.html`), `Known content must have its own prerender: ${route}`);
 }
-for (const pathname of ['/essay-studio', '/essay-studio/templates']) {
+for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/shared']) {
   const url = 'https://www.aidetector.cx' + pathname;
   assert(urls.includes(url), `Public Essay Studio page missing from sitemap: ${pathname}`);
   const rewrite = config.rewrites.find(entry => entry.source === pathname && entry.destination === `/prerender${pathname}/index.html`);
@@ -54,7 +57,8 @@ for (const pathname of ['/essay-studio', '/essay-studio/templates']) {
   const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
   assert(/<h1\b/.test(html), `Missing rendered Essay Studio heading: ${pathname}`);
   assert(!/name="robots"[^>]*noindex/.test(html), `Public Essay Studio page is noindex: ${pathname}`);
-  assert(html.includes('Essay Studio') || html.includes('Essay Templates'), `Wrong prerender content for ${pathname}`);
+  if (pathname.startsWith('/essay-studio')) assert(html.includes('Essay Studio') || html.includes('Essay Templates'), `Wrong prerender content for ${pathname}`);
+  if (pathname === '/reports/shared') assert(html.includes('Shared AI Detection Reports') && html.includes('Sign in to access your shared reports'), 'Shared reports prerender must expose public feature copy without private report data');
 }
 
 for (const url of urls) {
