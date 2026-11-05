@@ -2,6 +2,7 @@ import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
 const BestPracticesForEducatorsPage = lazy(() => import('./pages/blog/BestPracticesForEducatorsPage'));
+const LanguageBenchmarkOverviewPage = lazy(() => import('./pages/research/LanguageBenchmarkOverviewPage'));
 import MainLayout from '@/components/layouts/MainLayout';
 import type { ReactNode } from 'react';
 import HomePage from './pages/HomePage';
@@ -695,6 +696,12 @@ export const routes: RouteConfig[] = [
     name: 'Dual-Engine Detection Methodology',
     path: '/research/dual-engine-detection-methodology',
     element: <DualEngineDetectionMethodologyPage />,
+    public: true,
+  },
+  {
+    name: 'Language Benchmark Overview',
+    path: '/research/language-benchmark-overview',
+    element: <LanguageBenchmarkOverviewPage />,
     public: true,
   },
   {
