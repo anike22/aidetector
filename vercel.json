@@ -1,16 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/essay-studio",
-      "destination": "/prerender/essay-studio/index.html"
-    },
-    {
-      "source": "/essay-studio/templates",
-      "destination": "/prerender/essay-studio/templates/index.html"
-    },
-    {
       "source": "/",
       "destination": "/prerender/home/index.html"
+    },
+    {
+      "source": "/((?!assets/|.*\\.[^/]+$).*)",
+      "destination": "/index.html"
     },
     {
       "source": "/about",
@@ -109,6 +105,14 @@
       "destination": "/prerender/detector/index.html"
     },
     {
+      "source": "/essay-studio",
+      "destination": "/prerender/essay-studio/index.html"
+    },
+    {
+      "source": "/essay-studio/templates",
+      "destination": "/prerender/essay-studio/templates/index.html"
+    },
+    {
       "source": "/guides",
       "destination": "/prerender/guides/index.html"
     },
@@ -147,6 +151,10 @@
     {
       "source": "/privacy",
       "destination": "/prerender/privacy/index.html"
+    },
+    {
+      "source": "/reports/shared",
+      "destination": "/prerender/reports/shared/index.html"
     },
     {
       "source": "/research",
@@ -195,10 +203,6 @@
     {
       "source": "/wordpress-plugin",
       "destination": "/prerender/wordpress-plugin/index.html"
-    },
-    {
-      "source": "/((?!assets/|.*\\.[^/]+$).*)",
-      "destination": "/index.html"
     }
   ],
   "buildCommand": "npm run build:production",
@@ -349,15 +353,6 @@
       ]
     },
     {
-      "source": "/reports/:path*",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
       "source": "/prospecting/:path*",
       "headers": [
         {
@@ -449,6 +444,15 @@
     },
     {
       "source": "/technical-seo",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/reports/:reportId/collaborate",
       "headers": [
         {
           "key": "X-Robots-Tag",
