@@ -46,10 +46,21 @@ for (const route of ['/research/ai-detection-accuracy-tests', '/research/gpt-5-v
   assert(urls.includes(`https://www.aidetector.cx${route}`), `Known indexed-content candidate missing: ${route}`);
   assert(config.rewrites.some(r => r.source === route && r.destination === `/prerender${route}/index.html`), `Known content must have its own prerender: ${route}`);
 }
+for (const pathname of ['/essay-studio', '/essay-studio/templates']) {
+  const url = 'https://www.aidetector.cx' + pathname;
+  assert(urls.includes(url), `Public Essay Studio page missing from sitemap: ${pathname}`);
+  const rewrite = config.rewrites.find(entry => entry.source === pathname && entry.destination === `/prerender${pathname}/index.html`);
+  assert(rewrite, `Missing dedicated Essay Studio prerender rewrite: ${pathname}`);
+  const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
+  assert(/<h1\b/.test(html), `Missing rendered Essay Studio heading: ${pathname}`);
+  assert(!/name="robots"[^>]*noindex/.test(html), `Public Essay Studio page is noindex: ${pathname}`);
+  assert(html.includes('Essay Studio') || html.includes('Essay Templates'), `Wrong prerender content for ${pathname}`);
+}
+
 for (const url of urls) {
   const parsed = new URL(url);
   assert.equal(parsed.origin, 'https://www.aidetector.cx');
-  assert(!/^\/(admin|account|dashboard|essay-studio|login|signup|register|content-studio)(\/|$)/.test(parsed.pathname));
+  assert(!/^\/(admin|account|dashboard|essay-studio\/|login|signup|register|content-studio)(\/|$)/.test(parsed.pathname));
   const rewrite = config.rewrites.find(r => r.source === parsed.pathname);
   assert(rewrite, `Missing rewrite: ${url}`);
   const html = await readFile(path.join('dist', rewrite.destination), 'utf8');

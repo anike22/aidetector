@@ -210,7 +210,7 @@ export const routes: RouteConfig[] = [
     name: 'Essay Studio',
     path: '/essay-studio',
     element: <EssayStudioHomePage />,
-    public: false,
+    public: true,
   },
   {
     name: 'Essay Workspace',
