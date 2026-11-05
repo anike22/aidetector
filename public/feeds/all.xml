@@ -70,5 +70,12 @@
     <description>Understand why GPT-5.5 and Gemini produce different AI detection scores and how modern detectors analyze their writing patterns.</description>
     <pubDate>Mon, 01 Aug 2026 00:00:00 +0000</pubDate>
   </item>
+  <item>
+    <title>How to Avoid False Positives in Institutional AI Detectors</title>
+    <link>https://aidetector.cx/research/avoid-false-positives-institutional-ai-detectors</link>
+    <guid isPermaLink="true">https://aidetector.cx/research/avoid-false-positives-institutional-ai-detectors</guid>
+    <description>A practical, evidence-aware guide for students, educators and institutions: understand why human writing can be misclassified, preserve authorship evidence, and use AI detector results fairly.</description>
+    <pubDate>Thu, 05 Nov 2026 00:00:00 +0000</pubDate>
+  </item>
 </channel>
 </rss>
