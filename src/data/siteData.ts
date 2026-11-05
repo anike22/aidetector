@@ -384,6 +384,21 @@ export const BLOG_POSTS: BlogPost[] = [
     readTime: '14 min read',
     image: 'https://hzjnrmxwzkeaodvusszx.supabase.co/storage/v1/object/public/images/uploads/acxhgj25i5r.webp',
   },
+
+  {
+    id: 'language-benchmark-overview',
+    slug: 'language-benchmark-overview',
+    hub: 'research',
+    title: 'Multilingual AI Detector Benchmark: Language Support, Accuracy and Evaluation',
+    excerpt: 'Understand multilingual AI detector language support, benchmark quality, false-positive risks and how GPTZero, Copyleaks, Originality.ai, Turnitin and Winston AI document their capabilities.',
+    category: 'AI Detection Research',
+    author: 'AIDetector.cx Research Team',
+    authorAvatar: '🌐',
+    date: 'November 5, 2026',
+    readTime: '16 min read',
+    image: '/images/language-benchmark-framework.svg',
+    featured: true,
+  },
 ];
 
 export const FORUM_POSTS: ForumPost[] = [
