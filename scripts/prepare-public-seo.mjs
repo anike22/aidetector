@@ -7,7 +7,7 @@ for (const name of ['.env.local', '.env']) {
   try { process.loadEnvFile(path.join(root, name)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 // Explicit editorial inventory: routing's `public` flag also includes account workspaces.
-export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives'];
+export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives'];
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
@@ -92,8 +92,8 @@ export async function prepare() {
     }
   }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
-  const privateExactPaths = ['/login', '/technical-seo'];
-  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','login','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  const privateExactPaths = ['/technical-seo'];
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
 }
