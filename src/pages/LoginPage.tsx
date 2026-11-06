@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Bot, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,8 +124,8 @@ export default function LoginPage() {
 
         <Card className="border-border shadow-hover">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl text-navy text-center">Welcome back</CardTitle>
-            <p className="text-sm text-muted-foreground text-center">Sign in to your account</p>
+            <h1 className="text-xl font-semibold text-navy text-center">Sign in to AIDetector.cx</h1>
+            <p className="text-sm text-muted-foreground text-center">Access your AI detection, humanization and plagiarism tools, saved results, and workspace.</p>
           </CardHeader>
           <CardContent className="p-6">
             {error && (
