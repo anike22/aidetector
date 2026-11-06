@@ -81,7 +81,17 @@ try {
     if (new URL(page.url()).pathname !== pathname) throw new Error(`Redirected public page: ${pathname}`);
     const html = await page.evaluate(({pathname}) => {
       const h1 = document.querySelector('h1')?.textContent?.trim();
-      if (!h1 || /not found|unavailable|something went wrong/i.test(h1) || (document.querySelector('#root')?.textContent?.trim().length || 0) < 300) throw new Error('Missing publisher content');
+      const rootText = document.querySelector('#root')?.textContent?.trim() || '';
+      const loginFormIsPresent = pathname === '/login'
+        && !!document.querySelector('form')
+        && !!document.querySelector('input[type="email"]')
+        && !!document.querySelector('input[autocomplete="current-password"]');
+      const hasExpectedPageContent = pathname === '/login'
+        ? loginFormIsPresent && rootText.length >= 150
+        : rootText.length >= 300;
+      if (!h1 || /not found|unavailable|something went wrong/i.test(h1) || !hasExpectedPageContent) {
+        throw new Error('Missing publisher content');
+      }
       if (/noindex/.test(document.querySelector('meta[name="robots"]')?.getAttribute('content') || '')) throw new Error('Public page is noindex');
       const setMeta = (name, content) => {
         document.querySelectorAll(`meta[name="${name}"]`).forEach(el => el.remove());
