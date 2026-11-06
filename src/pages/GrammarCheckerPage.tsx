@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, Clipboard, Download, FileText, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, Clipboard, Download, FileText, RotateCcw, Sparkles } from 'lucide-react';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   analyzeGrammar as analyzeLanguageRules,
   SUPPORTED_GRAMMAR_LANGUAGES,
   type GrammarSuggestion,
-  type GrammarCategory,
 } from '@/utils/grammarAssistant';
 
 type Finding = {
@@ -41,6 +40,19 @@ const CATEGORY_LABELS: Record<string, string> = {
   clarity: 'Word choice',
 };
 
+function getCoreReplacement(issue: GrammarIssueItem): string {
+  switch (issue.ruleId) {
+    case 'spacing-double-space':
+      return ' ';
+    case 'spacing-before-punctuation':
+      return issue.text.trimStart().slice(-1);
+    case 'punctuation-comma-between-subject-verb':
+      return '';
+    default:
+      return issue.suggestion;
+  }
+}
+
 function mapCoreIssue(issue: GrammarIssueItem, index: number): Finding {
   const category = String(issue.category || issue.type || 'grammar').toLowerCase();
   return {
@@ -49,7 +61,7 @@ function mapCoreIssue(issue: GrammarIssueItem, index: number): Finding {
     title: CATEGORY_LABELS[category] || CATEGORY_LABELS[String(issue.type || '').toLowerCase()] || 'Grammar suggestion',
     explanation: issue.message || 'Review this expression in context.',
     originalText: issue.text,
-    replacementText: issue.suggestion,
+    replacementText: getCoreReplacement(issue),
     startIndex: issue.start,
     endIndex: issue.end,
     confidence: issue.confidence,
