@@ -2,6 +2,28 @@ import { useLocation } from 'react-router-dom';
 import PageMeta from './PageMeta';
 
 const routeMetadata: Record<string, { title: string; description: string; schemas?: Record<string, unknown>[] }> = {
+  '/login': {
+    title: 'Log In to AIDetector.cx | AI Detector & Content Integrity Tools',
+    description: 'Log in to your AIDetector.cx account to access AI detection, humanization, plagiarism checking, saved results and team workspaces.',
+    schemas: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Log In to AIDetector.cx',
+        description: 'Sign in to access AIDetector.cx AI detection and content integrity tools.',
+        url: 'https://www.aidetector.cx/login',
+        isPartOf: { '@type': 'WebSite', name: 'AIDetector.cx', url: 'https://www.aidetector.cx/' },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
+          { '@type': 'ListItem', position: 2, name: 'Log In', item: 'https://www.aidetector.cx/login' },
+        ],
+      },
+    ],
+  },
   '/essay-studio': {
     title: 'Essay Studio: Plan, Write & Improve Academic Essays | AIDetector.cx',
     description: 'Plan, outline, write, verify, improve and cite academic essays with AIDetector.cx Essay Studio. Start with structured academic writing templates.',
