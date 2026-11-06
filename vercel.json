@@ -133,6 +133,10 @@
       "destination": "/prerender/guides/words-that-trigger-ai-detection/index.html"
     },
     {
+      "source": "/grammar-checker",
+      "destination": "/prerender/grammar-checker/index.html"
+    },
+    {
       "source": "/humanizer",
       "destination": "/prerender/humanizer/index.html"
     },
