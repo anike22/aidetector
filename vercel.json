@@ -137,6 +137,10 @@
       "destination": "/prerender/humanizer/index.html"
     },
     {
+      "source": "/login",
+      "destination": "/prerender/login/index.html"
+    },
+    {
       "source": "/plagiarism-checker",
       "destination": "/prerender/plagiarism-checker/index.html"
     },
@@ -381,15 +385,6 @@
     },
     {
       "source": "/humanizer/history/:path*",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
-      "source": "/login/:path*",
       "headers": [
         {
           "key": "X-Robots-Tag",
