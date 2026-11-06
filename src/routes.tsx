@@ -60,6 +60,7 @@ const SEOAssistantPage = lazy(() => import('./pages/seo-assistant/SEOAssistantPa
 const AICheckerForBloggersPage = lazy(() => import('./pages/AICheckerForBloggersPage'));
 const WordCounter = lazy(() => import('./pages/WordCounter'));
 const AiSummarizer = lazy(() => import('./pages/AiSummarizer'));
+const GrammarCheckerPage = lazy(() => import('./pages/GrammarCheckerPage'));
 const AboutPage = lazy(() => import('./pages/company/AboutPage'));
 const CareersPage = lazy(() => import('./pages/company/CareersPage'));
 const EmailPreferencesPage = lazy(() => import('./pages/account/EmailPreferencesPage'));
@@ -452,6 +453,13 @@ export const routes: RouteConfig[] = [
     name: 'Word Counter & AI Detector',
     path: '/word-counter',
     element: <WordCounter />,
+    public: true,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    name: 'Grammar Checker',
+    path: '/grammar-checker',
+    element: <GrammarCheckerPage />,
     public: true,
     errorElement: <RouteErrorBoundary />,
   },
