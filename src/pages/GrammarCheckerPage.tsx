@@ -109,7 +109,7 @@ function applyFinding(text: string, finding: Finding): string {
 }
 
 function countWords(text: string): number {
-  return (text.match(/\b[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*\b/gu) || []).length;
+  return (text.match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu) || []).length;
 }
 
 const FAQS = [
