@@ -12,10 +12,9 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
-for (const source of ['/login']) {
-  assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), `Missing HTTP noindex header for ${source}`);
-  assert(!urls.includes(`https://www.aidetector.cx${source}`), `Private route in public sitemap: ${source}`);
-}
+assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
+assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
+assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
 assert(urls.includes('https://www.aidetector.cx/reports/shared'), 'Shared reports feature page missing from sitemap');
 assert(config.rewrites.some(r => r.source === '/reports/shared' && r.destination === '/prerender/reports/shared/index.html'), 'Shared reports page missing dedicated prerender');
 assert(config.headers.some(h => h.source === '/reports/:reportId/collaborate' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Individual collaboration reports must remain noindex');
@@ -49,7 +48,7 @@ for (const route of ['/research/ai-detection-accuracy-tests', '/research/gpt-5-v
   assert(urls.includes(`https://www.aidetector.cx${route}`), `Known indexed-content candidate missing: ${route}`);
   assert(config.rewrites.some(r => r.source === route && r.destination === `/prerender${route}/index.html`), `Known content must have its own prerender: ${route}`);
 }
-for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/shared']) {
+for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/shared', '/login']) {
   const url = 'https://www.aidetector.cx' + pathname;
   assert(urls.includes(url), `Public Essay Studio page missing from sitemap: ${pathname}`);
   const rewrite = config.rewrites.find(entry => entry.source === pathname && entry.destination === `/prerender${pathname}/index.html`);
@@ -59,12 +58,13 @@ for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/sh
   assert(!/name="robots"[^>]*noindex/.test(html), `Public Essay Studio page is noindex: ${pathname}`);
   if (pathname.startsWith('/essay-studio')) assert(html.includes('Essay Studio') || html.includes('Essay Templates'), `Wrong prerender content for ${pathname}`);
   if (pathname === '/reports/shared') assert(html.includes('Shared AI Detection Reports') && html.includes('Sign in to access your shared reports'), 'Shared reports prerender must expose public feature copy without private report data');
+  if (pathname === '/login') assert(html.includes('Sign in to AIDetector.cx') && html.includes('Log In to AIDetector.cx'), 'Login prerender must expose its public heading and specific metadata');
 }
 
 for (const url of urls) {
   const parsed = new URL(url);
   assert.equal(parsed.origin, 'https://www.aidetector.cx');
-  assert(!/^\/(admin|account|dashboard|essay-studio\/|login|signup|register|content-studio)(\/|$)/.test(parsed.pathname));
+  assert(!/^\/(admin|account|dashboard|essay-studio\/|signup|register|content-studio)(\/|$)/.test(parsed.pathname));
   const rewrite = config.rewrites.find(r => r.source === parsed.pathname);
   assert(rewrite, `Missing rewrite: ${url}`);
   const html = await readFile(path.join('dist', rewrite.destination), 'utf8');
