@@ -80,106 +80,56 @@ export default function CompanySearchResultsPage() {
   };
 
   const runSimulation = async () => {
-    // Run fake loading stages
-    for (let i = 0; i < SIMULATION_STAGES.length; i++) {
-      setSimStage(i);
-      setSimProgress((i / (SIMULATION_STAGES.length - 1)) * 100);
-      await new Promise(r => setTimeout(r, 1200));
+    if (!project || !projectId || !user) {
+      toast.error('Project or signed-in user is unavailable.');
+      return;
     }
-    
-    // Create mock data or fetch real data depending on Demo Mode
-    if (!isDemoMode) {
-      // Use Real Edge Function to fetch actual data
-      try {
-        setSimStage(5);
-        setSimProgress(100);
-        
-        setIsSearchingRealData(true);
-        const { data: realData, error: apiErr } = await supabase.functions.invoke('search-companies', {
-          body: { project }
-        });
 
-        setIsSearchingRealData(false);
-
-        if (apiErr) {
-          const errMsg = await apiErr.context?.text() || apiErr.message;
-          console.error("Edge function err", errMsg);
-          if (errMsg?.includes('GOOGLE_MAPS_API_KEY is missing')) {
-            toast.error('Real lead data source is not connected yet.');
-          } else {
-            toast.error('Failed to search real leads: ' + errMsg);
-          }
-        } else if (realData?.error) {
-          toast.error(realData.error);
-          if (realData.error.includes('GOOGLE_MAPS_API_KEY is missing')) {
-            toast.error('Real lead data source is not connected yet.');
-          }
-        } else if (realData?.companies) {
-          // Insert real companies
-          const companiesToInsert = realData.companies.map((comp: any) => ({
-            project_id: projectId,
-            user_id: user!.id,
-            name: comp.name,
-            website: comp.website,
-            industry: comp.industry,
-            employees: comp.employees,
-            revenue_estimate: comp.revenue_estimate,
-            location: comp.location,
-            lead_score: comp.lead_score,
-            phone: comp.phone,
-            email: comp.email,
-            score_reason: comp.score_reason,
-            social_profiles: comp.social_profiles || {}
-          }));
-
-          for (const comp of companiesToInsert) {
-            await supabase.from('prospecting_companies').insert(comp);
-          }
-          toast.success(`Found ${companiesToInsert.length} real companies!`);
-        }
-      } catch (err: any) {
-        setIsSearchingRealData(false);
-        console.error(err);
-        toast.error('Failed to connect to real lead API.');
+    setIsSearchingRealData(true);
+    try {
+      const { data: realData, error: apiErr } = await supabase.functions.invoke('search-companies', {
+        body: { project }
+      });
+      if (apiErr) {
+        const detail = await apiErr.context?.text?.().catch(() => '');
+        throw new Error(detail || apiErr.message || 'Real company search failed.');
       }
-    } else {
-      // Demo Mode: generate context-aware mock data
-      try {
-        const mockCompanies = [
-          { name: `Demo ${project?.business_type} Alpha`, website: 'demo-alpha.com', industry: project?.business_type || 'Unknown', employees: '50-100', revenue_estimate: '$5M - $10M', location: project?.target_country || 'USA', lead_score: 92, phone: '+1 555 123 4567', email: 'contact@demo-alpha.com' },
-          { name: `Demo ${project?.business_type} Beta`, website: 'demo-beta.net', industry: project?.business_type || 'Unknown', employees: '10-50', revenue_estimate: '$1M - $5M', location: project?.target_country || 'USA', lead_score: 81, phone: '+1 555 987 6543', email: 'hello@demo-beta.net' },
-          { name: `Demo ${project?.business_type} Gamma`, website: 'demo-gamma.org', industry: project?.business_type || 'Unknown', employees: '200+', revenue_estimate: '$50M+', location: project?.target_country || 'USA', lead_score: 65, phone: '+1 555 321 0000', email: 'info@demo-gamma.org' }
-        ];
-
-        for (const comp of mockCompanies) {
-          await supabase.from('prospecting_companies').insert({
-            project_id: projectId,
-            user_id: user!.id,
-            name: comp.name,
-            website: comp.website,
-            industry: comp.industry,
-            employees: comp.employees,
-            revenue_estimate: comp.revenue_estimate,
-            location: comp.location,
-            lead_score: comp.lead_score,
-            phone: comp.phone,
-            email: comp.email,
-            score_reason: "Demo Data Match",
-            social_profiles: { linkedin: `linkedin.com/company/${comp.name.toLowerCase().replace(/ /g,'-')}` }
-          });
-        }
-        toast.success('AI Demo Company Search Complete!');
-      } catch(err) {
-        console.error(err);
+      if (realData?.error) throw new Error(realData.error);
+      const found = Array.isArray(realData?.companies) ? realData.companies : [];
+      if (!found.length) {
+        toast.info('The connected provider returned no matching companies.');
+        return;
       }
+
+      const companiesToInsert = found.map((comp: any) => ({
+        project_id: projectId,
+        user_id: user.id,
+        name: comp.name,
+        website: comp.website,
+        industry: comp.industry,
+        employees: null,
+        revenue_estimate: null,
+        location: comp.location,
+        lead_score: null,
+        phone: comp.phone,
+        email: null,
+        score_reason: 'Provider listing only; no buying-intent score has been calculated.',
+        social_profiles: {},
+        source_provider: comp.source_provider || 'Google Places',
+        source_url: comp.source_url || null,
+        source_retrieved_at: comp.source_retrieved_at || new Date().toISOString(),
+        is_demo: false
+      }));
+
+      const { error: insertError } = await supabase.from('prospecting_companies').insert(companiesToInsert);
+      if (insertError) throw insertError;
+      toast.success(`Saved ${companiesToInsert.length} sourced company records.`);
+      await fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to search for real companies.');
+    } finally {
+      setIsSearchingRealData(false);
     }
-    
-    // Remove simulate flag
-    searchParams.delete('simulate');
-    setSearchParams(searchParams);
-    
-    // Reload
-    fetchData();
   };
 
   const getScoreColor = (score: number | null) => {
@@ -208,16 +158,17 @@ export default function CompanySearchResultsPage() {
           </p>
         </div>
           <div className="flex gap-2 items-center flex-wrap">
-            <div className="flex items-center space-x-2 mr-2 bg-muted/50 px-3 py-1.5 rounded-md">
-              <Switch
-                id="demo-mode"
-                checked={isDemoMode}
-                onCheckedChange={setIsDemoMode}
-              />
-              <Label htmlFor="demo-mode" className="text-sm font-medium cursor-pointer text-foreground">Demo Mode</Label>
-            </div>
-            <Button variant="outline" onClick={() => toast.success('Export initiated')} type="button"><Download className="mr-2 h-4 w-4" /> Export All</Button>
-            <Button onClick={() => toast.success('Add to CRM initiated')} type="button">Bulk Add to CRM</Button>
+            <Button variant="outline" onClick={() => {
+              const rows = companies.map((c) => [c.name, c.website || '', c.industry || '', c.location || '', c.phone || '', c.source_url || '']);
+              const csv = [['Company', 'Website', 'Industry', 'Location', 'Phone', 'Source URL'], ...rows]
+                .map((row) => row.map((value) => '"' + String(value).replace(/"/g, '""') + '"').join(',')).join('\n');
+              const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+              const anchor = document.createElement('a');
+              anchor.href = url;
+              anchor.download = 'prospecting-companies.csv';
+              anchor.click();
+              URL.revokeObjectURL(url);
+            }} type="button"><Download className="mr-2 h-4 w-4" /> Export All</Button>
           </div>
       </div>
 
