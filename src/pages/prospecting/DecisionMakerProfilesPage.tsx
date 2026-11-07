@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus, Target, Info } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus, Target } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function DecisionMakerProfilesPage() {
@@ -41,6 +41,7 @@ export default function DecisionMakerProfilesPage() {
         .from('prospecting_decision_makers')
         .select('*')
         .eq('company_id', companyId)
+        .eq('is_demo', false)
         .order('level', { ascending: false });
 
       if (dmErr) throw dmErr;
@@ -59,9 +60,15 @@ export default function DecisionMakerProfilesPage() {
         user_id: user!.id,
         company_name: company?.name,
         decision_maker_name: dm.name,
-        lead_score: dm.buying_intent_score,
+        lead_score: null,
         stage: 'New Lead',
-        details: { job_title: dm.job_title, email: dm.email }
+        details: {
+          job_title: dm.job_title,
+          email: dm.email,
+          source_provider: (dm as any).source_provider || null,
+          source_url: (dm as any).source_url || null,
+          verification_status: 'existing_profile_requires_source_review'
+        }
       });
       if (error) throw error;
       toast.success(`${dm.name} added to CRM`);
