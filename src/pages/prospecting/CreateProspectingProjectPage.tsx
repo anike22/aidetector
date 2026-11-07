@@ -64,11 +64,8 @@ export default function CreateProspectingProjectPage() {
 
       if (error) throw error;
       
-      toast.success('Project created successfully! Starting AI search...');
-      // Simulate small delay for "AI" starting
-      setTimeout(() => {
-        navigate(`/prospecting/projects/${data.id}/companies?simulate=true`);
-      }, 1000);
+      toast.success('Prospecting project created. Search real companies when you are ready.');
+      navigate(`/prospecting/projects/${data.id}/companies`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create project');
       setLoading(false);
@@ -84,7 +81,7 @@ export default function CreateProspectingProjectPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Create Prospecting Project</CardTitle>
-          <CardDescription>Define your target audience and let our AI build your lead database.</CardDescription>
+          <CardDescription>Define your target companies, then search the connected live business-data provider. Decision-maker discovery requires a separate verified source.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
@@ -176,7 +173,7 @@ export default function CreateProspectingProjectPage() {
           <CardFooter className="flex justify-between border-t border-border pt-6">
             <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Start Finding Companies'}
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Create Prospecting Project'}
             </Button>
           </CardFooter>
         </form>
