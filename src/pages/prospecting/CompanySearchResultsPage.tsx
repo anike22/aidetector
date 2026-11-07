@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/db/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProspectingCompany, ProspectingProject } from '@/types/types';
@@ -9,23 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { ArrowLeft, Download, Search, Users, ExternalLink, Loader2, Building2, MapPin, DollarSign, Target, Settings2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
-const SIMULATION_STAGES = [
-  'Searching companies...',
-  'Analyzing websites...',
-  'Extracting data...',
-  'Identifying decision makers...',
-  'Calculating scores...',
-  'Complete'
-];
+
 
 export default function CompanySearchResultsPage() {
   const { projectId } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const isSimulating = searchParams.get('simulate') === 'true';
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -34,10 +22,6 @@ export default function CompanySearchResultsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [simStage, setSimStage] = useState(0);
-  const [simProgress, setSimProgress] = useState(0);
-  
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [isSearchingRealData, setIsSearchingRealData] = useState(false);
 
   useEffect(() => {
@@ -45,12 +29,6 @@ export default function CompanySearchResultsPage() {
       fetchData();
     }
   }, [user, projectId]);
-
-  useEffect(() => {
-    if (isSimulating && loading === false) {
-      runSimulation();
-    }
-  }, [isSimulating, loading]);
 
   const fetchData = async () => {
     try {
@@ -172,26 +150,16 @@ export default function CompanySearchResultsPage() {
           </div>
       </div>
 
-      {isSimulating && (
-        <div className="bg-card border border-primary/20 rounded-lg p-8 mb-8 text-center max-w-2xl mx-auto shadow-sm">
-          <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">{SIMULATION_STAGES[simStage]}</h3>
-          <Progress value={simProgress} className="h-2 mb-2" />
-          <p className="text-sm text-muted-foreground">{Math.round(simProgress)}% Complete</p>
-        </div>
-      )}
-
-      {!isSimulating && (
-        <>
+      <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-card p-4 rounded-lg border border-border">
               <p className="text-sm text-muted-foreground mb-1">Total Companies</p>
               <h4 className="text-2xl font-bold">{companies.length}</h4>
             </div>
             <div className="bg-card p-4 rounded-lg border border-border">
-              <p className="text-sm text-muted-foreground mb-1">Avg Lead Score</p>
+              <p className="text-sm text-muted-foreground mb-1">Lead scoring</p>
               <h4 className="text-2xl font-bold">
-                {companies.length > 0 ? Math.round(companies.reduce((acc, c) => acc + (c.lead_score || 0), 0) / companies.length) : 0}
+                Not calculated
               </h4>
             </div>
           </div>
@@ -247,7 +215,7 @@ export default function CompanySearchResultsPage() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="text-sm">{company.industry}</div>
-                        <div className="text-xs text-muted-foreground">{company.employees} emp.</div>
+                        <div className="text-xs text-muted-foreground">{company.employees || 'Size not provided'}</div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center text-sm">
@@ -263,7 +231,7 @@ export default function CompanySearchResultsPage() {
                       <TableCell className="whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className={getScoreColor(company.lead_score)}>
-                            Score: {company.lead_score || 'N/A'}
+                            Provider score: {company.lead_score ?? 'Not available'}
                           </Badge>
                           {company.score_reason && (
                             <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={company.score_reason}>
@@ -285,8 +253,7 @@ export default function CompanySearchResultsPage() {
               </TableBody>
             </Table>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }
