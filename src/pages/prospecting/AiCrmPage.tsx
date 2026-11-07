@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Search, Plus, Download, MoreHorizontal, Mail } from 'lucide-react';
+import { Search, Plus, Download, Trash2, Mail } from 'lucide-react';
 
 const STAGES = ['New Lead', 'Contacted', 'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Won', 'Lost'];
 
@@ -143,7 +143,7 @@ export default function AiCrmPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-navy mb-2">AI CRM Pipeline</h1>
-          <p className="text-muted-foreground">Manage your generated leads and track deal progress.</p>
+          <p className="text-muted-foreground">Manage saved prospects and track deal progress.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportLeads} type="button"><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
@@ -213,7 +213,7 @@ export default function AiCrmPage() {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium truncate pr-2">{lead.company_name}</div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 -mt-2 shrink-0" onClick={() => deleteLead(lead.id)} type="button" aria-label="Delete lead">
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                         {lead.decision_maker_name && (
@@ -224,11 +224,12 @@ export default function AiCrmPage() {
                         )}
                         <div className="flex justify-between items-center mt-4">
                           <div className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                            (lead.lead_score || 0) >= 80 ? 'bg-green-100 text-green-800' :
-                            (lead.lead_score || 0) >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                            lead.lead_score == null ? 'bg-muted text-muted-foreground' :
+                            lead.lead_score >= 80 ? 'bg-green-100 text-green-800' :
+                            lead.lead_score >= 50 ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                            Score: {lead.lead_score || 'N/A'}
+                            {lead.lead_score == null ? 'Score not calculated' : `Score: ${lead.lead_score}`}
                           </div>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!lead.details?.email} onClick={() => { if (lead.details?.email) window.location.href = `mailto:${lead.details.email}`; }} type="button" aria-label="Email contact"><Mail className="h-3 w-3 text-muted-foreground" /></Button>
