@@ -130,7 +130,7 @@ const FAQS = [
 ];
 
 function FAQItem({ item, index }: { item: typeof FAQS[0]; index: number }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const { trackEvent } = useCustomerDataPlatform();
 
   const handleToggle = () => {
