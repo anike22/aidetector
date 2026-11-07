@@ -130,7 +130,7 @@ const FAQS = [
 ];
 
 function FAQItem({ item, index }: { item: typeof FAQS[0]; index: number }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const { trackEvent } = useCustomerDataPlatform();
 
   const handleToggle = () => {
@@ -217,8 +217,7 @@ export default function HumanizerSections() {
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed text-pretty">
               Content creators, students, marketers, researchers, and enterprise teams use humanizers to polish drafts produced
               by ChatGPT, Claude, Gemini, and other large language models. After humanizing, many writers run the output
-              through an <InternalLink to="/detector" linkText="AI Detector">AI Detector</InternalLink> to confirm the text no
-              longer carries obvious robotic patterns.
+              through an <InternalLink to="/detector" linkText="AI Detector">AI Detector</InternalLink> as one additional signal. Detector scores are estimates and do not guarantee how every detector will classify a passage.
             </p>
           </div>
           <Card className="bg-muted/30 border-border/80">
@@ -301,9 +300,9 @@ export default function HumanizerSections() {
               meaning shifts can have serious consequences.
             </p>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed text-pretty">
-              Our humanizer is built around meaning-aware rewriting. It identifies protected entities, verifies semantic
-              similarity, and rejects alternatives that drift too far from the source. This makes it safe for high-stakes
-              documents where accuracy is non-negotiable.
+              The Humanizer includes controls intended to help preserve important terms and meaning during rewriting.
+              These controls are not a substitute for checking the result. For legal, medical, financial, or research
+              material, compare the rewritten text with the source and verify every important fact before use.
             </p>
           </div>
         </div>
