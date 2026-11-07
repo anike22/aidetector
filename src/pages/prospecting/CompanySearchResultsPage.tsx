@@ -46,7 +46,8 @@ export default function CompanySearchResultsPage() {
         .from('prospecting_companies')
         .select('*')
         .eq('project_id', projectId)
-        .order('lead_score', { ascending: false });
+        .eq('is_demo', false)
+        .order('created_at', { ascending: false });
 
       if (compErr) throw compErr;
       setCompanies(compData || []);
