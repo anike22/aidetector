@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
 import { PageLeadCapture } from '@/components/lead-capture/PageLeadCapture';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
