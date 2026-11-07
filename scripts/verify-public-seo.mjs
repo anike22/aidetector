@@ -12,6 +12,9 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+assert(urls.includes('https://www.aidetector.cx/progress'), 'Public progress landing page missing from sitemap');
+assert(config.rewrites.some(r => r.source === '/progress' && r.destination === '/prerender/progress/index.html'), 'Public progress page missing dedicated prerender');
+assert(!config.headers.some(h => h.source === '/progress' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Public progress page must remain indexable');
 assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
 assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
