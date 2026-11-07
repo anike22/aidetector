@@ -217,8 +217,7 @@ export default function HumanizerSections() {
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed text-pretty">
               Content creators, students, marketers, researchers, and enterprise teams use humanizers to polish drafts produced
               by ChatGPT, Claude, Gemini, and other large language models. After humanizing, many writers run the output
-              through an <InternalLink to="/detector" linkText="AI Detector">AI Detector</InternalLink> to confirm the text no
-              longer carries obvious robotic patterns.
+              through an <InternalLink to="/detector" linkText="AI Detector">AI Detector</InternalLink> as one additional signal. Detector scores are estimates and do not guarantee how every detector will classify a passage.
             </p>
           </div>
           <Card className="bg-muted/30 border-border/80">
