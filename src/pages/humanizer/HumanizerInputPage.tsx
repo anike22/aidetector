@@ -236,11 +236,11 @@ export default function HumanizerInputPage() {
   return (
     <>
       <PageMeta
-        title="AI Humanizer | Rewrite AI Text Naturally Without Changing Meaning"
-        description="Transform AI-generated text into natural, human-like writing with AIDetector.cx. Preserve facts, improve readability, and get multiple rewrite alternatives."
-        canonicalUrl="https://aidetector.cx/humanizer"
-        ogTitle="AI Humanizer That Rewrites AI Text Naturally"
-        ogDescription="Preserve meaning while reducing robotic AI patterns. Try the AIDetector.cx humanizer with multiple rewrite styles and sentence-level control."
+        title="AI Humanizer – Rewrite AI Text Naturally | AIDetector.cx"
+        description="Humanize AI-assisted text with adjustable tone, reading level, and controls for preserving facts, keywords, and citations. Improve clarity and flow with AIDetector.cx."
+        canonicalUrl="https://www.aidetector.cx/humanizer"
+        ogTitle="AI Humanizer – Rewrite AI Text Naturally | AIDetector.cx"
+        ogDescription="Improve AI-assisted writing with adjustable tone, reading level, and controls for preserving facts, keywords, and citations."
         schemas={[
           {
             '@context': 'https://schema.org',
@@ -248,7 +248,7 @@ export default function HumanizerInputPage() {
             name: 'AIDetector.cx AI Humanizer',
             applicationCategory: 'TextApplication',
             description: 'An AI humanizer that rewrites AI-generated text to sound natural while preserving meaning and facts.',
-            url: 'https://aidetector.cx/humanizer',
+            url: 'https://www.aidetector.cx/humanizer',
             operatingSystem: 'Web',
             offers: {
               '@type': 'Offer',
