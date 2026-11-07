@@ -300,9 +300,9 @@ export default function HumanizerSections() {
               meaning shifts can have serious consequences.
             </p>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed text-pretty">
-              Our humanizer is built around meaning-aware rewriting. It identifies protected entities, verifies semantic
-              similarity, and rejects alternatives that drift too far from the source. This makes it safe for high-stakes
-              documents where accuracy is non-negotiable.
+              The Humanizer includes controls intended to help preserve important terms and meaning during rewriting.
+              These controls are not a substitute for checking the result. For legal, medical, financial, or research
+              material, compare the rewritten text with the source and verify every important fact before use.
             </p>
           </div>
         </div>
