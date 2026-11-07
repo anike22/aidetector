@@ -45,61 +45,11 @@ export default function DecisionMakerProfilesPage() {
 
       if (dmErr) throw dmErr;
       
-      if (!dmData || dmData.length === 0) {
-        // Mock generation for the first time
-        await generateMockDecisionMakers(compData);
-      } else {
-        setDecisionMakers(dmData);
-      }
+      setDecisionMakers((dmData || []).filter((record: any) => record.is_demo !== true));
     } catch (err: any) {
       toast.error('Failed to load decision makers');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const generateMockDecisionMakers = async (comp: ProspectingCompany) => {
-    toast.info('AI is identifying decision makers...');
-    const mocks = [
-      {
-        name: 'Sarah Johnson',
-        job_title: 'Chief Executive Officer',
-        level: 5,
-        linkedin_profile: 'linkedin.com/in/sarahj',
-        email: `s.johnson@${comp.website || 'company.com'}`,
-        phone: '+1 (555) 123-4567',
-        buying_intent_score: 95,
-        buying_intent_label: 'Hot Lead',
-        investment_probability: 92,
-        opportunity_detection: 'Recently raised Series B funding and expanding operations to Europe.'
-      },
-      {
-        name: 'Michael Chen',
-        job_title: 'Marketing Director',
-        level: 4,
-        linkedin_profile: 'linkedin.com/in/mchen',
-        email: `mchen@${comp.website || 'company.com'}`,
-        phone: '+1 (555) 987-6543',
-        buying_intent_score: 75,
-        buying_intent_label: 'Warm Lead',
-        investment_probability: 60,
-        opportunity_detection: 'Active on LinkedIn posting about new marketing strategies.'
-      }
-    ];
-
-    try {
-      const inserts = mocks.map(m => ({
-        company_id: companyId,
-        user_id: user!.id,
-        ...m
-      }));
-      
-      const { data, error } = await supabase.from('prospecting_decision_makers').insert(inserts).select();
-      if (error) throw error;
-      setDecisionMakers(data || []);
-      toast.success('Decision makers identified successfully');
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -158,6 +108,15 @@ export default function DecisionMakerProfilesPage() {
           <Card className="h-64 bg-muted/20"></Card>
         </div>
       ) : (
+        <>
+        {decisionMakers.length === 0 && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+              <CardTitle>No verified decision-maker records</CardTitle>
+              <CardDescription>No sourced decision-maker profiles are saved for this company yet. We will not invent names, email addresses, phone numbers or buying-intent scores.</CardDescription>
+            </CardHeader>
+          </Card>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {decisionMakers.map(dm => (
             <Card key={dm.id} className="flex flex-col h-full border-border">
@@ -229,6 +188,7 @@ export default function DecisionMakerProfilesPage() {
             </Card>
           ))}
         </div>
+        </>
       )}
     </div>
   );
