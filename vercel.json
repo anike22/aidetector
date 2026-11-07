@@ -285,6 +285,11 @@
       "source": "/tools/2",
       "destination": "/tools/",
       "permanent": true
+    },
+    {
+      "source": "/research/false-positive-analysis",
+      "destination": "/research/avoid-false-positives-institutional-ai-detectors",
+      "permanent": true
     }
   ],
   "headers": [
