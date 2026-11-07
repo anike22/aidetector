@@ -67,8 +67,8 @@ const breadcrumbSchema = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://aidetector.cx' },
-    { '@type': 'ListItem', position: 2, name: 'Plagiarism Checker', item: 'https://aidetector.cx/plagiarism-checker' },
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx' },
+    { '@type': 'ListItem', position: 2, name: 'Plagiarism Checker', item: 'https://www.aidetector.cx/plagiarism-checker' },
   ],
 };
 
@@ -447,7 +447,7 @@ export default function PlagiarismCheckerPage() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Plagiarism Intelligence & Evidence Platform</span>
+              <h2 className="text-xs font-semibold">Plagiarism Intelligence & Evidence Platform</h2>
             </div>
             <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-3 text-balance">
               Advanced Plagiarism Checker With Source & Paraphrase Detection
@@ -546,7 +546,7 @@ export default function PlagiarismCheckerPage() {
               <Card className="border-[#1b2649] bg-[#0b1224] shadow-2xl rounded-2xl overflow-hidden flex flex-col">
                 {/* Toolbar */}
                 <div className="bg-[#0c152e] border-b border-[#1b2649] px-5 py-3.5 flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-white">Paste or type your content</span>
+                  <h3 className="text-sm font-bold text-white">Paste or type your content</h3>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <Button
                       type="button"
@@ -816,7 +816,7 @@ export default function PlagiarismCheckerPage() {
                   {/* Verified sources */}
                   <Card className="border-slate-800 bg-slate-900 shadow-card">
                     <CardHeader className="pb-2 pt-4 px-5 border-b border-slate-800">
-                      <CardTitle className="text-sm font-semibold text-white flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-white flex items-center justify-between">
                         <span className="flex items-center gap-2">
                           <Link2 className="w-4 h-4 text-primary" /> Verified Sources
                         </span>
@@ -825,7 +825,7 @@ export default function PlagiarismCheckerPage() {
                             ? 'Unavailable'
                             : `${result.sources.length} source${result.sources.length !== 1 ? 's' : ''}`}
                         </span>
-                      </CardTitle>
+                      </h4>
                     </CardHeader>
                     <CardContent className="p-0">
                       {result.status === 'analysis_failed' || result.status === 'provider_unavailable' ? (
@@ -844,10 +844,10 @@ export default function PlagiarismCheckerPage() {
                             <div key={i} className="p-4 hover:bg-slate-800/40 transition-colors">
                               <div className="flex justify-between items-start gap-2 mb-1.5">
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-xs text-slate-200 truncate" title={source.title}>
+                                  <h5 className="font-medium text-xs text-slate-200 truncate" title={source.title}>
                                     {source.title}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400 truncate">{source.publisher}</p>
+                                  </h5>
+                                  <h6 className="text-[10px] text-slate-400 truncate">{source.publisher}</h6>
                                 </div>
                                 <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 shrink-0 text-[10px]">
                                   {source.matchContribution}%
