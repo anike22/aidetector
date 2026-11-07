@@ -445,13 +445,13 @@ export default function PlagiarismCheckerPage() {
 
           {/* Single H1 & Microcopy */}
           <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-3 text-balance">
+              Advanced Plagiarism Checker With Source & Paraphrase Detection
+            </h1>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
               <h2 className="text-xs font-semibold">Plagiarism Intelligence & Evidence Platform</h2>
             </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-3 text-balance">
-              Advanced Plagiarism Checker With Source & Paraphrase Detection
-            </h1>
             <p className="text-slate-200 max-w-2xl mx-auto text-sm md:text-base leading-relaxed text-pretty mb-4">
               Analyze your content for copied passages, source similarity, paraphrased phrasing, missing citations, and external discovery without unverified accuracy superlatives.
             </p>
