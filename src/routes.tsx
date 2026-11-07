@@ -16,6 +16,7 @@ const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 const CommunityDetailPage = lazy(() => import('./pages/CommunityDetailPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ProgressPage = lazy(() => import('./pages/dashboard/ProgressPage'));
+const ProgressLandingPage = lazy(() => import('./pages/ProgressLandingPage'));
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const MarketplaceDetailPage = lazy(() => import('./pages/MarketplaceDetailPage'));
 const SellPage = lazy(() => import('./pages/SellPage'));
@@ -480,6 +481,12 @@ export const routes: RouteConfig[] = [
     name: 'Community Discussion',
     path: '/community/discussions/:id',
     element: <FeatureGate featureSlug="community"><CommunityDetailPage /></FeatureGate>,
+    public: true,
+  },
+  {
+    name: 'Progress Tracking',
+    path: '/progress',
+    element: <ProgressLandingPage />,
     public: true,
   },
   {

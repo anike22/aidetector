@@ -149,6 +149,10 @@
       "destination": "/prerender/plagiarism-checker/index.html"
     },
     {
+      "source": "/progress",
+      "destination": "/prerender/progress/index.html"
+    },
+    {
       "source": "/pricing",
       "destination": "/prerender/pricing/index.html"
     },
