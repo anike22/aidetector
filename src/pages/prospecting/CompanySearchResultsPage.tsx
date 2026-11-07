@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Search, Users, ExternalLink, Loader2, Building2, MapPin, DollarSign, Target, Settings2 } from 'lucide-react';
+import { ArrowLeft, Download, Search, Users, ExternalLink, Loader2, Building2, MapPin, Target } from 'lucide-react';
 
 
 
@@ -107,6 +107,32 @@ export default function CompanySearchResultsPage() {
       toast.error(error instanceof Error ? error.message : 'Unable to search for real companies.');
     } finally {
       setIsSearchingRealData(false);
+    }
+  };
+
+  const addCompanyToCrm = async (company: ProspectingCompany) => {
+    if (!user) return toast.error('Please sign in to save prospects.');
+    try {
+      const { error } = await supabase.from('prospecting_crm_leads').insert({
+        user_id: user.id,
+        company_name: company.name,
+        decision_maker_name: null,
+        lead_score: null,
+        stage: 'New Lead',
+        details: {
+          website: company.website,
+          industry: company.industry,
+          location: company.location,
+          phone: company.phone,
+          source_provider: (company as any).source_provider || null,
+          source_url: (company as any).source_url || null,
+          verification_status: 'provider_record'
+        }
+      });
+      if (error) throw error;
+      toast.success(`${company.name} added to CRM.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not add company to CRM.');
     }
   };
 
@@ -231,7 +257,7 @@ export default function CompanySearchResultsPage() {
                       <TableCell className="whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className={getScoreColor(company.lead_score)}>
-                            Provider score: {company.lead_score ?? 'Not available'}
+                            Lead score: {company.lead_score ?? 'Not calculated'}
                           </Badge>
                           {company.score_reason && (
                             <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={company.score_reason}>
@@ -246,6 +272,7 @@ export default function CompanySearchResultsPage() {
                             <Users className="h-4 w-4 mr-2" /> Decision Makers
                           </Link>
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => addCompanyToCrm(company)}>Add to CRM</Button>
                       </TableCell>
                     </TableRow>
                   ))
