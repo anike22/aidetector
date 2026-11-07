@@ -64,11 +64,8 @@ export default function CreateProspectingProjectPage() {
 
       if (error) throw error;
       
-      toast.success('Project created successfully! Starting AI search...');
-      // Simulate small delay for "AI" starting
-      setTimeout(() => {
-        navigate(`/prospecting/projects/${data.id}/companies?simulate=true`);
-      }, 1000);
+      toast.success('Prospecting project created. Search real companies when you are ready.');
+      navigate(`/prospecting/projects/${data.id}/companies`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create project');
       setLoading(false);
