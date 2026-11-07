@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layouts/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -82,7 +83,7 @@ interface PreferenceToggle {
   mandatory?: boolean;
 }
 
-export default function CommunicationPreferencesPage() {
+function CommunicationPreferencesContent() {
   const { user } = useAuth();
   const { preferences: loadedPrefs, loading, loadError, refresh } = useAutomation();
   const [prefs, setPrefs] = useState<UserCommunicationPreferences | null>(null);
@@ -348,4 +349,26 @@ export default function CommunicationPreferencesPage() {
       </div>
     </MainLayout>
   );
+}
+
+
+/** Keeps account communication preferences private to authenticated users. */
+export default function CommunicationPreferencesPage() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" role="status" aria-label="Checking your session">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    const returnTo = location.pathname + location.search + location.hash;
+    return <Navigate to={'/login?returnTo=' + encodeURIComponent(returnTo)} replace />;
+  }
+
+  return <CommunicationPreferencesContent />;
 }
