@@ -58,7 +58,7 @@ export default function CompanySearchResultsPage() {
     }
   };
 
-  const runSimulation = async () => {
+  const runSearch = async () => {
     if (!project || !projectId || !user) {
       toast.error('Project or signed-in user is unavailable.');
       return;
@@ -201,7 +201,7 @@ export default function CompanySearchResultsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button onClick={runSimulation} disabled={isSearchingRealData}>
+            <Button onClick={runSearch} disabled={isSearchingRealData}>
               {isSearchingRealData ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               Find More Companies
             </Button>
@@ -215,7 +215,7 @@ export default function CompanySearchResultsPage() {
                   <TableHead className="whitespace-nowrap">Industry / Size</TableHead>
                   <TableHead className="whitespace-nowrap">Location</TableHead>
                   <TableHead className="whitespace-nowrap">Contact</TableHead>
-                  <TableHead className="whitespace-nowrap">Lead Score</TableHead>
+                  <TableHead className="whitespace-nowrap">Lead score</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
