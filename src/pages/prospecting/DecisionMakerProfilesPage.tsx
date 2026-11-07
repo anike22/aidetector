@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus, Target } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus } from 'lucide-react';
 
 export default function DecisionMakerProfilesPage() {
   const { companyId } = useParams();
@@ -77,18 +76,6 @@ export default function DecisionMakerProfilesPage() {
     }
   };
 
-  const getLevelBadge = (level: number | null) => {
-    if (!level) return null;
-    const colors = ['bg-slate-100', 'bg-blue-100', 'bg-indigo-100', 'bg-purple-100', 'bg-emerald-100'];
-    return <Badge variant="outline" className={`${colors[level-1]} text-foreground border-transparent`}>Level {level}</Badge>;
-  };
-
-  const getIntentBadge = (label: string | null) => {
-    if (label === 'Hot Lead') return <Badge className="bg-red-500 hover:bg-red-600">Hot Lead</Badge>;
-    if (label === 'Warm Lead') return <Badge className="bg-orange-500 hover:bg-orange-600">Warm Lead</Badge>;
-    return <Badge className="bg-blue-500 hover:bg-blue-600">Cold Lead</Badge>;
-  };
-
   return (
     <div className="container mx-auto py-8">
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
@@ -105,7 +92,17 @@ export default function DecisionMakerProfilesPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.success('Export initiated')} type="button">Export All</Button>
+          <Button variant="outline" onClick={() => {
+            const rows = decisionMakers.map((record: any) => [record.name, record.job_title || '', record.email || '', record.phone || '', record.linkedin_profile || '', record.source_url || '']);
+            const csv = [['Name', 'Job title', 'Email', 'Phone', 'LinkedIn', 'Source URL'], ...rows]
+              .map((row) => row.map((value) => '"' + String(value).replace(/"/g, '""') + '"').join(',')).join('\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'decision-maker-records.csv';
+            anchor.click();
+            URL.revokeObjectURL(url);
+          }} type="button">Export CSV</Button>
         </div>
       </div>
 
@@ -128,24 +125,12 @@ export default function DecisionMakerProfilesPage() {
           {decisionMakers.map(dm => (
             <Card key={dm.id} className="flex flex-col h-full border-border">
               <CardHeader className="pb-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>{getLevelBadge(dm.level)}</TooltipTrigger>
-                        <TooltipContent>
-                          <p className="w-[200px] text-sm">
-                            {dm.level === 5 && 'Level 5: Can approve budget immediately (Founder, CEO, Owner)'}
-                            {dm.level === 4 && 'Level 4: Can recommend purchase (COO, Marketing Director)'}
-                            {dm.level === 3 && 'Level 3: Influencer (Team Lead, Project Manager)'}
-                            {dm.level === 2 && 'Level 2: Researcher (Specialist)'}
-                            {dm.level === 1 && 'Level 1: Low authority (Staff)'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    {getIntentBadge(dm.buying_intent_label)}
-                  </div>
+                <div className="mb-2">
+                  {(dm as any).source_provider ? (
+                    <Badge variant="outline">Source: {(dm as any).source_provider}</Badge>
+                  ) : (
+                    <Badge variant="outline">Source not verified</Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{dm.name}</CardTitle>
                 <CardDescription className="text-primary font-medium">{dm.job_title}</CardDescription>
@@ -170,16 +155,10 @@ export default function DecisionMakerProfilesPage() {
                   )}
                 </div>
 
-                {dm.opportunity_detection && (
-                  <div className="bg-primary/5 p-3 rounded-md border border-primary/10 mt-4">
-                    <div className="flex items-start">
-                      <Target className="h-4 w-4 text-primary mt-0.5 mr-2 shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-primary mb-1">Opportunity Detection</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed text-pretty">{dm.opportunity_detection}</p>
-                      </div>
-                    </div>
-                  </div>
+                {(dm as any).source_url && (
+                  <a href={(dm as any).source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                    View source record
+                  </a>
                 )}
               </CardContent>
               <CardFooter className="pt-4 border-t border-border mt-auto shrink-0 flex gap-2 flex-wrap">
