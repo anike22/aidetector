@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Search, Plus, Building2, Target, Calendar, BarChart3, Pause, Play, Trash2, Edit } from 'lucide-react';
+import { Search, Plus, Building2, Target, Calendar, Pause, Play, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ProspectingDashboardPage() {
@@ -17,6 +17,7 @@ export default function ProspectingDashboardPage() {
   const [projects, setProjects] = useState<ProspectingProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [projectStats, setProjectStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (user) {
@@ -33,7 +34,21 @@ export default function ProspectingDashboardPage() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+      const projectRows = data || [];
+      setProjects(projectRows);
+      const counts = await Promise.all(projectRows.map(async (project) => {
+        const { count, error: countError } = await supabase
+          .from('prospecting_companies')
+          .select('id', { count: 'exact', head: true })
+          .eq('project_id', project.id)
+          .eq('is_demo', false);
+        if (countError) {
+          console.error('Unable to load company count for prospecting project', countError);
+          return [project.id, 0] as const;
+        }
+        return [project.id, count || 0] as const;
+      }));
+      setProjectStats(Object.fromEntries(counts));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load projects');
     } finally {
@@ -80,7 +95,7 @@ export default function ProspectingDashboardPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-navy mb-2">AI Business Growth Intelligence</h1>
-          <p className="text-muted-foreground">Find high-quality leads, identify decision makers, and grow your business with AI-powered prospecting.</p>
+          <p className="text-muted-foreground">Find source-backed companies, review verified contacts and manage prospecting activity. Scores and decision-maker details are shown only when actually calculated or sourced.</p>
         </div>
         <Button asChild>
           <Link to="/prospecting/projects/new">
@@ -164,11 +179,11 @@ export default function ProspectingDashboardPage() {
               <CardFooter className="pt-4 border-t border-border mt-auto shrink-0 bg-muted/10 flex justify-between text-sm text-muted-foreground">
                 <div className="flex items-center">
                   <Building2 className="h-4 w-4 mr-1" />
-                  <span>---</span> {/* Would be total companies */}
+                  <span>{projectStats[project.id] ?? 0} companies</span>
                 </div>
                 <div className="flex items-center">
                   <BarChart3 className="h-4 w-4 mr-1" />
-                  <span>--- Avg Score</span>
+                  <span>Scoring not calculated</span>
                 </div>
               </CardFooter>
             </Card>
