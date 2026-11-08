@@ -24,7 +24,7 @@ export default function CreateProspectingProjectPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    target_country: 'United States',
+    target_country: '',
     business_type: '',
     company_size: '11-50 employees',
     goal: ''
@@ -98,20 +98,13 @@ export default function CreateProspectingProjectPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Target Country</Label>
-                <Select value={formData.target_country} onValueChange={v => setFormData({ ...formData, target_country: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="United States">United States</SelectItem>
-                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                    <SelectItem value="Canada">Canada</SelectItem>
-                    <SelectItem value="Australia">Australia</SelectItem>
-                    <SelectItem value="Germany">Germany</SelectItem>
-                    <SelectItem value="France">France</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="target_country">Target Country / Region</Label>
+                <Input
+                  id="target_country"
+                  placeholder="Enter any country, city or region"
+                  value={formData.target_country}
+                  onChange={e => setFormData({ ...formData, target_country: e.target.value })}
+                />
               </div>
 
               <div className="space-y-2">
