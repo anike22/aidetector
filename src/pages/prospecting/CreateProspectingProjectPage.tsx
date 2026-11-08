@@ -40,8 +40,8 @@ export default function CreateProspectingProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!formData.name || !formData.business_type || selectedRoles.length === 0) {
-      toast.error('Please fill in all required fields (Name, Business Type, and at least one Role).');
+    if (!formData.name || !formData.target_country || !formData.business_type || selectedRoles.length === 0) {
+      toast.error('Please fill in Name, Target Country / Region, Business Type, and at least one Role.');
       return;
     }
 
@@ -101,6 +101,7 @@ export default function CreateProspectingProjectPage() {
                 <Label htmlFor="target_country">Target Country / Region</Label>
                 <Input
                   id="target_country"
+                  required
                   placeholder="Enter any country, city or region"
                   value={formData.target_country}
                   onChange={e => setFormData({ ...formData, target_country: e.target.value })}
