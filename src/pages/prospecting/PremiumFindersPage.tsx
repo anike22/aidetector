@@ -32,7 +32,7 @@ type FinderResult = {
 };
 
 const sourceCoverage = {
-  tender: 'EU public procurement notices from the EU Funding & Tenders Portal. Other jurisdictions are not yet connected.',
+  tender: 'EU public procurement notices and World Bank-financed procurement notices across eligible countries. Other national procurement portals are not yet connected.',
   grant: 'US federal opportunities from Grants.gov and EU funding calls from the EU Funding & Tenders Portal. Other jurisdictions are not yet connected.',
   partnership: 'Google Places company listings can identify potential partner targets. A listing does not mean the business is seeking partners.',
   investor: 'No reliable global investor directory is connected. Save an investor only when you have a source URL you can verify.'
