@@ -4,6 +4,8 @@ import { supabase } from '@/db/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProspectingCompany, ProspectingDecisionMaker } from '@/types/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -17,6 +19,9 @@ export default function DecisionMakerProfilesPage() {
   const [company, setCompany] = useState<ProspectingCompany | null>(null);
   const [decisionMakers, setDecisionMakers] = useState<ProspectingDecisionMaker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', job_title: '', email: '', phone: '', linkedin_profile: '', source_url: '' });
 
   useEffect(() => {
     if (user && companyId) {
@@ -31,6 +36,7 @@ export default function DecisionMakerProfilesPage() {
         .from('prospecting_companies')
         .select('*')
         .eq('id', companyId)
+        .eq('is_demo', false)
         .single();
         
       if (compErr) throw compErr;
@@ -50,6 +56,50 @@ export default function DecisionMakerProfilesPage() {
       toast.error('Failed to load decision makers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const addVerifiedContact = async () => {
+    if (!user || !companyId) return;
+    if (!contactForm.name.trim() || !contactForm.source_url.trim()) {
+      toast.error('Contact name and source URL are required.');
+      return;
+    }
+    try {
+      new URL(contactForm.source_url);
+    } catch {
+      toast.error('Enter a valid source URL.');
+      return;
+    }
+    setSavingContact(true);
+    try {
+      const { data, error } = await supabase.from('prospecting_decision_makers').insert({
+        company_id: companyId,
+        user_id: user.id,
+        name: contactForm.name.trim(),
+        job_title: contactForm.job_title.trim() || null,
+        email: contactForm.email.trim() || null,
+        phone: contactForm.phone.trim() || null,
+        linkedin_profile: contactForm.linkedin_profile.trim() || null,
+        level: null,
+        buying_intent_score: null,
+        buying_intent_label: null,
+        investment_probability: null,
+        opportunity_detection: null,
+        source_provider: 'User supplied source',
+        source_url: contactForm.source_url.trim(),
+        source_retrieved_at: new Date().toISOString(),
+        is_demo: false
+      }).select().single();
+      if (error) throw error;
+      setDecisionMakers((current) => [data as ProspectingDecisionMaker, ...current]);
+      setContactForm({ name: '', job_title: '', email: '', phone: '', linkedin_profile: '', source_url: '' });
+      setShowAddForm(false);
+      toast.success('Sourced contact saved. Review the source before outreach.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save contact.');
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -92,6 +142,7 @@ export default function DecisionMakerProfilesPage() {
           )}
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setShowAddForm((value) => !value)}><Plus className="mr-2 h-4 w-4" /> Add sourced contact</Button>
           <Button variant="outline" onClick={() => {
             const rows = decisionMakers.map((record: any) => [record.name, record.job_title || '', record.email || '', record.phone || '', record.linkedin_profile || '', record.source_url || '']);
             const csv = [['Name', 'Job title', 'Email', 'Phone', 'LinkedIn', 'Source URL'], ...rows]
@@ -105,6 +156,29 @@ export default function DecisionMakerProfilesPage() {
           }} type="button">Export CSV</Button>
         </div>
       </div>
+
+      {showAddForm && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Add a sourced decision-maker</CardTitle>
+            <CardDescription>Enter only details you have verified. A source URL is required; no buying-intent or investment score is generated.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Full name *</Label><Input value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Job title</Label><Input value={contactForm.job_title} onChange={(event) => setContactForm({ ...contactForm, job_title: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Email</Label><Input type="email" value={contactForm.email} onChange={(event) => setContactForm({ ...contactForm, email: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Phone</Label><Input value={contactForm.phone} onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })} /></div>
+              <div className="space-y-2"><Label>LinkedIn profile</Label><Input value={contactForm.linkedin_profile} onChange={(event) => setContactForm({ ...contactForm, linkedin_profile: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Source URL *</Label><Input value={contactForm.source_url} onChange={(event) => setContactForm({ ...contactForm, source_url: event.target.value })} placeholder="Official company page or public professional profile" /></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button onClick={addVerifiedContact} disabled={savingContact}>{savingContact ? <><span className="mr-2">Saving...</span></> : 'Save sourced contact'}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
