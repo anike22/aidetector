@@ -89,6 +89,40 @@ async function searchEuPortal(finder: string, keyword: string) {
     .filter(Boolean);
 }
 
+
+async function searchWorldBankTenders(keyword: string) {
+  const url = new URL("https://datacatalogapi.worldbank.org/dexapps/fone/api/apiservice");
+  url.searchParams.set("datasetId", "DS00979");
+  url.searchParams.set("resourceId", "RS00909");
+  url.searchParams.set("type", "json");
+  url.searchParams.set("top", "100");
+  url.searchParams.set("skip", "0");
+  url.searchParams.set("bid_description", keyword);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`World Bank procurement API returned HTTP ${response.status}.`);
+  const payload = await response.json();
+  const rows = Array.isArray(payload?.data) ? payload.data : [];
+  return rows.map((row: any) => {
+    const title = textOf(row.bid_description || row.description || row.notice_title);
+    if (!title) return null;
+    const id = textOf(row.id || row.project_id) || crypto.randomUUID();
+    return {
+      id,
+      title,
+      description: title,
+      organization: textOf(row.project_name || row.implementing_agency || row.notice_type),
+      location: textOf(row.country_name || row.region) || "Global / country not specified",
+      deadline: textOf(row.deadline_date),
+      amount: null,
+      status: textOf(row.notice_type) || "See official notice",
+      source_provider: "World Bank Procurement Notices",
+      source_url: textOf(row.url) || "https://projects.worldbank.org/en/projects-operations/procurement",
+      retrieved_at: new Date().toISOString(),
+      finder: "tender"
+    };
+  }).filter(Boolean);
+}
+
 async function searchUsGrants(keyword: string) {
   const response = await fetch("https://api.grants.gov/v1/api/search2", {
     method: "POST",
@@ -163,8 +197,16 @@ serve(async (req) => {
       if (euRows.length) providers.push("EU Funding & Tenders Portal");
       if (usRows.length) providers.push("Grants.gov");
     } else {
-      rows = await euPromise;
-      if (rows.length) providers.push("EU Funding & Tenders Portal");
+      const [euRows, worldBankRows] = await Promise.all([
+        euPromise,
+        searchWorldBankTenders(keyword).catch((error) => {
+          console.error("World Bank procurement provider error", error);
+          return [];
+        })
+      ]);
+      rows = [...euRows, ...worldBankRows];
+      if (euRows.length) providers.push("EU Funding & Tenders Portal");
+      if (worldBankRows.length) providers.push("World Bank Procurement Notices");
     }
 
     const unique = new Map<string, any>();
@@ -176,7 +218,7 @@ serve(async (req) => {
       providers,
       coverage: finder === "grant"
         ? "European Union and United States public funding notices; other jurisdictions are not yet connected."
-        : "European Union public procurement notices; other jurisdictions are not yet connected.",
+        : "European Union public procurement notices and World Bank-financed procurement notices across eligible countries; other national portals are not yet connected.",
       notice: results.length ? null : "No matching records were returned by the connected official sources. Try broader keywords."
     });
   } catch (error) {
