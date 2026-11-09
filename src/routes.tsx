@@ -195,6 +195,7 @@ import { WhyTikTokFlaggedMyRealVideoPage } from './pages/blog/WhyTikTokFlaggedMy
 import { WhatsAppCompressionAIDetectionPage } from './pages/blog/WhatsAppCompressionAIDetectionPage';
 import { AuthenticVideoFalsePositiveGuidePage } from './pages/blog/AuthenticVideoFalsePositiveGuidePage';
 const AgencyUnlimitedPage = lazy(() => import('./pages/AgencyUnlimitedPage'));
+const AgencyDashboardPage = lazy(() => import('./pages/team/AgencyDashboardPage'));
 const AllPagesDirectoryPage = lazy(() => import('./pages/AllPagesDirectoryPage'));
 const PromoVideoPage = lazy(() => import('./pages/PromoVideoPage'));
 
@@ -1119,6 +1120,11 @@ export const routes: RouteConfig[] = [
     path: '/accept-invitation',
     element: <AcceptInvitationPage />,
     public: true,
+  },
+  {
+    name: 'Agency Dashboard',
+    path: '/agency-dashboard',
+    element: <AgencyDashboardPage />,
   },
   {
     name: 'Organizations',

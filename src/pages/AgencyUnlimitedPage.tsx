@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const salesEmail = 'partners@aidetector.cx';
+const salesEmail = 'partnerships@aidetector.cx';
 const salesSubject = encodeURIComponent('AIDetector.cx — One-Month Agency Unlimited Access');
 const salesBody = encodeURIComponent(
   'Hello AIDetector.cx team,\n\nI would like to discuss a one-month unlimited access offer for my organisation.\n\nOrganisation:\nWebsite:\nTeam size:\nTools required:\nPreferred start date:\n\nPlease send me a negotiable quote.\n'
@@ -126,11 +126,14 @@ export default function AgencyUnlimitedPage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="h-12 bg-primary px-6 text-primary-foreground hover:bg-primary/90">
-                  <a href={salesHref}>
-                    Request a custom agency offer <ArrowRight className="ml-2 h-4 w-4" />
+                  <a href="/agency-dashboard">
+                    Start a free 7-day trial <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-12 border-white/30 bg-transparent px-6 text-white hover:bg-white/10 hover:text-white">
+                  <a href={salesHref}>Request a custom agency offer</a>
+                </Button>
+                <Button asChild size="lg" variant="ghost" className="h-12 px-6 text-white hover:bg-white/10 hover:text-white">
                   <a href="#pricing">View starting prices</a>
                 </Button>
               </div>
