@@ -25,12 +25,12 @@ function trialDetails(org: Organization) {
   const end = value?.ends_at ? new Date(value.ends_at) : null;
   const validEnd = end && Number.isFinite(end.getTime()) ? end : null;
   const remaining = validEnd ? Math.max(0, Math.ceil((validEnd.getTime() - Date.now()) / 86400000)) : 0;
-  return { status: value?.status || 'not_started', end: validEnd, remaining, startedAt: value?.started_at ? new Date(value.started_at) : null };
+  return { status: value?.status || 'not_started', end: validEnd, remaining };
 }
 
 export default function AgencyDashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { organizations, refreshTeams, setCurrentOrganization, currentMembership } = useTeam();
+  const { organizations, refreshTeams, setCurrentOrganization, currentMembership, loading: teamsLoading } = useTeam();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const agencies = useMemo(() => organizations.filter((org) => org.type === 'agency'), [organizations]);
@@ -45,10 +45,6 @@ export default function AgencyDashboardPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'editor' | 'analyst'>('member');
   const [inviting, setInviting] = useState(false);
-
-  useEffect(() => {
-    if (user) refreshTeams();
-  }, [user, refreshTeams]);
 
   useEffect(() => {
     if (!organization) return;
@@ -107,7 +103,7 @@ export default function AgencyDashboardPage() {
     }
   };
 
-  if (authLoading || (user && organizations.length === 0 && agencies.length === 0)) {
+  if (authLoading || (user && teamsLoading)) {
     return <MainLayout><div className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">Loading your agency workspace…</div></MainLayout>;
   }
 
