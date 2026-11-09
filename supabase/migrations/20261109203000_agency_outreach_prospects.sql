@@ -11,8 +11,8 @@ create table if not exists public.agency_outreach_prospects (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index if not exists agency_outreach_prospects_email_lower_uidx
-  on public.agency_outreach_prospects (lower(email));
+create unique index if not exists agency_outreach_prospects_email_uidx
+  on public.agency_outreach_prospects (email);
 alter table public.agency_outreach_prospects enable row level security;
 drop policy if exists "Agency outreach admins can manage prospects" on public.agency_outreach_prospects;
 create policy "Agency outreach admins can manage prospects"
