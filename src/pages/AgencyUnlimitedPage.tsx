@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const salesEmail = 'partners@aidetector.cx';
+const salesEmail = 'partnerships@aidetector.cx';
 const salesSubject = encodeURIComponent('AIDetector.cx — One-Month Agency Unlimited Access');
 const salesBody = encodeURIComponent(
   'Hello AIDetector.cx team,\n\nI would like to discuss a one-month unlimited access offer for my organisation.\n\nOrganisation:\nWebsite:\nTeam size:\nTools required:\nPreferred start date:\n\nPlease send me a negotiable quote.\n'
