@@ -695,12 +695,6 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
-    name: 'Understanding AI Detection Scores',
-    path: '/guides/understanding-ai-detection-scores',
-    element: <FeatureGate featureSlug="blog"><ArticlePage /></FeatureGate>,
-    public: true,
-  },
-  {
     name: 'Dual-Engine Detection Methodology',
     path: '/research/dual-engine-detection-methodology',
     element: <DualEngineDetectionMethodologyPage />,
