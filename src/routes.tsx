@@ -2,6 +2,7 @@ import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
 const AdminAgenciesPage = lazy(() => import('./pages/admin/AdminAgenciesPage'));
+const AgencyOutreachPage = lazy(() => import('./pages/admin/AgencyOutreachPage'));
 const BestPracticesForEducatorsPage = lazy(() => import('./pages/blog/BestPracticesForEducatorsPage'));
 const LanguageBenchmarkOverviewPage = lazy(() => import('./pages/research/LanguageBenchmarkOverviewPage'));
 import MainLayout from '@/components/layouts/MainLayout';
@@ -1211,6 +1212,7 @@ export const routes: RouteConfig[] = [
     path: '/rewards',
     element: <RewardsPage />,
   },
+  { name: 'Agency Prospect Outreach', path: '/admin/agency-outreach', element: <AgencyOutreachPage /> },
   { name: 'Growth Outreach', path: '/admin/growth-outreach', element: <AdminOutreachPage key="growth" growth /> },
   { name: 'Clients Outreach', path: '/admin/clients-outreach', element: <AdminOutreachPage key="clients" clients /> },
   { name: 'Outreach Mailbox', path: '/admin/outreach-mail', element: <AdminOutreachPage key="outreach-mail" outreachMail /> },
