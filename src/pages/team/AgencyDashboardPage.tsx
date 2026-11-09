@@ -74,7 +74,6 @@ export default function AgencyDashboardPage() {
         industry: industry.trim() || undefined,
         country: country.trim() || undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Lagos',
-        max_members: 5,
       });
       await refreshTeams();
       toast.success('Agency workspace created. Your 7-day trial has started if your account is eligible.');
