@@ -70,7 +70,7 @@ export default function AgencyOutreachPage() {
       return { email, organization, first_name: String(r.first_name || r.firstname || r.contact_name || "").trim().slice(0,120) || null, website: String(r.website || "").trim() || null, source_url: source || null };
     });
     const { data: { user } } = await supabase.auth.getUser();
-    const payload = cleaned.map(({created_by, ...r}) => ({...r, created_by: user?.id}));
+    const payload = cleaned.map(r => ({...r, created_by: user?.id}));
     const { data, error } = await supabase.from("agency_outreach_prospects").upsert(payload, { onConflict: "email", ignoreDuplicates: true }).select("id");
     if (error) throw error;
     await load();
