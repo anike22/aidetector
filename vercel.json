@@ -125,6 +125,10 @@
       "destination": "/prerender/guides/how-ai-detection-works/index.html"
     },
     {
+      "source": "/guides/understanding-ai-detection-scores",
+      "destination": "/prerender/guides/understanding-ai-detection-scores/index.html"
+    },
+    {
       "source": "/guides/why-was-my-essay-flagged-as-ai",
       "destination": "/prerender/guides/why-was-my-essay-flagged-as-ai/index.html"
     },
@@ -264,11 +268,6 @@
     {
       "source": "/guides/authentic-video-false-positives",
       "destination": "/studies/authentic-video-false-positives",
-      "permanent": true
-    },
-    {
-      "source": "/guides/understanding-ai-detection-scores",
-      "destination": "/guides/how-ai-detection-works",
       "permanent": true
     },
     {
