@@ -194,6 +194,7 @@ const SEOAgentPage = lazy(() => import('./pages/seo/SEOAgentPage'));
 import { WhyTikTokFlaggedMyRealVideoPage } from './pages/blog/WhyTikTokFlaggedMyRealVideoPage';
 import { WhatsAppCompressionAIDetectionPage } from './pages/blog/WhatsAppCompressionAIDetectionPage';
 import { AuthenticVideoFalsePositiveGuidePage } from './pages/blog/AuthenticVideoFalsePositiveGuidePage';
+const AgencyUnlimitedPage = lazy(() => import('./pages/AgencyUnlimitedPage'));
 const AllPagesDirectoryPage = lazy(() => import('./pages/AllPagesDirectoryPage'));
 const PromoVideoPage = lazy(() => import('./pages/PromoVideoPage'));
 
@@ -331,6 +332,12 @@ export const routes: RouteConfig[] = [
     path: '/admin/humanizer-quality',
     element: <MainLayout><HumanizerQualityPage /></MainLayout>,
     public: false,
+  },
+  {
+    name: 'Agency Unlimited Access',
+    path: '/agency-unlimited',
+    element: <AgencyUnlimitedPage />,
+    public: true,
   },
   {
     name: 'Home',
