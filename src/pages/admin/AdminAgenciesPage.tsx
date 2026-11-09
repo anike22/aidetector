@@ -28,7 +28,7 @@ type Agency = {
   owner?: { email: string; full_name: string | null };
   member_count: number;
   active_members: number;
-  checks_30d: number;
+  operations_30d: number;
   last_activity: string | null;
 };
 
@@ -139,7 +139,7 @@ export default function AdminAgenciesPage() {
         owner: ownerMap.get(row.owner_id) as Agency['owner'],
         member_count: memberCounts.get(row.id)?.total || 0,
         active_members: memberCounts.get(row.id)?.active || 0,
-        checks_30d: usageStats.get(row.id)?.count || 0,
+        operations_30d: usageStats.get(row.id)?.count || 0,
         last_activity: usageStats.get(row.id)?.last || null,
       })));
     } catch (error) {
@@ -198,7 +198,7 @@ export default function AdminAgenciesPage() {
       toast.success('Agency account updated');
       await load(true);
       const updated = (await supabase.from('organizations').select('id,name,owner_id,status,plan,max_members,country,industry,billing_email,created_at,settings').eq('id', selected.id).single()).data as unknown as Agency;
-      if (updated) setSelected({ ...updated, owner: selected.owner, member_count: selected.member_count, active_members: selected.active_members, checks_30d: selected.checks_30d, last_activity: selected.last_activity });
+      if (updated) setSelected({ ...updated, owner: selected.owner, member_count: selected.member_count, active_members: selected.active_members, operations_30d: selected.operations_30d, last_activity: selected.last_activity });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Agency management action failed');
     } finally {
@@ -236,10 +236,10 @@ export default function AdminAgenciesPage() {
               <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="sm:w-48"><SelectValue placeholder="Filter status" /></SelectTrigger><SelectContent><SelectItem value="all">All accounts</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="trialing">Trial active</SelectItem></SelectContent></Select>
             </div>
             {visible.length === 0 ? <div className="rounded-lg border border-dashed p-10 text-center"><Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><h3 className="font-semibold">{agencies.length ? 'No matching agencies' : 'No agency workspaces yet'}</h3><p className="mt-1 text-sm text-muted-foreground">{agencies.length ? 'Try a different search or status filter.' : 'Agency workspaces will appear here as customers create them.'}</p></div> : (
-              <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b text-muted-foreground"><th className="py-3 pr-4 font-medium">Agency</th><th className="py-3 pr-4 font-medium">Owner</th><th className="py-3 pr-4 font-medium">Workspace</th><th className="py-3 pr-4 font-medium">Trial</th><th className="py-3 pr-4 font-medium">Team</th><th className="py-3 pr-4 font-medium">Checks · 30d</th><th className="py-3 pr-4 font-medium">Created</th><th className="py-3 font-medium">Action</th></tr></thead><tbody>{visible.map((agency) => {
+              <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b text-muted-foreground"><th className="py-3 pr-4 font-medium">Agency</th><th className="py-3 pr-4 font-medium">Owner</th><th className="py-3 pr-4 font-medium">Workspace</th><th className="py-3 pr-4 font-medium">Trial</th><th className="py-3 pr-4 font-medium">Team</th><th className="py-3 pr-4 font-medium">Operations · 30d</th><th className="py-3 pr-4 font-medium">Created</th><th className="py-3 font-medium">Action</th></tr></thead><tbody>{visible.map((agency) => {
                 const agencyTrial = getTrial(agency);
                 const paid = agency.settings?.agency_subscription as AgencySubscription | undefined;
-                return <tr key={agency.id} className="border-b last:border-0"><td className="py-4 pr-4"><p className="font-medium">{agency.name}</p><p className="text-xs text-muted-foreground">{agency.industry || agency.country || 'Agency workspace'}</p></td><td className="py-4 pr-4"><p>{agency.owner?.full_name || 'Account owner'}</p><p className="text-xs text-muted-foreground">{agency.owner?.email || agency.billing_email || '—'}</p></td><td className="py-4 pr-4"><Badge variant={agency.status === 'active' ? 'default' : 'destructive'}>{agency.status}</Badge><p className="mt-1 text-xs capitalize text-muted-foreground">{agency.plan}</p></td><td className="py-4 pr-4"><p className="capitalize">{agencyTrial.status || 'Not started'}</p><p className="text-xs text-muted-foreground">{agencyTrial.end ? `${agencyTrial.remaining} days left · ${formatDate(agencyTrial.ends_at)}` : '—'}</p></td><td className="py-4 pr-4">{agency.active_members}/{agency.max_members || '—'}</td><td className="py-4 pr-4">{agency.checks_30d}</td><td className="py-4 pr-4">{formatDate(agency.created_at)}</td><td className="py-4"><Button size="sm" variant="outline" onClick={() => setSelected(agency)}>Manage</Button></td></tr>;
+                return <tr key={agency.id} className="border-b last:border-0"><td className="py-4 pr-4"><p className="font-medium">{agency.name}</p><p className="text-xs text-muted-foreground">{agency.industry || agency.country || 'Agency workspace'}</p></td><td className="py-4 pr-4"><p>{agency.owner?.full_name || 'Account owner'}</p><p className="text-xs text-muted-foreground">{agency.owner?.email || agency.billing_email || '—'}</p></td><td className="py-4 pr-4"><Badge variant={agency.status === 'active' ? 'default' : 'destructive'}>{agency.status}</Badge><p className="mt-1 text-xs capitalize text-muted-foreground">{agency.plan}</p></td><td className="py-4 pr-4"><p className="capitalize">{agencyTrial.status || 'Not started'}</p><p className="text-xs text-muted-foreground">{agencyTrial.end ? `${agencyTrial.remaining} days left · ${formatDate(agencyTrial.ends_at)}` : '—'}</p></td><td className="py-4 pr-4">{agency.active_members}/{agency.max_members || '—'}</td><td className="py-4 pr-4">{agency.operations_30d}</td><td className="py-4 pr-4">{formatDate(agency.created_at)}</td><td className="py-4"><Button size="sm" variant="outline" onClick={() => setSelected(agency)}>Manage</Button></td></tr>;
               })}</tbody></table></div>
             )}
           </CardContent>
@@ -249,7 +249,7 @@ export default function AdminAgenciesPage() {
           <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
             {selected && <>
               <DialogHeader><DialogTitle>{selected.name}</DialogTitle><DialogDescription>Owner: {selected.owner?.email || selected.owner_id} · Created {formatDate(selected.created_at)}</DialogDescription></DialogHeader>
-              <div className="grid gap-3 sm:grid-cols-3"><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Active team members</p><p className="text-2xl font-bold">{selected.active_members}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Successful checks · 30 days</p><p className="text-2xl font-bold">{selected.checks_30d}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Last tool activity</p><p className="text-sm font-semibold">{formatDate(selected.last_activity)}</p></CardContent></Card></div>
+              <div className="grid gap-3 sm:grid-cols-3"><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Active team members</p><p className="text-2xl font-bold">{selected.active_members}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Successful tool operations · 30 days</p><p className="text-2xl font-bold">{selected.operations_30d}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Last tool activity</p><p className="text-sm font-semibold">{formatDate(selected.last_activity)}</p></CardContent></Card></div>
 
               <section className="space-y-3 rounded-lg border p-4"><div><h3 className="font-semibold">Workspace access</h3><p className="text-xs text-muted-foreground">Suspend or reactivate the agency workspace without changing personal account subscriptions.</p></div><div className="flex flex-wrap gap-2">{selected.status === 'suspended' ? <Button onClick={() => void act('activate')} disabled={busy}><CheckCircle2 className="mr-2 h-4 w-4" />Reactivate workspace</Button> : <Button variant="destructive" onClick={() => void act('suspend')} disabled={busy}><XCircle className="mr-2 h-4 w-4" />Suspend workspace</Button>}</div></section>
 
