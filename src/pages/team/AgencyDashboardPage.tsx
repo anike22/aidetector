@@ -168,7 +168,7 @@ export default function AgencyDashboardPage() {
           <CardContent className="p-5">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div><h2 className="font-semibold">{isTrialing ? 'Your 7-day agency workspace trial is running' : 'Agency access and renewal'}</h2><p className="mt-1 text-sm text-muted-foreground">{isTrialing ? 'Explore team collaboration, invitations and shared workspace features before discussing a paid agency arrangement.' : 'Contact the AIDetector.cx team to discuss a new 30-day agency access arrangement and negotiated pricing.'}</p></div>
-              <Button asChild><a href="mailto:partners@aidetector.cx?subject=Agency%20trial%20conversion%20and%20pricing">Discuss agency pricing</a></Button>
+              <Button asChild><a href="mailto:partnerships@aidetector.cx?subject=Agency%20trial%20conversion%20and%20pricing">Discuss agency pricing</a></Button>
             </div>
             {trial?.status === 'not_eligible' && <p className="mt-3 text-sm text-muted-foreground">This account has already used an agency workspace trial. You can still request a negotiated agency offer.</p>}
             {trial?.end && <p className="mt-3 text-xs text-muted-foreground">Trial ends {trial.end.toLocaleString()} (local time shown by your browser).</p>}
@@ -196,7 +196,7 @@ export default function AgencyDashboardPage() {
             <CardContent className="space-y-3 text-sm">{['Shared agency organisation','Team invitations and role assignment','Workspace and project collaboration','Shared reports and activity tools'].map((feature) => <div key={feature} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><span>{feature}</span></div>)}<p className="border-t pt-3 text-xs text-muted-foreground">The trial does not automatically override existing tool credits, subscription limits, or activate unlimited API/bulk access.</p></CardContent>
           </Card>
         </section>
-        <p className="text-xs text-muted-foreground">Need help? <a className="text-primary underline" href="mailto:partners@aidetector.cx">partners@aidetector.cx</a></p>
+        <p className="text-xs text-muted-foreground">Need help? <a className="text-primary underline" href="mailto:partnerships@aidetector.cx">partnerships@aidetector.cx</a></p>
       </div>
     </MainLayout>
   );
