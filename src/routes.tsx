@@ -695,9 +695,9 @@ export const routes: RouteConfig[] = [
     public: true,
   },
   {
-    name: 'Understanding AI Detection Scores Redirect',
+    name: 'Understanding AI Detection Scores',
     path: '/guides/understanding-ai-detection-scores',
-    element: <Navigate to="/guides/how-ai-detection-works" replace />,
+    element: <ArticlePage />,
     public: true,
   },
   {
