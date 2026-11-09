@@ -1,6 +1,7 @@
 import PartnerResultPage from './pages/PartnerResultPage';
 import { lazy } from 'react';
 const AdminOutreachPage = lazy(() => import('./pages/admin/AdminOutreachPage'));
+const AdminAgenciesPage = lazy(() => import('./pages/admin/AdminAgenciesPage'));
 const BestPracticesForEducatorsPage = lazy(() => import('./pages/blog/BestPracticesForEducatorsPage'));
 const LanguageBenchmarkOverviewPage = lazy(() => import('./pages/research/LanguageBenchmarkOverviewPage'));
 import MainLayout from '@/components/layouts/MainLayout';
@@ -1119,6 +1120,12 @@ export const routes: RouteConfig[] = [
     name: 'Accept Invitation',
     path: '/accept-invitation',
     element: <AcceptInvitationPage />,
+    public: true,
+  },
+  {
+    name: 'Agency Administration',
+    path: '/admin/agencies',
+    element: <AdminAgenciesPage />,
     public: true,
   },
   {
