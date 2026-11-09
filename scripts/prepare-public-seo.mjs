@@ -7,7 +7,7 @@ for (const name of ['.env.local', '.env']) {
   try { process.loadEnvFile(path.join(root, name)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 // Explicit editorial inventory: routing's `public` flag also includes account workspaces.
-export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives'];
+export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores'];
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
@@ -15,7 +15,7 @@ export async function prepare() {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
       const pathname = new URL(url).pathname;
-      if (pathname !== '/guides/understanding-ai-detection-scores') paths.add(pathname);
+      paths.add(pathname);
     }
   }
   if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
@@ -32,7 +32,6 @@ export async function prepare() {
   for (const name of [...maps, 'sitemap-index.xml']) {
     let xml = await readFile(path.join(root, 'public', name), 'utf8');
     xml = xml.replaceAll('https://aidetector.cx', origin).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
-    xml = xml.replace(/\s*<url>\s*<loc>[^<]*\/guides\/understanding-ai-detection-scores<\/loc>[\s\S]*?<\/url>/g, '');
     await writeFile(path.join(root, 'public', name), xml);
   }
   const configPath = path.join(root, 'vercel.json');
