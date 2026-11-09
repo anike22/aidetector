@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/db/supabase";
@@ -58,7 +58,7 @@ export default function AgencyOutreachPage() {
     if (error) throw error;
     setProspects((data || []) as Prospect[]); setLoaded(true);
   };
-  useMemo(() => { if (!loading && profile?.role === "admin" && !loaded) void load().catch(e => toast.error(e.message)); return null; }, [loading, profile?.role, loaded]);
+  useEffect(() => { if (!loading && profile?.role === "admin" && !loaded) void load().catch(e => toast.error(e.message)); }, [loading, profile?.role, loaded]);
   const insertRows = async (rows: any[]) => {
     const cleaned = rows.map(r => {
       const email = String(r.email || "").trim().toLowerCase();
@@ -67,7 +67,7 @@ export default function AgencyOutreachPage() {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email: " + email);
       if (!organization) throw new Error("Every prospect needs an organization/agency name.");
       if (source && !/^https:\/\//i.test(source)) throw new Error("Website/source URLs must use HTTPS.");
-      return { email, organization, first_name: String(r.first_name || r.firstname || r.contact_name || "").trim().slice(0,120) || null, website: String(r.website || "").trim() || null, source_url: source || null, created_by: (awaitUserId) };
+      return { email, organization, first_name: String(r.first_name || r.firstname || r.contact_name || "").trim().slice(0,120) || null, website: String(r.website || "").trim() || null, source_url: source || null };
     });
     const { data: { user } } = await supabase.auth.getUser();
     const payload = cleaned.map(({created_by, ...r}) => ({...r, created_by: user?.id}));
