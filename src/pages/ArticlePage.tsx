@@ -71,13 +71,6 @@ export default function ArticlePage() {
   const resolvedHub = (hub || 'blog') as ContentHub;
   const resolvedSlug = slug || '';
 
-  // Redirect legacy or alternate slugs
-  useEffect(() => {
-    if (resolvedSlug === 'understanding-ai-detection-scores') {
-      navigate('/guides/how-ai-detection-works', { replace: true });
-    }
-  }, [resolvedSlug, navigate]);
-
   useEffect(() => {
     async function load() {
       if (!resolvedSlug || !HUBS.includes(resolvedHub)) {
