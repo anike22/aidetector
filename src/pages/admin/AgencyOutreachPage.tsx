@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 type Prospect = { id: string; email: string; first_name: string | null; organization: string; website: string | null; source_url: string | null; status: string; created_at: string };
-const SUBJECT = "AI-Powered Content Intelligence Solution for Growing Agencies";
+const SUBJECT = "Quick question about content QA for {{company}}";
 const parseCsv = (text: string) => {
   const rows: string[][] = []; let row: string[] = []; let cell = ""; let quoted = false;
   for (let i = 0; i < text.length; i++) {
@@ -29,22 +29,31 @@ const parseCsv = (text: string) => {
 };
 const emailHtml = (firstName: string, agency: string) => `
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:auto;color:#334155;line-height:1.65">
- <div style="border-bottom:1px solid #e5e7eb;padding:16px 0 18px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td><img src="https://www.aidetector.cx/favicon.png" width="42" height="42" style="display:block;border-radius:9px" alt="AIDetector.cx"></td><td style="padding-left:12px"><b style="font-size:19px;color:#0f172a">AIDetector<span style="color:#079bd3">.cx</span></b><div style="font-size:10px;color:#94a3b8;letter-spacing:1px">AI CONTENT INTEGRITY PLATFORM</div></td></tr></table></div>
+ <div style="border-bottom:1px solid #e5e7eb;padding:22px 0 20px">
+  <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+   <td><img src="https://www.aidetector.cx/favicon.png" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain" alt="AIDetector.cx logo"></td>
+   <td style="padding-left:14px"><b style="font-size:22px;color:#0f172a">AIDetector<span style="color:#079bd3">.cx</span></b><div style="font-size:11px;color:#64748b;letter-spacing:1.2px;margin-top:3px">AI CONTENT INTEGRITY PLATFORM</div></td>
+  </tr></table>
+ </div>
  <div style="padding:26px 0">
- <p>Hi ${firstName || "there"},</p>
- <p>I’m reaching out from <strong>AIDetector.cx</strong>, an AI Content Integrity Platform built to help agencies improve content quality, verify originality and manage AI-assisted content more confidently.</p>
- <p>We understand that agencies working with multiple clients need reliable tools without the expense and complexity of managing several separate subscriptions.</p>
- <p>That’s why we’re introducing our <strong>Agency Unlimited Access Plan</strong>.</p>
- <p>With AIDetector.cx, your agency can access tools designed to support its content workflow, including:</p>
- <ul><li><strong>AI Content Detection:</strong> Identify potential AI-generated content.</li><li><strong>Plagiarism Checker:</strong> Check content originality.</li><li><strong>SEO Assistant:</strong> Analyze and improve content for search performance.</li><li><strong>AI Humanizer:</strong> Refine AI-assisted writing.</li><li><strong>Agency Workspace:</strong> Organize team members and manage collaboration.</li></ul>
- <p><strong>Flexible agency pricing</strong></p>
- <p>We offer one-month agency access with negotiable pricing based on your agency’s requirements. Rather than forcing every agency into the same package, we’re open to discussing a suitable arrangement.</p>
- <p>We also offer a 7-day agency workspace trial for eligible new agencies to explore the collaboration features.</p>
- <p>Would you be open to a brief conversation about how AIDetector.cx could support ${agency || "your agency"}’s content operations?</p>
- <p><a href="https://www.aidetector.cx/agency-unlimited" style="display:inline-block;background:#079bd3;color:#fff;text-decoration:none;padding:11px 18px;border-radius:7px;font-weight:bold">Explore the agency offer</a></p>
- <p>Best regards,<br><strong>AIDetector.cx Partnerships Team</strong><br><a href="mailto:partnerships@aidetector.cx">partnerships@aidetector.cx</a><br><a href="https://www.aidetector.cx">www.aidetector.cx</a><br>+2348167111394</p>
- <p style="font-size:12px;color:#94a3b8">You’re receiving this business outreach because AIDetector.cx may be relevant to your agency. If you do not wish to receive further outreach, reply with “unsubscribe”.</p>
- </div></div>`;
+  <p>Hi ${firstName || agency || "there"},</p>
+  <p>I’m reaching out from <strong>AIDetector.cx</strong>—we built a pre-publication content verification suite for agencies managing SEO and editorial deliverables across multiple clients.</p>
+  <p>Instead of juggling separate USD subscriptions for AI checks, plagiarism scans, and on-page SEO audits, our <strong>Agency Unlimited Plan</strong> combines all of them in one team workspace:</p>
+  <ul>
+   <li><strong>Dual-Mode AI &amp; Mixed-Authorship Detection</strong> (with sentence-level highlights)</li>
+   <li><strong>Academic &amp; Web Plagiarism Checking</strong></li>
+   <li><strong>20-Module SEO &amp; E-E-A-T Readiness Assistant</strong></li>
+   <li><strong>AI Humanizer</strong> to refine rough drafts</li>
+   <li><strong>Shared Agency Workspace</strong> for editors and writers</li>
+  </ul>
+  <p>We offer flexible <strong>1-month unlimited access</strong> with custom <strong>Naira pricing</strong> tailored to your team size—no USD card limits.</p>
+  <p>Would you like me to set up a <strong>free 7-day Agency Trial</strong> (with <strong>15,000 free test words</strong>) so your editors can run a few live client drafts through it this week?</p>
+  <p>You can also review the <a href="https://www.aidetector.cx/seo-assistant" style="color:#079bd3">SEO Assistant</a>, which includes the full feature set described above.</p>
+  <p>Just reply <strong>“Yes”</strong> and I’ll send over your workspace login.</p>
+  <p>Best regards,<br><strong>Anike Tobechukwu</strong><br>Founder, AIDetector.cx<br>+234 816 711 1394</p>
+  <p style="font-size:12px;color:#94a3b8">P.S. If you’re not the right person for editorial tools, please let me know who heads content QA—or reply “Unsubscribe” if you’d prefer not to hear from me again.</p>
+ </div>
+</div>`;
 export default function AgencyOutreachPage() {
   const { profile, loading } = useAuth();
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -111,13 +120,13 @@ export default function AgencyOutreachPage() {
         <Button disabled={busy || !manual.email || !manual.organization} onClick={addManual}>Add as draft</Button>
       </CardContent></Card>
     </div>
-    <Card><CardHeader><CardTitle>Agency email template</CardTitle><CardDescription>{SUBJECT}</CardDescription></CardHeader><CardContent className="space-y-3">
+    <Card><CardHeader><CardTitle>Agency email template</CardTitle><CardDescription>{SUBJECT.replace("{{company}}", "Example Agency")}</CardDescription></CardHeader><CardContent className="space-y-3">
       <div className="rounded border bg-white p-2"><iframe title="Agency email template preview" sandbox="" srcDoc={emailHtml("Jane", "Example Agency")} className="h-[620px] w-full bg-white"/></div>
-      <p className="text-xs text-muted-foreground">Uses the AIDetector.cx logo/header treatment from the existing affiliate template. The agency offer, flexible pricing and 7-day workspace trial wording are preserved.</p>
+      <p className="text-xs text-muted-foreground">Uses the AIDetector.cx favicon as a prominent email-header logo and the updated agency content QA offer.</p>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>Prospect list ({prospects.length})</CardTitle><CardDescription>Records are stored separately from affiliate outreach.</CardDescription></CardHeader><CardContent className="space-y-2">
       {prospects.length === 0 ? <p className="text-sm text-muted-foreground">No agency prospects loaded yet.</p> : prospects.map(p=><div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3"><div><div className="font-medium">{p.organization}</div><div className="text-sm text-muted-foreground">{p.first_name || "No contact name"} · {p.email}</div></div><div className="flex items-center gap-2"><Badge variant="outline">{p.status}</Badge><Button variant="outline" size="sm" onClick={()=>setPreview(p)}>Preview</Button></div></div>)}
     </CardContent></Card>
-    {preview && <Card><CardHeader><CardTitle>Personalized preview: {preview.organization}</CardTitle></CardHeader><CardContent><p className="mb-2 text-sm">To: {preview.email}</p><p className="mb-2 text-sm">Subject: {SUBJECT}</p><iframe title="Personalized agency email" sandbox="" srcDoc={emailHtml(preview.first_name || "there", preview.organization)} className="h-[620px] w-full rounded border bg-white"/><Button variant="outline" onClick={()=>setPreview(null)} className="mt-3">Close preview</Button></CardContent></Card>}
+    {preview && <Card><CardHeader><CardTitle>Personalized preview: {preview.organization}</CardTitle></CardHeader><CardContent><p className="mb-2 text-sm">To: {preview.email}</p><p className="mb-2 text-sm">Subject: {SUBJECT.replace("{{company}}", preview.organization)}</p><iframe title="Personalized agency email" sandbox="" srcDoc={emailHtml(preview.first_name || "there", preview.organization)} className="h-[620px] w-full rounded border bg-white"/><Button variant="outline" onClick={()=>setPreview(null)} className="mt-3">Close preview</Button></CardContent></Card>}
   </main>;
 }
