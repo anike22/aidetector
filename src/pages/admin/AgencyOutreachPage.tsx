@@ -50,7 +50,7 @@ const emailHtml = (firstName: string, agency: string) => `
   <p>Would you like me to set up a <strong>free 7-day Agency Trial</strong> so your editors can explore the shared workspace and collaborate on a few live client drafts this week? Tool usage during the trial follows the account’s existing access and credit limits.</p>
   <p>You can also explore our <a href="https://www.aidetector.cx/seo-assistant" style="color:#079bd3">SEO Assistant</a> to see its content analysis and optimization features.</p>
   <p>Just reply <strong>“Yes”</strong> and I’ll send over your workspace login.</p>
-  <p>Best regards,<br><strong>Anike Tobechukwu</strong><br>Founder, AIDetector.cx<br>+234 816 711 1394</p>
+  <p>Best regards,<br><strong>Anike Tobechukwu</strong><br>Founder, AIDetector.cx<br>+234 903 993 3119</p>
   <p style="font-size:12px;color:#94a3b8">P.S. If you’re not the right person for editorial tools, please let me know who heads content QA—or reply “Unsubscribe” if you’d prefer not to hear from me again.</p>
  </div>
 </div>`;
