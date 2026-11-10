@@ -27,9 +27,10 @@ import { detectHumanEdits } from './layers/humanEditDetection.ts';
 import { analyzeDocumentConsistency } from './layers/documentConsistency.ts';
 import { analyzeDocumentStyle } from './documentStyleEvidence.ts';
 import { analyzeReadingEvidence } from './readingEvidence.ts';
+import { analyzeGeminiEvidence } from './geminiEvidence.ts';
 
-export const DETECTOR_VERSION = '2.6.0';
-export const MODEL_VERSION = 'ensemble-v4-classifier-v2';
+export const DETECTOR_VERSION = '2.7.0';
+export const MODEL_VERSION = 'ensemble-v4-classifier-v2+gemini-evidence-v1';
 export const LANGUAGE_PIPELINE_VERSION = 'lang-v3';
 export const CALIBRATION_VERSION = 'cal-v3-five-class';
 
@@ -904,6 +905,9 @@ export async function analyzeAdvancedText(
       : undefined,
   );
 
+  // Optional Gemini evidence runs alongside the local detector. Fail-open by design.
+  const geminiEvidencePromise = analyzeGeminiEvidence(trimmed, languageCode);
+
   const adjusted = applyLayerAdjustments(
     ensemble.scores.ai,
     ensemble.scores.human,
@@ -912,6 +916,23 @@ export async function analyzeAdvancedText(
     humanEdit,
     documentConsistency,
   );
+
+  const geminiEvidence = await geminiEvidencePromise;
+  let geminiAppliedWeight = 0;
+  if (geminiEvidence && geminiEvidence.confidence >= 65) {
+    // Gemini is a small corroborating signal, never an authority.
+    // Preserve Mixed mass and cap influence at 6% of the AI/Human split.
+    const nonMixedMass = Math.max(0, adjusted.ai + adjusted.human);
+    if (nonMixedMass > 0) {
+      geminiAppliedWeight = 0.06 * (geminiEvidence.confidence / 100);
+      const localAiShare = adjusted.ai / nonMixedMass;
+      const geminiAiShare = geminiEvidence.aiProbability / 100;
+      const blendedAiShare = localAiShare * (1 - geminiAppliedWeight) +
+        geminiAiShare * geminiAppliedWeight;
+      adjusted.ai = nonMixedMass * blendedAiShare;
+      adjusted.human = nonMixedMass - adjusted.ai;
+    }
+  }
   // Shared, auditable reading rubric. Provisional evidence points are not a
   // calibrated probability; no expected output or known authorship enters it.
   const styleEvidence = analyzeDocumentStyle(trimmed);
@@ -1094,11 +1115,29 @@ export async function analyzeAdvancedText(
     analyzedAt: new Date().toISOString(),
     classProbabilities,
   };
+  Object.assign(metadata, {
+    geminiLayer: {
+      model: 'gemini-2.5-flash-lite',
+      status: geminiEvidence
+        ? (geminiAppliedWeight > 0 ? 'applied' : 'available_low_confidence')
+        : 'unavailable_or_skipped',
+      aiProbability: geminiEvidence?.aiProbability ?? null,
+      confidence: geminiEvidence?.confidence ?? null,
+      appliedWeight: Number(geminiAppliedWeight.toFixed(4)),
+    },
+  });
 
   const warnings: DetectionWarning[] = [
     ...languageResult.warnings,
     ...statisticalResult.warnings,
   ];
+  if (geminiAppliedWeight > 0) {
+    warnings.push({
+      type: 'low-context',
+      severity: 'info',
+      message: 'Gemini supplied a limited corroborating signal. Its contribution is capped and is not proof of authorship.',
+    });
+  }
   if (styleSignalStrong) {
     warnings.push({
       type: 'low-context',
