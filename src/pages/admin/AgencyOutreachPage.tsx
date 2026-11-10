@@ -47,8 +47,8 @@ const emailHtml = (firstName: string, agency: string) => `
    <li><strong>Shared Agency Workspace</strong> for editors and writers</li>
   </ul>
   <p>We offer flexible <strong>1-month unlimited access</strong> with custom <strong>Naira pricing</strong> tailored to your team size—no USD card limits.</p>
-  <p>Would you like me to set up a <strong>free 7-day Agency Trial</strong> (with <strong>15,000 free test words</strong>) so your editors can run a few live client drafts through it this week?</p>
-  <p>You can also review the <a href="https://www.aidetector.cx/seo-assistant" style="color:#079bd3">SEO Assistant</a>, which includes the full feature set described above.</p>
+  <p>Would you like me to set up a <strong>free 7-day Agency Trial</strong> so your editors can explore the shared workspace and collaborate on a few live client drafts this week? Tool usage during the trial follows the account’s existing access and credit limits.</p>
+  <p>You can also explore our <a href="https://www.aidetector.cx/seo-assistant" style="color:#079bd3">SEO Assistant</a> to see its content analysis and optimization features.</p>
   <p>Just reply <strong>“Yes”</strong> and I’ll send over your workspace login.</p>
   <p>Best regards,<br><strong>Anike Tobechukwu</strong><br>Founder, AIDetector.cx<br>+234 816 711 1394</p>
   <p style="font-size:12px;color:#94a3b8">P.S. If you’re not the right person for editorial tools, please let me know who heads content QA—or reply “Unsubscribe” if you’d prefer not to hear from me again.</p>
