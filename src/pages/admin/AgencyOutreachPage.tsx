@@ -36,7 +36,7 @@ const emailHtml = (firstName: string, agency: string) => `
   </tr></table>
  </div>
  <div style="padding:26px 0">
-  <p>Hi ${firstName || agency || "there"},</p>
+  <p>Hi ${agency || firstName || "there"},</p>
   <p>I’m reaching out from <strong>AIDetector.cx</strong>—we built a pre-publication content verification suite for agencies managing SEO and editorial deliverables across multiple clients.</p>
   <p>Instead of juggling separate USD subscriptions for AI checks, plagiarism scans, and on-page SEO audits, our <strong>Agency Unlimited Plan</strong> combines all of them in one team workspace:</p>
   <ul>
