@@ -3,175 +3,73 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { corsHeaders } from "../_shared/cors.ts";
 import { withBillingGuard } from "../_shared/billing.ts";
 
-function seededRandom(seedStr: string) {
-  let h = 0xdeadbeef;
-  for(let i = 0; i < seedStr.length; i++)
-      h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
-  const hash = ((h ^ h >>> 16) >>> 0);
-  return function() {
-    h = Math.imul(h ^ hash, 2654435761);
-    return ((h ^ h >>> 16) >>> 0) / 4294967296;
-  };
+function ideasFor(seed: string) {
+  const s = seed.trim().replace(/\s+/g, " ");
+  const phrases = ["how to", "what is", "best", "benefits of", "types of", "examples of", "guide to", "ways to", "tips for"].map(x => `${x} ${s}`).concat(
+    ["for beginners", " explained", " guide", " benefits", " examples", " tips", " alternatives", " checklist", " cost", " pricing", " tools"].map(x => `${s}${x}`)
+  );
+  return [...new Set(phrases.map(x => x.toLowerCase()))].slice(0, 25).map(keyword => ({
+    keyword, intent: /best|alternatives|cost|pricing|tools/i.test(keyword) ? "Commercial" : "Informational",
+    volume: null, kd: null, cpc: null, trend: null, traffic_potential: null,
+    serp_features: [], competition: null, ai_opportunity: null
+  }));
 }
+function questionsFor(seed: string) {
+  return ["what is", "how does", "how to use", "why use", "when to use", "what are the benefits of", "what are the types of", "how much does"].map(p => ({
+    question: `${p} ${seed.trim()}?`, volume: null, kd: null, intent: "Informational",
+    ai_citation_opportunity: null, featured_snippet_prob: null
+  }));
+}
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  return withBillingGuard(req, { featureSlug: 'seo_assistant', corsHeaders }, async (ctx) => {
-  try {
-    const { keyword, country = 'US', language = 'en' } = ctx.body;
-    if (!keyword) throw new Error('Keyword is required');
-
-    const authHeader = req.headers.get('Authorization')!;
-    const serviceClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const userId = user?.id || null;
-
-    // Check for real API keys
-    const dfsLogin = Deno.env.get('DATAFORSEO_LOGIN');
-    const dfsPassword = Deno.env.get('DATAFORSEO_PASSWORD');
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    
-    if (!dfsLogin || !dfsPassword) {
-      return new Response(JSON.stringify({
-        success: false,
-        source: "API Not Connected",
-        domain: keyword, // Using keyword for the domain field conceptually
-        generated_at: new Date().toISOString(),
-        data: null,
-        errors: [{
-          code: "API_NOT_CONNECTED",
-          message: "DataForSEO API credentials not configured",
-          field: "api_key"
-        }]
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    let dataSourceLabel = "DataForSEO";
-    let isLiveData = true;
-
-    const rng = seededRandom(keyword + country + language);
-    const volume = Math.floor(rng() * 100000) + 1000;
-    
-    // Generate intelligent data
-    const generateTrend = (base: number) => {
-      return Array.from({ length: 12 }).map((_, i) => ({
-        date: new Date(Date.now() - (11 - i) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        value: Math.max(0, Math.floor(base * (0.6 + rng() * 0.8)))
-      }));
-    };
-
-    const intents = ['Informational', 'Commercial', 'Transactional', 'Navigational'];
-    const generateKeywordsList = (count: number, prefix: string, forceIntent?: string) => {
-      return Array.from({ length: count }).map((_, i) => ({
-        keyword: `${prefix} ${keyword} ${i + 1}`,
-        intent: forceIntent || intents[Math.floor(rng() * intents.length)],
-        volume: Math.floor(rng() * volume * 0.5) + 50,
-        kd: Math.floor(rng() * 80) + 10,
-        cpc: Number((rng() * 15).toFixed(2)),
-        trend: Math.floor(rng() * 100),
-        traffic_potential: Math.floor(rng() * volume * 0.3),
-        serp_features: ['Featured Snippet', 'People Also Ask'].filter(() => rng() > 0.5),
-        competition: rng() > 0.6 ? 'High' : rng() > 0.3 ? 'Medium' : 'Low',
-        ai_opportunity: Math.floor(rng() * 100)
-      }));
-    };
-
-    const generateQuestionsList = (count: number) => {
-      const qPrefixes = ['how', 'what', 'why', 'when', 'where', 'is', 'can'];
-      return Array.from({ length: count }).map(() => ({
-        question: `${qPrefixes[Math.floor(rng() * qPrefixes.length)]} ${keyword} ${Math.floor(rng() * 100)}`,
-        volume: Math.floor(rng() * volume * 0.2) + 50,
-        kd: Math.floor(rng() * 60) + 10,
-        intent: 'Informational',
-        ai_citation_opportunity: Math.floor(rng() * 80) + 20,
-        featured_snippet_prob: Math.floor(rng() * 100)
-      }));
-    };
-
-    const reportData = {
-      overview: {
-        total_keywords: Math.floor(rng() * 5000) + 500,
-        total_volume: volume * 15,
-        avg_kd: Math.floor(rng() * 40) + 30,
-        avg_cpc: Number((rng() * 5 + 1).toFixed(2)),
-        avg_opportunity: Math.floor(rng() * 50) + 30,
-        intent_distribution: { Informational: 45, Commercial: 30, Transactional: 15, Navigational: 10 },
-        trend_score: Math.floor(rng() * 100),
-        trend_data: generateTrend(volume)
-      },
-      keyword_ideas: generateKeywordsList(25, 'best'),
-      questions: generateQuestionsList(15),
-      competitors: Array.from({ length: 5 }).map((_, i) => ({
-        domain: `competitor${i+1}.com`,
-        traffic: Math.floor(rng() * 50000),
-        authority: Math.floor(rng() * 70) + 20,
-        overlap: Math.floor(rng() * 300) + 50,
-        ai_visibility: Math.floor(rng() * 100)
-      })),
-      serp_analysis: Array.from({ length: 10 }).map((_, i) => ({
-        position: i + 1,
-        url: `https://example${i}.com/article-${i}`,
-        authority: Math.floor(rng() * 60) + 20,
-        backlinks: Math.floor(rng() * 500),
-        traffic: Math.floor(rng() * 5000),
-        word_count: Math.floor(rng() * 2000) + 500,
-        speed_score: Math.floor(rng() * 40) + 50
-      })),
-      clusters: Array.from({ length: 4 }).map((_, i) => ({
-        name: `${keyword} Topic ${i+1}`,
-        keywords_count: Math.floor(rng() * 50) + 10,
-        volume: Math.floor(rng() * volume),
-        avg_kd: Math.floor(rng() * 60) + 10
-      })),
-      ai_search_opportunity: {
-        overall_score: Math.floor(rng() * 60) + 30,
-        chatgpt_opp: Math.floor(rng() * 80) + 10,
-        gemini_opp: Math.floor(rng() * 80) + 10,
-        perplexity_opp: Math.floor(rng() * 80) + 10,
-        missing_entities: ['Entity 1', 'Entity 2', 'Entity 3'],
-        suggested_faqs: ['FAQ 1 related to ' + keyword, 'FAQ 2 for ' + keyword]
+serve(async req => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  return withBillingGuard(req, { featureSlug: "seo_assistant", corsHeaders }, async ctx => {
+    try {
+      const { keyword, country = "US", language = "en" } = ctx.body;
+      if (!keyword || typeof keyword !== "string" || !keyword.trim()) throw new Error("Keyword is required");
+      const db = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+      const { data: rows } = await db.from("system_api_keys").select("provider, key_value").in("provider", ["dataforseo_login", "dataforseo_password"]);
+      const keys = Object.fromEntries((rows || []).map((r: any) => [r.provider, r.key_value]));
+      const login = Deno.env.get("DATAFORSEO_LOGIN") || keys.dataforseo_login;
+      const password = Deno.env.get("DATAFORSEO_PASSWORD") || keys.dataforseo_password;
+      let ideas: any[] = [];
+      let source = "Built-in";
+      if (login && password) {
+        try {
+          const res = await fetch("https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live", {
+            method: "POST", headers: { Authorization: `Basic ${btoa(`${login}:${password}`)}`, "Content-Type": "application/json" },
+            body: JSON.stringify([{ keyword: keyword.trim(), location_name: country, language_code: language, limit: 50 }]),
+            signal: AbortSignal.timeout(9000)
+          });
+          if (!res.ok) throw new Error(`DataForSEO HTTP ${res.status}`);
+          const payload = await res.json(), task = payload?.tasks?.[0];
+          if (payload?.status_code !== 20000 || task?.status_code !== 20000) throw new Error("DataForSEO keyword request failed");
+          ideas = (task?.result?.[0]?.items || []).map((item: any) => {
+            const d = item?.keyword_data || item;
+            return { keyword: d?.keyword || item?.keyword || "", intent: d?.keyword_intent?.label || null,
+              volume: d?.keyword_info?.search_volume ?? null, kd: d?.keyword_properties?.keyword_difficulty ?? null,
+              cpc: d?.keyword_info?.cpc ?? null, trend: null, traffic_potential: null, serp_features: [], competition: null, ai_opportunity: null };
+          }).filter((x: any) => x.keyword);
+          if (ideas.length) source = "DataForSEO";
+        } catch (e) { console.warn("[keyword-intelligence] DataForSEO unavailable; using built-in fallback", e); }
       }
-    };
-
-    const { data: finalReport, error: updateError } = await serviceClient
-      .from('keyword_intelligence_reports')
-      .insert({
-        user_id: userId,
-        seed_keyword: keyword,
-        country,
-        language,
-        data_source: dataSourceLabel,
-        status: 'completed',
-        data: reportData
-      })
-      .select()
-      .single();
-
-    if (updateError) throw updateError;
-
-    const responsePayload = {
-      success: true,
-      keyword: finalReport.seed_keyword,
-      data_source: finalReport.data_source,
-      data: finalReport.data,
-      errors: []
-    };
-
-    return new Response(JSON.stringify(responsePayload), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-
-  } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, errors: [error.message] }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200 
-    });
-  }
+      if (!ideas.length) ideas = ideasFor(keyword);
+      const questions = questionsFor(keyword);
+      const data = {
+        overview: { total_keywords: ideas.length, total_volume: null, avg_kd: null, avg_cpc: null, avg_opportunity: null,
+          intent_distribution: ideas.reduce((a: any, x: any) => { if (x.intent) a[x.intent] = (a[x.intent] || 0) + 1; return a; }, {}),
+          trend_score: null, trend_data: [] },
+        keyword_ideas: ideas, questions, competitors: [], serp_analysis: [],
+        clusters: [{ name: keyword.trim(), keywords_count: ideas.length, volume: null, avg_kd: null, keywords: ideas.map((x: any) => x.keyword) }],
+        ai_search_opportunity: { overall_score: null, chatgpt_opp: null, gemini_opp: null, perplexity_opp: null,
+          missing_entities: [], suggested_faqs: questions.map((x: any) => x.question) }
+      };
+      const { data: saved, error } = await db.from("keyword_intelligence_reports").insert({
+        user_id: ctx.userId, seed_keyword: keyword.trim(), country, language, data_source: source, status: "completed", data
+      }).select().single();
+      if (error) throw error;
+      return json({ success: true, keyword: saved.seed_keyword, data_source: saved.data_source, data: saved.data, errors: [] });
+    } catch (e: any) { return json({ success: false, errors: [e?.message || "Keyword intelligence failed"] }, 400); }
   });
 });
