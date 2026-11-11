@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { corsHeaders as sharedCorsHeaders } from "../_shared/cors.ts";
+import { withBillingGuard } from "../_shared/billing.ts";
 
 // This endpoint receives the browser's idempotency and timezone headers.
 // Keep this CORS expansion local so other product endpoints are unchanged.
@@ -9,7 +10,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-idempotency-key, x-timezone",
 };
-import { withBillingGuard } from "../_shared/billing.ts";
 
 serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
