@@ -82,6 +82,11 @@ export async function prepare() {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
     }
+    if (route === '/essay-template/:slug' || route === '/marketplace/:id') {
+      // Essay templates are unpublished and Marketplace is feature-gated with placeholder products.
+      // Do not send unknown detail URLs to the SPA shell; let Vercel serve the static 404.
+      continue;
+    }
     if (route === '/:hub/:slug') {
       // Public articles are enumerated above from published content and prerendered.
       // Do not serve the generic SPA shell (HTTP 200) for arbitrary missing slugs:
@@ -93,7 +98,11 @@ export async function prepare() {
   }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/technical-seo'];
-  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  const unpublishedNoindexPaths = ['/essay-template/:path*', '/services/growth-marketing', '/marketplace', '/marketplace/:path*'];
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...unpublishedNoindexPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  for (const source of unpublishedNoindexPaths) {
+    if (!config.headers.some(h => h.source === source && h.headers?.some(x => x.key === 'X-Robots-Tag' && x.value === 'noindex, follow'))) throw new Error(`Missing unpublished-route noindex header: ${source}`);
+  }
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
 }
