@@ -277,7 +277,7 @@ export default function AIVideoDetector() {
         </div>
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
           AI Video Detector & Deepfake Forensic Suite
-        </h1>
+        </h2>
         <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
           Detect and localize synthetic video manipulation, voice cloning, viseme lip-sync misalignment, generator fingerprints, and C2PA Content Credentials.
         </p>
