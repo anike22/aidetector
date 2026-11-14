@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
 import { BookOpen, CalendarDays, ExternalLink, GraduationCap, ShieldAlert } from 'lucide-react';
@@ -41,7 +42,7 @@ const breadcrumbSchema = {
   ],
 };
 
-function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
+function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">{children}<ExternalLink className="inline w-3.5 h-3.5 ml-1" /></a>;
 }
 
@@ -84,14 +85,14 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">What does Turnitin actually detect?</h2>
+              <h2 id="what-does-turnitin-actually-detect" className="text-2xl font-bold text-navy mb-3">What does Turnitin actually detect?</h2>
               <p>Turnitin’s AI Writing Report is designed to identify qualifying passages that its model estimates may have been produced by a generative AI system. The relevant category is broader than ChatGPT: it refers to writing associated with large language models, rather than a forensic record of which application a person opened.</p>
               <p className="mt-3">That distinction matters. A report may indicate that a passage has patterns associated with AI-generated writing, but it cannot by itself establish that a student used ChatGPT, which model was involved, what prompt was entered, or whether the use broke a course rule. The report is one piece of information for an educator to review.</p>
               <p className="mt-3">Turnitin’s documentation also distinguishes AI writing detection from text similarity checking. The Similarity Report identifies matching text in its comparison sources. The AI Writing Report estimates the likelihood that qualifying prose was AI-generated. One result should not be read as the other.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">What does the Turnitin AI percentage mean?</h2>
+              <h2 id="what-does-the-turnitin-ai-percentage-mean" className="text-2xl font-bold text-navy mb-3">What does the Turnitin AI percentage mean?</h2>
               <p>The AI percentage represents the share of qualifying text in a submission that the model identifies as likely AI-generated. It is not the same as the Similarity Score, and it should not be described as proof that a specific person or tool wrote the document.</p>
               <p className="mt-3">For example, a report showing 40% AI does not mean Turnitin has discovered a ChatGPT account or established that exactly 40% of the student’s words were typed by ChatGPT. It means that the model has classified that proportion of qualifying text as likely AI-generated under its methodology.</p>
               <div className="my-5 overflow-x-auto">
@@ -108,7 +109,7 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">Turnitin AI detection requirements in 2026</h2>
+              <h2 id="turnitin-ai-detection-requirements-in-2026" className="text-2xl font-bold text-navy mb-3">Turnitin AI detection requirements in 2026</h2>
               <p>A submission must meet the product’s requirements before Turnitin can generate an AI Writing Report and percentage. According to its current documentation, the requirements include:</p>
               <ul className="list-disc pl-6 space-y-2 mt-3">
                 <li>At least <strong>300 words of qualifying prose</strong> in a long-form writing format.</li>
@@ -122,7 +123,7 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">What changed in Turnitin AI detection during 2026?</h2>
+              <h2 id="what-changed-in-turnitin-ai-detection-during-2026" className="text-2xl font-bold text-navy mb-3">What changed in Turnitin AI detection during 2026?</h2>
               <p>Turnitin’s published release notes show that its detection product continues to change. On <strong>October 14, 2026</strong>, Turnitin announced an update to its English AI-writing model intended to improve detection while minimizing false positives. The company says the update does not retroactively change reports that were already generated; a submission must be resubmitted to receive a report under the updated model.</p>
               <p className="mt-3">This has a practical consequence: two reports for the same paper may differ if they were generated at different times and under different model versions. A difference does not, by itself, show that a student changed the work or that one report proves authorship.</p>
               <p className="mt-3">Turnitin also announced language-specific updates and expanded availability during 2026. For the latest changes, use the <SourceLink href="https://guides.turnitin.com/hc/en-us/articles/28294949544717-AI-writing-detection-model">official AI-writing model release notes</SourceLink> rather than assuming that an older screenshot or blog post describes the current product.</p>
@@ -135,7 +136,7 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">Can Turnitin falsely flag human-written work?</h2>
+              <h2 id="can-turnitin-falsely-flag-human-written-work" className="text-2xl font-bold text-navy mb-3">Can Turnitin falsely flag human-written work?</h2>
               <p>Yes. Turnitin explicitly acknowledges that its model may misidentify human-written text as AI-generated. Formal academic writing, highly structured prose, short or unusual submissions and writing that differs from a person’s usual style may deserve careful contextual review—but none of those characteristics establishes AI use.</p>
               <div className="my-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
                 <div className="flex items-start gap-3"><ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-1" /><div><h3 className="font-bold mb-1">A detector score is not a misconduct finding</h3><p className="text-sm">Turnitin says the AI report should not be used as the sole basis for adverse action. Educators should apply institutional policy, review the work and consider other relevant evidence before reaching a conclusion.</p></div></div>
@@ -151,7 +152,7 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-navy mb-3">What should you do if your essay is flagged?</h2>
+              <h2 id="what-should-you-do-if-your-essay-is-flagged" className="text-2xl font-bold text-navy mb-3">What should you do if your essay is flagged?</h2>
               <ol className="list-decimal pl-6 space-y-2">
                 <li><strong>Read the actual policy.</strong> Check what AI assistance was allowed for that assignment and what disclosure was required.</li>
                 <li><strong>Keep your process evidence.</strong> Save outlines, notes, source records, drafts and version history as you work. Do not fabricate or alter records after a concern is raised.</li>
