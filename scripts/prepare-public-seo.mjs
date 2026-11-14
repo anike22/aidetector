@@ -93,7 +93,10 @@ export async function prepare() {
   }
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/technical-seo'];
-  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  // Marketplace is feature-gated and its current catalog is placeholder content, not an SEO landing page.
+  const unpublishedNoindexPaths = ['/marketplace', '/marketplace/:path*'];
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...unpublishedNoindexPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  for (const source of unpublishedNoindexPaths) { if (!config.headers.some(h => h.source === source && h.headers?.some(x => x.key === 'X-Robots-Tag' && x.value === 'noindex, follow'))) throw new Error(`Missing unpublished-route noindex header: ${source}`); }
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
   return [...paths];
 }
