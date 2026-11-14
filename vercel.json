@@ -337,10 +337,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/marketplace",
-      "destination": "/index.html"
-    },
-    {
       "source": "/sell",
       "destination": "/index.html"
     },
@@ -594,10 +590,6 @@
     },
     {
       "source": "/services/conversion-optimization",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/services/growth-marketing",
       "destination": "/index.html"
     },
     {
