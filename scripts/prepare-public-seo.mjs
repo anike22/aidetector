@@ -82,9 +82,9 @@ export async function prepare() {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
       continue;
     }
-    if (route === '/essay-template/:slug' || route === '/marketplace/:id') {
-      // Essay templates are unpublished and Marketplace is feature-gated with placeholder products.
-      // Do not send unknown detail URLs to the SPA shell; let Vercel serve the static 404.
+    if (route === '/essay-template/:slug' || route === '/marketplace/:id' || route === '/marketplace' || route === '/services/growth-marketing') {
+      // These routes are unpublished or feature-gated. Do not send them to the homepage SPA shell;
+      // let Vercel return the branded static HTTP 404 until the routes are intentionally published.
       continue;
     }
     if (route === '/:hub/:slug') {
