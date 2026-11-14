@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+<title id="title">Turnitin and ChatGPT AI writing detection</title>
+<desc id="desc">An academic essay is reviewed with a magnifying glass beside a laptop showing an AI assistant symbol.</desc>
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#10243b"/><stop offset="1" stop-color="#214f6b"/></linearGradient>
+ <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#e8eef4"/></linearGradient>
+ <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7dd3fc" stop-opacity=".45"/><stop offset="1" stop-color="#dbeafe" stop-opacity=".12"/></linearGradient>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#071525" flood-opacity=".28"/></filter>
+</defs>
+<rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+<circle cx="170" cy="80" r="210" fill="#4ea6bd" opacity=".12"/><circle cx="1090" cy="610" r="260" fill="#8bd5e6" opacity=".09"/>
+<g filter="url(#shadow)">
+ <rect x="620" y="100" width="480" height="330" rx="24" fill="#172b40" stroke="#8bb5ca" stroke-width="7"/>
+ <rect x="650" y="130" width="420" height="270" rx="12" fill="#0b1b2b"/>
+ <rect x="690" y="170" width="200" height="15" rx="7" fill="#55758b"/>
+ <rect x="690" y="204" width="160" height="12" rx="6" fill="#36566d"/>
+ <rect x="690" y="232" width="190" height="12" rx="6" fill="#36566d"/>
+ <path d="M930 205h88a18 18 0 0 1 18 18v54a18 18 0 0 1-18 18h-42l-28 22v-22h-18a18 18 0 0 1-18-18v-54a18 18 0 0 1 18-18z" fill="#103f59" stroke="#54c8ec" stroke-width="5"/>
+ <rect x="949" y="226" width="52" height="34" rx="15" fill="#b8f0ff"/><circle cx="965" cy="243" r="4" fill="#16445d"/><circle cx="986" cy="243" r="4" fill="#16445d"/><path d="M965 253q10 8 20 0" fill="none" stroke="#16445d" stroke-width="3" stroke-linecap="round"/>
+ <path d="M590 433h540l-38 30H628z" fill="#a9bdcb"/>
+</g>
+<g transform="rotate(-8 420 430)" filter="url(#shadow)">
+ <rect x="150" y="260" width="470" height="330" rx="18" fill="url(#paper)"/>
+ <rect x="190" y="305" width="280" height="18" rx="8" fill="#29465e"/>
+ <rect x="190" y="348" width="370" height="10" rx="5" fill="#9aaebe"/>
+ <rect x="190" y="375" width="330" height="10" rx="5" fill="#9aaebe"/>
+ <rect x="190" y="402" width="360" height="10" rx="5" fill="#9aaebe"/>
+ <rect x="190" y="445" width="300" height="18" rx="8" fill="#f5c95b" opacity=".8"/>
+ <rect x="190" y="483" width="360" height="10" rx="5" fill="#9aaebe"/>
+ <rect x="190" y="510" width="325" height="10" rx="5" fill="#9aaebe"/>
+ <rect x="190" y="537" width="270" height="10" rx="5" fill="#9aaebe"/>
+</g>
+<g filter="url(#shadow)">
+ <circle cx="440" cy="430" r="132" fill="url(#glass)" stroke="#b8e7f4" stroke-width="15"/>
+ <circle cx="440" cy="430" r="111" fill="none" stroke="#5b9eb8" stroke-width="4" opacity=".7"/>
+ <path d="M535 526l105 105" stroke="#c8e6ef" stroke-width="34" stroke-linecap="round"/>
+ <path d="M535 526l105 105" stroke="#31576d" stroke-width="22" stroke-linecap="round"/>
+ <path d="M410 445c-18-26-1-56 27-59 9-29 49-33 65-9 30 0 42 38 22 57 6 29-23 49-47 37-23 17-60 1-67-26z" fill="#eafaff" stroke="#24728d" stroke-width="5"/>
+ <path d="M450 400v77m-22-53l-20-12m20 40l-20 13m66-42l20-13m-20 42l20 13" fill="none" stroke="#24728d" stroke-width="6" stroke-linecap="round"/>
+ <circle cx="450" cy="400" r="6" fill="#24728d"/><circle cx="428" cy="424" r="6" fill="#24728d"/><circle cx="428" cy="464" r="6" fill="#24728d"/><circle cx="494" cy="424" r="6" fill="#24728d"/><circle cx="494" cy="464" r="6" fill="#24728d"/>
+</g>
+<text x="74" y="85" fill="#d8f4ff" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="4">ACADEMIC INTEGRITY • AI DETECTION</text>
+</svg>
