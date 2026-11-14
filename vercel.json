@@ -318,7 +318,7 @@
     },
     {
       "source": "/community",
-      "destination": "/index.html"
+      "destination": "/prerender/community/index.html"
     },
     {
       "source": "/community/discussions/:id",
@@ -594,7 +594,7 @@
     },
     {
       "source": "/services/conversion-optimization",
-      "destination": "/index.html"
+      "destination": "/prerender/services/conversion-optimization/index.html"
     },
     {
       "source": "/services/website-development",
@@ -634,7 +634,7 @@
     },
     {
       "source": "/case-studies",
-      "destination": "/index.html"
+      "destination": "/prerender/case-studies/index.html"
     },
     {
       "source": "/accept-invitation",
