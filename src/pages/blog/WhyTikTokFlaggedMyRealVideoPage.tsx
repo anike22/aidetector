@@ -1,4 +1,4 @@
-// ─── Creator Troubleshooting Guide: Why Did TikTok Flag My Real Video as AI? ───
+// ─── Creator Troubleshooting Guide: Why Did TikTok Label My Real Video as AI? ───
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -221,7 +221,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'TechArticle',
-    headline: 'Why Did TikTok Flag My Real Video as AI?',
+    headline: 'Why Did TikTok Label My Real Video as AI?',
     description:
       'TikTok labeled your real video as AI? Understand possible triggers, compare original files, and prepare evidence to request a review.',
     image: 'https://www.aidetector.cx/brand/aidetector-icon.png',
@@ -278,7 +278,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'Why did TikTok add an AI label to my genuine camera video?',
+        name: 'Why did TikTok label my real video as AI?',
         acceptedAnswer: {
           '@type': 'Answer',
           text: 'TikTok applies labels through multiple distinct pathways: automatic detection of C2PA Content Credentials embedded by editing software, the use of in-app AI effects or voice filters, automated platform classifiers detecting visual smoothing or acoustic patterns, or accidental toggling of the creator disclosure switch during upload.',
@@ -346,10 +346,10 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
   return (
     <div className="w-full bg-background text-foreground min-h-screen">
       <PageMeta
-        title="Why Did TikTok Flag My Video as AI? | AIDetector.cx"
+        title="Why Did TikTok Label My Real Video as AI? | AIDetector.cx"
         description="TikTok labeled your real video as AI? Understand possible triggers, compare original files, and prepare evidence to request a review."
         canonicalUrl={CANONICAL_URL}
-        ogTitle="Why Did TikTok Flag My Real Video as AI? | Creator Troubleshooting Guide"
+        ogTitle="Why Did TikTok Label My Real Video as AI? | Creator Troubleshooting Guide"
         ogDescription="Understand what TikTok's AI label means, review your editing history, and compare original footage with the published copy before drawing conclusions."
         ogType="article"
         schemas={[articleSchema, breadcrumbSchema, faqSchema]}
@@ -382,7 +382,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
           </div>
 
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground max-w-4xl leading-[1.15]">
-            Why Did TikTok Flag My Real Video as AI?
+            Why Did TikTok Label My Real Video as AI?
           </h1>
 
           <p className="text-base md:text-lg text-muted-foreground max-w-3xl leading-relaxed">
@@ -429,7 +429,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
                 </p>
                 <Link to="/ai-video-detector" className="block">
                   <Button size="sm" className="w-full text-xs font-semibold gap-1.5">
-                    Analyze a video <ArrowRight className="w-3.5 h-3.5" />
+                    Try the AI video detector <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
                 <p className="text-[11px] text-muted-foreground text-center">
@@ -1072,7 +1072,7 @@ Note: This checklist is an evidentiary preparation aid for creators, not an offi
                   <div className="space-y-2 pt-2">
                     <Link to="/ai-video-detector" className="block">
                       <Button className="w-full text-xs font-semibold gap-2">
-                        Analyze a video <ArrowRight className="w-4 h-4" />
+                        Try the AI video detector <ArrowRight className="w-4 h-4" />
                       </Button>
                     </Link>
                     <p className="text-[11px] text-muted-foreground text-center">
