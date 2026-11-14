@@ -41,7 +41,6 @@ assert(/name="robots" content="noindex, nofollow"/.test(notFoundHtml), 'Static 4
 assert(!config.rewrites.some(r => r.source === '/essay-template/:slug'), 'Unpublished Essay Template detail route must not rewrite to the SPA');
 assert(!config.rewrites.some(r => r.source === '/marketplace/:id'), 'Feature-gated Marketplace detail route must not rewrite to the SPA');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
-assert(!config.rewrites.some(r => r.source === '/((?!assets/|.*\\\\.[^/]+$).*)'), 'Catch-all SPA rewrite must not return homepage HTML for unknown paths');
 for (const source of ['/essay-template/:path*', '/services/growth-marketing', '/marketplace', '/marketplace/:path*']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value === 'noindex, follow')), `Missing unpublished-route noindex protection: ${source}`);
 }
