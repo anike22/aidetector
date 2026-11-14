@@ -7,7 +7,7 @@ for (const name of ['.env.local', '.env']) {
   try { process.loadEnvFile(path.join(root, name)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 // Explicit editorial inventory: routing's `public` flag also includes account workspaces.
-export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores'];
+export const publicPaths = ['/', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores', '/research/dual-engine-detection-methodology', '/research/language-benchmark-overview'];
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
@@ -38,7 +38,8 @@ export async function prepare() {
   const config = JSON.parse(await readFile(configPath, 'utf8'));
   // Vercel deploys the checked-in routing file; the generated build config alone
   // cannot establish that public canonical URLs serve their prerendered HTML.
-  // Catch omissions such as /aeo-optimizer before this script overwrites vercel.json.
+  // Catch omissions in the explicit editorial inventory before this script overwrites vercel.json.
+  // Sitemap-discovered articles/guides are intentionally generated below and need not be checked in.
   for (const pathname of publicPaths) {
     const expected = `/prerender${pathname === '/' ? '/home' : pathname}/index.html`;
     assertCheckedInPublicRewrite(pathname, expected);
