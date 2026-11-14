@@ -6,6 +6,7 @@ import {
   getRecommendations,
   getPersonalizationSettings,
   trackBehaviorEvent,
+  recordRecommendationEvent,
 } from '@/lib/personalizationApi';
 import type { BehaviorEventInput } from '@/types/personalization';
 import type {
@@ -79,7 +80,6 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   const markRecommendation = useCallback(async (id: string, action: 'click' | 'accept' | 'dismiss', context?: string) => {
     if (!user) return;
     try {
-      const { recordRecommendationEvent } = await import('@/lib/personalizationApi');
       await recordRecommendationEvent(id, action, context);
       await refresh();
     } catch (e) {

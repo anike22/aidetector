@@ -5,7 +5,7 @@ import HomeSEOAssistantCTA from '@/components/home/HomeSEOAssistantCTA';
 import PageMeta from '@/components/common/PageMeta';
 import { useAuth } from '@/contexts/AuthContext';
 import { PersonalizedHome } from '@/components/personalization/PersonalizedHome';
-import { FAQ_DATA } from '@/components/home/FAQSection';
+import { FAQ_DATA } from '@/data/faqData';
 import { YOUTUBE_METADATA } from '@/components/promo/YouTubeSchemaDrawer';
 
 const PromoVideoSection = lazy(() => import('@/components/home/PromoVideoSection'));

@@ -318,7 +318,7 @@
     },
     {
       "source": "/community",
-      "destination": "/index.html"
+      "destination": "/prerender/community/index.html"
     },
     {
       "source": "/community/discussions/:id",
@@ -593,10 +593,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/services/conversion-optimization",
-      "destination": "/index.html"
-    },
-    {
       "source": "/services/website-development",
       "destination": "/index.html"
     },
@@ -634,7 +630,7 @@
     },
     {
       "source": "/case-studies",
-      "destination": "/index.html"
+      "destination": "/prerender/case-studies/index.html"
     },
     {
       "source": "/accept-invitation",
@@ -984,6 +980,11 @@
   "buildCommand": "npm run build:production",
   "outputDirectory": "dist",
   "redirects": [
+    {
+      "source": "/services/conversion-optimization",
+      "destination": "/services",
+      "permanent": true
+    },
     {
       "source": "/ai-tools",
       "destination": "/tools",
