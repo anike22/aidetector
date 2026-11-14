@@ -593,10 +593,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/services/conversion-optimization",
-      "destination": "/prerender/services/conversion-optimization/index.html"
-    },
-    {
       "source": "/services/website-development",
       "destination": "/index.html"
     },
@@ -1261,6 +1257,15 @@
     },
     {
       "source": "/marketplace/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/services/conversion-optimization",
       "headers": [
         {
           "key": "X-Robots-Tag",
