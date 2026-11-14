@@ -112,8 +112,8 @@ export default function HomePage() {
   return (
     <MainLayout>
       <PageMeta
-        title="AI Detector – Detect ChatGPT & AI-Generated Text | AIDetector.cx"
-        description="Free AI detector for ChatGPT, Claude and AI-generated text. Dual detection modes, multilingual AI analysis across 19+ languages, sentence-level results and explainable AI content detection."
+        title="Free AI Detector for ChatGPT & AI Text | AIDetector.cx"
+        description="Check text for ChatGPT, Claude and other AI writing. Get sentence-level insights, dual analysis modes and multilingual support with AIDetector.cx."
         canonicalUrl="https://www.aidetector.cx/"
         ogImage="https://www.aidetector.cx/brand/aidetector-icon.png"
         ogTitle="AI Detector – Detect ChatGPT & AI-Generated Text | AIDetector.cx"
