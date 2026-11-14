@@ -364,7 +364,7 @@ export default function AIVideoDetectorPage() {
   return (
     <MainLayout>
       <PageMeta
-        title="AI Video Detector – Free Online AI Video Checker | AIDetector.cx"
+        title="AI Video Detector: Check Videos for Deepfakes | AIDetector.cx"
         description="Upload a video to check for AI generation, deepfakes and manipulation. Review visual, temporal, audio, metadata and provenance signals online."
         canonicalUrl="https://www.aidetector.cx/ai-video-detector"
         ogTitle="AI Video Detector: Check If a Video Is AI-Generated | AIDetector.cx"

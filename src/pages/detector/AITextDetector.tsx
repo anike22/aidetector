@@ -621,7 +621,7 @@ export default function AITextDetector() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">AI Detector</h1>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">AI Detector</h2>
             <p className="text-muted-foreground mt-2 text-sm md:text-base">Free AI detector for ChatGPT, Claude and AI-generated text — dual engines, multilingual support and sentence-level analysis.</p>
           </div>
           <div className="shrink-0 flex items-center gap-3">

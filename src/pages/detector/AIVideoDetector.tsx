@@ -275,7 +275,7 @@ export default function AIVideoDetector() {
           <Film className="w-3.5 h-3.5" />
           Multimodal Video Authenticity & Forensics
         </div>
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
           AI Video Detector & Deepfake Forensic Suite
         </h1>
         <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
