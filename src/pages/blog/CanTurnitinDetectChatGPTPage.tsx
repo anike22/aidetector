@@ -136,6 +136,14 @@ export default function CanTurnitinDetectChatGPTPage() {
             </section>
 
             <section>
+              <h2 id="what-independent-studies-say-about-turnitin-accuracy" className="text-2xl font-bold text-navy mb-3">What independent studies say about Turnitin accuracy</h2>
+              <p>Vendor documentation explains how a product is intended to work; independent studies test performance on particular samples. Those are different kinds of evidence, and neither should be treated as a universal accuracy guarantee.</p>
+              <p className="mt-3">A 2026 study in the <em>International Journal for Educational Integrity</em> evaluated Turnitin and Originality using 192 texts, including authentic English-as-a-foreign-language student writing, professional human writing, AI-generated writing and hybrid compositions. The researchers reported overall accuracy of 0.61 for Turnitin in that dataset and found that both tools struggled with hybrid texts. The result is specific to that study’s sample and method; it is not a live measurement of every current Turnitin version or every student population. <SourceLink href="https://link.springer.com/article/10.1007/s40979-026-00213-1">Read the peer-reviewed study</SourceLink>.</p>
+              <p className="mt-3">A separate 2026 study using 100 human-written psychology article introductions and AI-generated versions reported a 1% false-positive rate for its human sample, but a substantially higher false-negative rate for newer ChatGPT-generated text. Its dataset and research design were different, so its results should not be directly compared with the 192-text study. <SourceLink href="https://www.degruyterbrill.com/document/doi/10.1515/opis-2025-0056/html">Read the second study</SourceLink>.</p>
+              <p className="mt-3">The practical conclusion is not that Turnitin is either perfectly accurate or useless. Performance depends on the text, language, authorship mix, model version and evaluation method. A detector result is a screening signal that needs context—not a standalone authorship verdict.</p>
+            </section>
+
+            <section>
               <h2 id="can-turnitin-falsely-flag-human-written-work" className="text-2xl font-bold text-navy mb-3">Can Turnitin falsely flag human-written work?</h2>
               <p>Yes. Turnitin explicitly acknowledges that its model may misidentify human-written text as AI-generated. Formal academic writing, highly structured prose, short or unusual submissions and writing that differs from a person’s usual style may deserve careful contextual review—but none of those characteristics establishes AI use.</p>
               <div className="my-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
@@ -178,6 +186,8 @@ export default function CanTurnitinDetectChatGPTPage() {
                 <li><SourceLink href="https://guides.turnitin.com/hc/en-us/articles/28234943089933-File-requirements-for-an-AI-Writing-Report">File requirements for an AI Writing Report</SourceLink></li>
                 <li><SourceLink href="https://guides.turnitin.com/hc/en-us/articles/28294949544717-AI-writing-detection-model">AI writing detection model release notes</SourceLink></li>
                 <li><SourceLink href="https://guides.turnitin.com/hc/en-us/articles/27139000787853-How-should-I-review-the-AI-Writing-report">How should I review the AI Writing Report?</SourceLink></li>
+                <li><SourceLink href="https://link.springer.com/article/10.1007/s40979-026-00213-1">Independent 2026 evaluation of AI detectors in academic writing</SourceLink></li>
+                <li><SourceLink href="https://www.degruyterbrill.com/document/doi/10.1515/opis-2025-0056/html">2026 Turnitin study on human and AI-written academic text</SourceLink></li>
               </ul>
               <p className="mt-4 text-sm text-muted-foreground">AIDetector.cx is an AI-content detection platform. Our product is not affiliated with Turnitin. This article is educational information, not legal advice or a substitute for an institution’s academic-integrity policy.</p>
             </section>
@@ -191,6 +201,7 @@ export default function CanTurnitinDetectChatGPTPage() {
                 <li><a className="hover:text-primary" href="#what-does-the-turnitin-ai-percentage-mean">Understanding the score</a></li>
                 <li><a className="hover:text-primary" href="#turnitin-ai-detection-requirements-in-2026">Eligibility requirements</a></li>
                 <li><a className="hover:text-primary" href="#what-changed-in-turnitin-ai-detection-during-2026">2026 model updates</a></li>
+                <li><a className="hover:text-primary" href="#what-independent-studies-say-about-turnitin-accuracy">Independent accuracy research</a></li>
                 <li><a className="hover:text-primary" href="#can-turnitin-falsely-flag-human-written-work">False positives</a></li>
                 <li><a className="hover:text-primary" href="#what-should-you-do-if-your-essay-is-flagged">If your essay is flagged</a></li>
               </ul>
