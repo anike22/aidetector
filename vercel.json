@@ -470,6 +470,24 @@
           "value": "noindex, follow"
         }
       ]
+    },
+    {
+      "source": "/marketplace",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/marketplace/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
     }
   ]
 }
