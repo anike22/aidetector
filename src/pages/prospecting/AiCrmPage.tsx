@@ -3,9 +3,10 @@ import { supabase } from '@/db/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProspectingCrmLead } from '@/types/types';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Search, Plus, Filter, Download, MoreHorizontal, MessageSquare, Calendar, Mail } from 'lucide-react';
+import { Search, Plus, Download, Trash2, Mail } from 'lucide-react';
 
 const STAGES = ['New Lead', 'Contacted', 'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Won', 'Lost'];
 
@@ -14,6 +15,11 @@ export default function AiCrmPage() {
   const [leads, setLeads] = useState<ProspectingCrmLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddLead, setShowAddLead] = useState(false);
+  const [newCompany, setNewCompany] = useState('');
+  const [newContact, setNewContact] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [savingLead, setSavingLead] = useState(false);
 
   useEffect(() => {
     if (user) fetchLeads();
@@ -33,6 +39,69 @@ export default function AiCrmPage() {
       toast.error('Failed to load CRM leads');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddLead = async () => {
+    if (!user || !newCompany.trim()) {
+      toast.error('Enter a company name before saving.');
+      return;
+    }
+    setSavingLead(true);
+    try {
+      const { data, error } = await supabase.from('prospecting_crm_leads').insert({
+        user_id: user.id,
+        company_name: newCompany.trim(),
+        decision_maker_name: newContact.trim() || null,
+        lead_score: null,
+        stage: 'New Lead',
+        details: newEmail.trim() ? { email: newEmail.trim(), source_provider: 'Manual entry', verification_status: 'user_entered' } : { source_provider: 'Manual entry', verification_status: 'user_entered' }
+      }).select().single();
+      if (error) throw error;
+      setLeads((current) => [data as ProspectingCrmLead, ...current]);
+      setNewCompany('');
+      setNewContact('');
+      setNewEmail('');
+      setShowAddLead(false);
+      toast.success('Lead saved to your CRM.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save this lead.');
+    } finally {
+      setSavingLead(false);
+    }
+  };
+
+  const exportLeads = () => {
+    const headers = ['Company', 'Contact', 'Stage', 'Score', 'Email', 'Website', 'Created'];
+    const rows = filteredLeads.map((lead) => [
+      lead.company_name,
+      lead.decision_maker_name || '',
+      lead.stage,
+      lead.lead_score ?? '',
+      lead.details?.email || '',
+      lead.details?.website || '',
+      lead.created_at
+    ]);
+    const csv = [headers, ...rows].map((row) =>
+      row.map((value) => '"' + String(value).replace(/"/g, '""') + '"').join(',')
+    ).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'aidetector-prospecting-crm.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const deleteLead = async (id: string) => {
+    if (!window.confirm('Delete this CRM lead?')) return;
+    try {
+      const { error } = await supabase.from('prospecting_crm_leads').delete().eq('id', id);
+      if (error) throw error;
+      setLeads((current) => current.filter((lead) => lead.id !== id));
+      toast.success('Lead deleted.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete lead.');
     }
   };
 
@@ -74,14 +143,29 @@ export default function AiCrmPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-navy mb-2">AI CRM Pipeline</h1>
-          <p className="text-muted-foreground">Manage your generated leads and track deal progress.</p>
+          <p className="text-muted-foreground">Manage saved prospects and track deal progress.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.success('Export initiated')} type="button"><Download className="mr-2 h-4 w-4" /> Export</Button>
-          <Button onClick={() => toast.success('Add Lead dialog opened')} type="button"><Plus className="mr-2 h-4 w-4" /> Add Lead</Button>
+          <Button variant="outline" onClick={exportLeads} type="button"><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+          <Button onClick={() => setShowAddLead((value) => !value)} type="button"><Plus className="mr-2 h-4 w-4" /> Add Lead</Button>
         </div>
       </div>
 
+      {showAddLead && (
+        <Card className="mb-5 shrink-0">
+          <CardContent className="pt-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input placeholder="Company name (required)" value={newCompany} onChange={(event) => setNewCompany(event.target.value)} />
+              <Input placeholder="Contact name (optional)" value={newContact} onChange={(event) => setNewContact(event.target.value)} />
+              <Input placeholder="Email (optional)" type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <Button variant="outline" onClick={() => setShowAddLead(false)}>Cancel</Button>
+              <Button onClick={handleAddLead} disabled={savingLead}>{savingLead ? 'Saving...' : 'Save lead'}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="flex gap-4 mb-6 shrink-0">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -92,7 +176,7 @@ export default function AiCrmPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" onClick={() => toast.success('Filters dialog opened')} type="button"><Filter className="mr-2 h-4 w-4" /> Filters</Button>
+
       </div>
 
       {loading ? (
@@ -128,8 +212,8 @@ export default function AiCrmPage() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium truncate pr-2">{lead.company_name}</div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 -mt-2 shrink-0" onClick={() => toast.success('Actions menu opened')} type="button">
-                            <MoreHorizontal className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 -mt-2 shrink-0" onClick={() => deleteLead(lead.id)} type="button" aria-label="Delete lead">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                         {lead.decision_maker_name && (
@@ -140,15 +224,15 @@ export default function AiCrmPage() {
                         )}
                         <div className="flex justify-between items-center mt-4">
                           <div className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                            (lead.lead_score || 0) >= 80 ? 'bg-green-100 text-green-800' :
-                            (lead.lead_score || 0) >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                            lead.lead_score == null ? 'bg-muted text-muted-foreground' :
+                            lead.lead_score >= 80 ? 'bg-green-100 text-green-800' :
+                            lead.lead_score >= 50 ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                            Score: {lead.lead_score || 'N/A'}
+                            {lead.lead_score == null ? 'Score not calculated' : `Score: ${lead.lead_score}`}
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.success('Open Email panel')} type="button"><Mail className="h-3 w-3 text-muted-foreground" /></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.success('Open Calendar')} type="button"><Calendar className="h-3 w-3 text-muted-foreground" /></Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!lead.details?.email} onClick={() => { if (lead.details?.email) window.location.href = `mailto:${lead.details.email}`; }} type="button" aria-label="Email contact"><Mail className="h-3 w-3 text-muted-foreground" /></Button>
                           </div>
                         </div>
                       </div>

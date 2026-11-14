@@ -24,7 +24,7 @@ export default function CreateProspectingProjectPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    target_country: 'United States',
+    target_country: '',
     business_type: '',
     company_size: '11-50 employees',
     goal: ''
@@ -40,8 +40,8 @@ export default function CreateProspectingProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!formData.name || !formData.business_type || selectedRoles.length === 0) {
-      toast.error('Please fill in all required fields (Name, Business Type, and at least one Role).');
+    if (!formData.name || !formData.target_country || !formData.business_type || selectedRoles.length === 0) {
+      toast.error('Please fill in Name, Target Country / Region, Business Type, and at least one Role.');
       return;
     }
 
@@ -64,11 +64,8 @@ export default function CreateProspectingProjectPage() {
 
       if (error) throw error;
       
-      toast.success('Project created successfully! Starting AI search...');
-      // Simulate small delay for "AI" starting
-      setTimeout(() => {
-        navigate(`/prospecting/projects/${data.id}/companies?simulate=true`);
-      }, 1000);
+      toast.success('Prospecting project created. Search real companies when you are ready.');
+      navigate(`/prospecting/projects/${data.id}/companies`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create project');
       setLoading(false);
@@ -84,7 +81,7 @@ export default function CreateProspectingProjectPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Create Prospecting Project</CardTitle>
-          <CardDescription>Define your target audience and let our AI build your lead database.</CardDescription>
+          <CardDescription>Define your target companies, then search the connected live business-data provider. Decision-maker discovery requires a separate verified source.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
@@ -101,20 +98,14 @@ export default function CreateProspectingProjectPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Target Country</Label>
-                <Select value={formData.target_country} onValueChange={v => setFormData({ ...formData, target_country: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="United States">United States</SelectItem>
-                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                    <SelectItem value="Canada">Canada</SelectItem>
-                    <SelectItem value="Australia">Australia</SelectItem>
-                    <SelectItem value="Germany">Germany</SelectItem>
-                    <SelectItem value="France">France</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="target_country">Target Country / Region</Label>
+                <Input
+                  id="target_country"
+                  required
+                  placeholder="Enter any country, city or region"
+                  value={formData.target_country}
+                  onChange={e => setFormData({ ...formData, target_country: e.target.value })}
+                />
               </div>
 
               <div className="space-y-2">
@@ -176,7 +167,7 @@ export default function CreateProspectingProjectPage() {
           <CardFooter className="flex justify-between border-t border-border pt-6">
             <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Start Finding Companies'}
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Create Prospecting Project'}
             </Button>
           </CardFooter>
         </form>
