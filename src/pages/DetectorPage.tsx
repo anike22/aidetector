@@ -165,8 +165,8 @@ export default function DetectorPage({ defaultTab }: { defaultTab?: TabId }) {
         disableExitIntent={false}
       />
       <PageMeta
-        title="AI Detector – Detect AI-Generated Content with Industry-Leading Accuracy | AIDetector.cx"
-        description="Free AI detector and AI checker. Instantly detect ChatGPT, GPT-5.5, Gemini, Claude, DeepSeek, and other AI-generated content. Sentence-level analysis, file upload, API access. Trusted by 1M+ users."
+        title="AI Detector for ChatGPT, Gemini & Claude | AIDetector.cx"
+        description="Detect AI-generated text from ChatGPT, Gemini, Claude and more. Get sentence-level analysis, dual detection modes and multilingual results."
         canonicalUrl="https://www.aidetector.cx/detector"
         ogTitle="AI Detector – Industry-Leading AI Content Detection | AIDetector.cx"
         schemas={SCHEMAS}
