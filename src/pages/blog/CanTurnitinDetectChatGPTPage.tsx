@@ -20,6 +20,7 @@ const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'Can Turnitin Detect ChatGPT? What Students and Educators Need to Know in 2026',
+  image: ['https://www.aidetector.cx/images/turnitin-chatgpt-ai-detection.svg'],
   description: 'A practical, source-led explanation of Turnitin AI detection: what it can flag, what its score means, eligibility requirements, the 20% threshold and important limitations.',
   author: { '@type': 'Organization', name: 'AIDetector.cx Editorial Team' },
   publisher: { '@type': 'Organization', name: 'AIDetector.cx' },
@@ -56,6 +57,7 @@ export default function CanTurnitinDetectChatGPTPage() {
         ogTitle="Can Turnitin Detect ChatGPT? 2026 Guide"
         ogDescription="Understand Turnitin's AI Writing Report, its requirements and its limits before drawing conclusions about student writing."
         ogType="article"
+        ogImage="https://www.aidetector.cx/images/turnitin-chatgpt-ai-detection.svg"
         schemas={[articleSchema, faqSchema, breadcrumbSchema]}
       />
       <article className="max-w-5xl mx-auto px-4 py-10 md:py-16">
@@ -75,6 +77,19 @@ export default function CanTurnitinDetectChatGPTPage() {
             <span>AIDetector.cx Editorial Team</span>
           </div>
         </header>
+
+        <figure className="mb-10 overflow-hidden rounded-2xl border border-border bg-muted">
+          <img
+            src="/images/turnitin-chatgpt-ai-detection.svg"
+            alt="Academic essay reviewed with a magnifying glass beside a laptop displaying an AI assistant, illustrating Turnitin and ChatGPT writing detection"
+            width={1200}
+            height={675}
+            loading="eager"
+            fetchPriority="high"
+            className="block w-full h-auto"
+          />
+          <figcaption className="px-4 py-3 text-sm text-muted-foreground">How AI-writing detection tools assess academic writing—and why their results need human interpretation.</figcaption>
+        </figure>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-10">
           <div className="min-w-0 space-y-7 text-base leading-7">
