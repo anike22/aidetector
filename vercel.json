@@ -109,6 +109,10 @@
       "destination": "/prerender/essay-studio/templates/index.html"
     },
     {
+      "source": "/grammar-checker",
+      "destination": "/prerender/grammar-checker/index.html"
+    },
+    {
       "source": "/guides",
       "destination": "/prerender/guides/index.html"
     },
@@ -135,10 +139,6 @@
     {
       "source": "/guides/words-that-trigger-ai-detection",
       "destination": "/prerender/guides/words-that-trigger-ai-detection/index.html"
-    },
-    {
-      "source": "/grammar-checker",
-      "destination": "/prerender/grammar-checker/index.html"
     },
     {
       "source": "/humanizer",
@@ -177,8 +177,16 @@
       "destination": "/prerender/research/avoid-false-positives-institutional-ai-detectors/index.html"
     },
     {
+      "source": "/research/dual-engine-detection-methodology",
+      "destination": "/prerender/research/dual-engine-detection-methodology/index.html"
+    },
+    {
       "source": "/research/gpt-5-vs-gemini-detection",
       "destination": "/prerender/research/gpt-5-vs-gemini-detection/index.html"
+    },
+    {
+      "source": "/research/language-benchmark-overview",
+      "destination": "/prerender/research/language-benchmark-overview/index.html"
     },
     {
       "source": "/seo-assistant",
