@@ -40,12 +40,15 @@ assert(/<h1[^>]*>Page not found<\/h1>/i.test(notFoundHtml), 'Static 404 page mus
 assert(/name="robots" content="noindex, nofollow"/.test(notFoundHtml), 'Static 404 page must be noindex');
 assert(!config.rewrites.some(r => r.source === '/essay-template/:slug'), 'Unpublished Essay Template detail route must not rewrite to the SPA');
 assert(!config.rewrites.some(r => r.source === '/marketplace/:id'), 'Feature-gated Marketplace detail route must not rewrite to the SPA');
+for (const route of ['/marketplace', '/services/growth-marketing']) {
+  assert(!config.rewrites.some(r => r.source === route), `Unpublished feature-gated route must return Vercel HTTP 404: ${route}`);
+}
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 for (const source of ['/essay-template/:path*', '/services/growth-marketing', '/marketplace', '/marketplace/:path*']) {
   assert(config.headers.some(h => h.source === source && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value === 'noindex, follow')), `Missing unpublished-route noindex protection: ${source}`);
 }
 
-for (const route of ['/technical-seo', '/services/growth-marketing', '/seo-assistant', '/marketplace', '/essay-studio/:essayId', '/essay-studio/:essayId/:phase', '/prospecting/projects/:projectId/companies']) {
+for (const route of ['/technical-seo', '/seo-assistant', '/essay-studio/:essayId', '/essay-studio/:essayId/:phase', '/prospecting/projects/:projectId/companies']) {
   assert(config.rewrites.some(r => r.source === route), `Missing registered application route: ${route}`);
 }
 assert(config.rewrites.some(r => r.source === '/tools/ollama'), 'Missing valid tool directory route');
