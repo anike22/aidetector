@@ -125,6 +125,10 @@
       "destination": "/prerender/guides/can-universities-detect-chatgpt/index.html"
     },
     {
+      "source": "/guides/can-turnitin-detect-chatgpt",
+      "destination": "/prerender/guides/can-turnitin-detect-chatgpt/index.html"
+    },
+    {
       "source": "/guides/how-ai-detection-works",
       "destination": "/prerender/guides/how-ai-detection-works/index.html"
     },
@@ -1265,4 +1269,4 @@
       ]
     }
   ]
-}
+}\n
