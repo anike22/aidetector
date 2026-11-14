@@ -470,6 +470,24 @@
           "value": "noindex, follow"
         }
       ]
+    },
+    {
+      "source": "/essay-template/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/services/growth-marketing",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
     }
   ]
 }
