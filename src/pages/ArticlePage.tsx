@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import NotFound from './NotFound';
 import GonePage from './GonePage';
 import BestAIDetectorPage from './blog/BestAIDetectorPage';
+import CanTurnitinDetectChatGPTPage from './blog/CanTurnitinDetectChatGPTPage';
 import ChatGPTDetectorPage from './blog/ChatGPTDetectorPage';
 import GPT5VsGeminiPage from './blog/GPT5VsGeminiPage';
 import TurnitinVsAIDetectorPage from './blog/TurnitinVsAIDetectorPage';
@@ -23,6 +24,7 @@ const HUBS: ContentHub[] = ['guides', 'research', 'comparisons', 'blog'];
 
 const FULL_ARTICLE_COMPONENTS: Record<string, React.ComponentType> = {
   'best-ai-detector': BestAIDetectorPage,
+  'can-turnitin-detect-chatgpt': CanTurnitinDetectChatGPTPage,
   'chatgpt-detector-comparison': ChatGPTDetectorPage,
   'gpt-5-vs-gemini-detection': GPT5VsGeminiPage,
   'turnitin-vs-aidetector-cx': TurnitinVsAIDetectorPage,
