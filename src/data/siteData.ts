@@ -102,7 +102,19 @@ export const AI_TOOLS: AiTool[] = AI_DIRECTORY_PRODUCTS.map(product => {
   };
 });
 
-export const BLOG_POSTS: BlogPost[] = [\n  {\n    id: 'can-turnitin-detect-chatgpt',\n    hub: 'guides',\n    title: 'Can Turnitin Detect ChatGPT? What Students and Educators Need to Know in 2026',\n    excerpt: 'Understand what Turnitin’s AI Writing Report can flag, what its percentage means, the 20% threshold, file and language requirements, and why a score is not proof of misconduct.',\n    category: 'AI Detection',\n    author: 'AIDetector.cx Editorial Team',\n    authorAvatar: '🎓',\n    date: 'November 14, 2026',\n    readTime: '10–12 min read',\n    featured: false,\n  },
+export const BLOG_POSTS: BlogPost[] = [
+  {
+    id: 'can-turnitin-detect-chatgpt',
+    hub: 'guides',
+    title: 'Can Turnitin Detect ChatGPT? What Students and Educators Need to Know in 2026',
+    excerpt: 'Understand what Turnitin’s AI Writing Report can flag, what its percentage means, the 20% threshold, file and language requirements, and why a score is not proof of misconduct.',
+    category: 'AI Detection',
+    author: 'AIDetector.cx Editorial Team',
+    authorAvatar: '🎓',
+    date: 'November 14, 2026',
+    readTime: '10–12 min read',
+    featured: false,
+  },
   {
     id: 'understanding-ai-detection-scores',
     hub: 'guides',
