@@ -51,6 +51,7 @@ export async function prepare() {
   }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
   const seoRedirects = [
+    {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
     {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
   ];
