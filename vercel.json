@@ -861,10 +861,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/guides/best-practices-for-educators",
-      "destination": "/index.html"
-    },
-    {
       "source": "/tools/aidetector-cx",
       "destination": "/index.html"
     },
@@ -975,6 +971,10 @@
     {
       "source": "/ai-tools/whisper",
       "destination": "/index.html"
+    },
+    {
+      "source": "/guides/best-practices-for-educators",
+      "destination": "/prerender/guides/best-practices-for-educators/index.html"
     }
   ],
   "buildCommand": "npm run build:production",
