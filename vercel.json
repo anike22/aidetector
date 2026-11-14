@@ -981,6 +981,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/services/conversion-optimization",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
       "source": "/ai-tools",
       "destination": "/tools",
       "permanent": true
@@ -1257,15 +1262,6 @@
     },
     {
       "source": "/marketplace/:path*",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
-      "source": "/services/conversion-optimization",
       "headers": [
         {
           "key": "X-Robots-Tag",
