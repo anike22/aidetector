@@ -53,6 +53,7 @@ const footerColumns = [
       { label: 'Enterprise REST API', href: '/api' },
       { label: 'API Documentation', href: '/api/docs' },
       { label: 'API Dashboard', href: '/api/dashboard' },
+      { label: 'Free AI Detector Widget', href: '/embed' },
       { label: 'WordPress Plugin', href: '/wordpress-plugin' },
       { label: 'Chrome Extension', href: '/chrome-extension' },
       { label: 'Integration Hub', href: '/integrations' },
