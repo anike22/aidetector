@@ -383,8 +383,24 @@ export async function getPayouts(filters?: { userId?: string; status?: PayoutSta
   return (data as Payout[]) || [];
 }
 
-export async function requestPayout(_amount: number, method?: string): Promise<Payout> {
-  const { data, error } = await supabase.rpc('request_affiliate_payout', { p_method: method || 'Bank Transfer' });
+export interface UsdBankDetails {
+  account_holder: string; account_number: string; bank_name: string; bank_country: string;
+  payout_country: string; swift_bic: string; bank_address: string; routing_number: string;
+  currency: 'USD'; method: 'Bank Transfer'; usd_confirmed: boolean;
+}
+export interface PayoutSetup { available: number; minimum: number; hold_days: number; eligible: boolean }
+export async function getPayoutSetup(): Promise<PayoutSetup> {
+  const { data, error } = await supabase.rpc('get_affiliate_payout_setup');
+  if (error) throw error;
+  return { ...data, available: Number(data.available), minimum: Number(data.minimum) };
+}
+export async function getPayoutBankDetails(id: string): Promise<UsdBankDetails | null> {
+  const { data, error } = await supabase.rpc('admin_get_payout_bank_details', { p_payout_id: id });
+  if (error) throw error;
+  return data;
+}
+export async function requestPayout(details: UsdBankDetails): Promise<Payout> {
+  const { data, error } = await supabase.rpc('submit_usd_affiliate_payout', { p_details: details });
   if (error) throw error;
   if (!data?.created) {
     if (data?.reason === 'minimum_not_met') throw new Error(`Minimum payout is ${Number(data.minimum).toFixed(2)}. Available balance: ${Number(data.available).toFixed(2)}.`);
