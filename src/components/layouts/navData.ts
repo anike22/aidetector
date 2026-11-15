@@ -185,6 +185,7 @@ export const navStructure: NavGroup[] = [
       {
         title: 'Extensions & Ecosystem',
         items: [
+          { label: 'AI Detector Widget', href: '/embed', icon: Code, desc: 'Embed a free AI checker on your website' },
           { label: 'WordPress Plugin', href: '/wordpress-plugin', icon: LinkIcon, desc: 'Scan drafts directly inside WordPress' },
           { label: 'Chrome Extension', href: '/chrome-extension', icon: Globe, desc: 'Detect AI anywhere across the web' },
           { label: 'Integrations Hub', href: '/integrations', icon: Puzzle, desc: 'Connect with Zapier, Slack & Make' },
@@ -197,6 +198,7 @@ export const navStructure: NavGroup[] = [
       { label: 'API Platform', href: '/api', icon: Terminal, desc: 'Build with our detection models' },
       { label: 'API Documentation', href: '/api/docs', icon: FileCode, desc: 'Endpoints, SDKs, and examples' },
       { label: 'API Dashboard', href: '/api/dashboard', icon: BarChart2, desc: 'Usage, keys, and analytics' },
+      { label: 'AI Detector Widget', href: '/embed', icon: Code, desc: 'Embed a free AI checker on your website' },
       { label: 'WordPress Plugin', href: '/wordpress-plugin', icon: LinkIcon, desc: 'Integrate into your CMS' },
       { label: 'Chrome Extension', href: '/chrome-extension', icon: Globe, desc: 'Detect AI anywhere' },
       { label: 'Integrations Hub', href: '/integrations', icon: Puzzle, desc: 'Zapier, Slack, and webhooks' },
