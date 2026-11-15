@@ -582,7 +582,7 @@
     },
     {
       "source": "/services",
-      "destination": "/index.html"
+      "destination": "/prerender/services/index.html"
     },
     {
       "source": "/services/seo-consulting",
@@ -590,10 +590,6 @@
     },
     {
       "source": "/services/ai-consulting",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/services/conversion-optimization",
       "destination": "/index.html"
     },
     {
@@ -984,6 +980,11 @@
   "buildCommand": "npm run build:production",
   "outputDirectory": "dist",
   "redirects": [
+    {
+      "source": "/services/conversion-optimization",
+      "destination": "/services",
+      "permanent": true
+    },
     {
       "source": "/ai-tools",
       "destination": "/tools",
