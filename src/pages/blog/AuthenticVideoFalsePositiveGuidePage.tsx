@@ -42,6 +42,9 @@ export const AuthenticVideoFalsePositiveGuidePage: React.FC = () => {
         <p className="pt-2">
           AIDetector.cx systematically isolates these legitimate conditions through the <strong>Creator False-Positive Shield</strong>, ensuring genuine content creators are never falsely penalized.
         </p>
+        <p className="pt-2">
+          If a genuine recording receives an AI-generated label directly on TikTok, the issue may involve platform disclosure settings, editing provenance, or the platform’s own labeling process—not just a third-party detector score. Read our <Link to="/studies/why-tiktok-flagged-my-real-video" className="font-semibold text-primary underline underline-offset-2 hover:no-underline">guide to why TikTok may flag a real video as AI</Link> for a step-by-step review of the label, editing workflow, and evidence to preserve.
+        </p>
         <div className="pt-2">
           <Link to="/ai-video-detector">
             <Button size="sm" className="gap-2">
