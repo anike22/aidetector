@@ -4,11 +4,12 @@ import { supabase } from '@/db/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProspectingCompany, ProspectingDecisionMaker } from '@/types/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus, Target, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, Mail, Phone, ExternalLink, MessageSquareText, Plus } from 'lucide-react';
 
 export default function DecisionMakerProfilesPage() {
   const { companyId } = useParams();
@@ -18,6 +19,9 @@ export default function DecisionMakerProfilesPage() {
   const [company, setCompany] = useState<ProspectingCompany | null>(null);
   const [decisionMakers, setDecisionMakers] = useState<ProspectingDecisionMaker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', job_title: '', email: '', phone: '', linkedin_profile: '', source_url: '' });
 
   useEffect(() => {
     if (user && companyId) {
@@ -32,6 +36,7 @@ export default function DecisionMakerProfilesPage() {
         .from('prospecting_companies')
         .select('*')
         .eq('id', companyId)
+        .eq('is_demo', false)
         .single();
         
       if (compErr) throw compErr;
@@ -41,16 +46,12 @@ export default function DecisionMakerProfilesPage() {
         .from('prospecting_decision_makers')
         .select('*')
         .eq('company_id', companyId)
+        .eq('is_demo', false)
         .order('level', { ascending: false });
 
       if (dmErr) throw dmErr;
       
-      if (!dmData || dmData.length === 0) {
-        // Mock generation for the first time
-        await generateMockDecisionMakers(compData);
-      } else {
-        setDecisionMakers(dmData);
-      }
+      setDecisionMakers((dmData || []).filter((record: any) => record.is_demo !== true));
     } catch (err: any) {
       toast.error('Failed to load decision makers');
     } finally {
@@ -58,48 +59,47 @@ export default function DecisionMakerProfilesPage() {
     }
   };
 
-  const generateMockDecisionMakers = async (comp: ProspectingCompany) => {
-    toast.info('AI is identifying decision makers...');
-    const mocks = [
-      {
-        name: 'Sarah Johnson',
-        job_title: 'Chief Executive Officer',
-        level: 5,
-        linkedin_profile: 'linkedin.com/in/sarahj',
-        email: `s.johnson@${comp.website || 'company.com'}`,
-        phone: '+1 (555) 123-4567',
-        buying_intent_score: 95,
-        buying_intent_label: 'Hot Lead',
-        investment_probability: 92,
-        opportunity_detection: 'Recently raised Series B funding and expanding operations to Europe.'
-      },
-      {
-        name: 'Michael Chen',
-        job_title: 'Marketing Director',
-        level: 4,
-        linkedin_profile: 'linkedin.com/in/mchen',
-        email: `mchen@${comp.website || 'company.com'}`,
-        phone: '+1 (555) 987-6543',
-        buying_intent_score: 75,
-        buying_intent_label: 'Warm Lead',
-        investment_probability: 60,
-        opportunity_detection: 'Active on LinkedIn posting about new marketing strategies.'
-      }
-    ];
-
+  const addVerifiedContact = async () => {
+    if (!user || !companyId) return;
+    if (!contactForm.name.trim() || !contactForm.source_url.trim()) {
+      toast.error('Contact name and source URL are required.');
+      return;
+    }
     try {
-      const inserts = mocks.map(m => ({
+      new URL(contactForm.source_url);
+    } catch {
+      toast.error('Enter a valid source URL.');
+      return;
+    }
+    setSavingContact(true);
+    try {
+      const { data, error } = await supabase.from('prospecting_decision_makers').insert({
         company_id: companyId,
-        user_id: user!.id,
-        ...m
-      }));
-      
-      const { data, error } = await supabase.from('prospecting_decision_makers').insert(inserts).select();
+        user_id: user.id,
+        name: contactForm.name.trim(),
+        job_title: contactForm.job_title.trim() || null,
+        email: contactForm.email.trim() || null,
+        phone: contactForm.phone.trim() || null,
+        linkedin_profile: contactForm.linkedin_profile.trim() || null,
+        level: null,
+        buying_intent_score: null,
+        buying_intent_label: null,
+        investment_probability: null,
+        opportunity_detection: null,
+        source_provider: 'User supplied source',
+        source_url: contactForm.source_url.trim(),
+        source_retrieved_at: new Date().toISOString(),
+        is_demo: false
+      }).select().single();
       if (error) throw error;
-      setDecisionMakers(data || []);
-      toast.success('Decision makers identified successfully');
-    } catch (err) {
-      console.error(err);
+      setDecisionMakers((current) => [data as ProspectingDecisionMaker, ...current]);
+      setContactForm({ name: '', job_title: '', email: '', phone: '', linkedin_profile: '', source_url: '' });
+      setShowAddForm(false);
+      toast.success('Sourced contact saved. Review the source before outreach.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save contact.');
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -109,27 +109,21 @@ export default function DecisionMakerProfilesPage() {
         user_id: user!.id,
         company_name: company?.name,
         decision_maker_name: dm.name,
-        lead_score: dm.buying_intent_score,
+        lead_score: null,
         stage: 'New Lead',
-        details: { job_title: dm.job_title, email: dm.email }
+        details: {
+          job_title: dm.job_title,
+          email: dm.email,
+          source_provider: (dm as any).source_provider || null,
+          source_url: (dm as any).source_url || null,
+          verification_status: 'existing_profile_requires_source_review'
+        }
       });
       if (error) throw error;
       toast.success(`${dm.name} added to CRM`);
     } catch(err: any) {
       toast.error('Failed to add to CRM');
     }
-  };
-
-  const getLevelBadge = (level: number | null) => {
-    if (!level) return null;
-    const colors = ['bg-slate-100', 'bg-blue-100', 'bg-indigo-100', 'bg-purple-100', 'bg-emerald-100'];
-    return <Badge variant="outline" className={`${colors[level-1]} text-foreground border-transparent`}>Level {level}</Badge>;
-  };
-
-  const getIntentBadge = (label: string | null) => {
-    if (label === 'Hot Lead') return <Badge className="bg-red-500 hover:bg-red-600">Hot Lead</Badge>;
-    if (label === 'Warm Lead') return <Badge className="bg-orange-500 hover:bg-orange-600">Warm Lead</Badge>;
-    return <Badge className="bg-blue-500 hover:bg-blue-600">Cold Lead</Badge>;
   };
 
   return (
@@ -148,9 +142,43 @@ export default function DecisionMakerProfilesPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.success('Export initiated')} type="button">Export All</Button>
+          <Button onClick={() => setShowAddForm((value) => !value)}><Plus className="mr-2 h-4 w-4" /> Add sourced contact</Button>
+          <Button variant="outline" onClick={() => {
+            const rows = decisionMakers.map((record: any) => [record.name, record.job_title || '', record.email || '', record.phone || '', record.linkedin_profile || '', record.source_url || '']);
+            const csv = [['Name', 'Job title', 'Email', 'Phone', 'LinkedIn', 'Source URL'], ...rows]
+              .map((row) => row.map((value) => '"' + String(value).replace(/"/g, '""') + '"').join(',')).join('\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'decision-maker-records.csv';
+            anchor.click();
+            URL.revokeObjectURL(url);
+          }} type="button">Export CSV</Button>
         </div>
       </div>
+
+      {showAddForm && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Add a sourced decision-maker</CardTitle>
+            <CardDescription>Enter only details you have verified. A source URL is required; no buying-intent or investment score is generated.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Full name *</Label><Input value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Job title</Label><Input value={contactForm.job_title} onChange={(event) => setContactForm({ ...contactForm, job_title: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Email</Label><Input type="email" value={contactForm.email} onChange={(event) => setContactForm({ ...contactForm, email: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Phone</Label><Input value={contactForm.phone} onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })} /></div>
+              <div className="space-y-2"><Label>LinkedIn profile</Label><Input value={contactForm.linkedin_profile} onChange={(event) => setContactForm({ ...contactForm, linkedin_profile: event.target.value })} /></div>
+              <div className="space-y-2"><Label>Source URL *</Label><Input value={contactForm.source_url} onChange={(event) => setContactForm({ ...contactForm, source_url: event.target.value })} placeholder="Official company page or public professional profile" /></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button onClick={addVerifiedContact} disabled={savingContact}>{savingContact ? <><span className="mr-2">Saving...</span></> : 'Save sourced contact'}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
@@ -158,28 +186,25 @@ export default function DecisionMakerProfilesPage() {
           <Card className="h-64 bg-muted/20"></Card>
         </div>
       ) : (
+        <>
+        {decisionMakers.length === 0 && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+              <CardTitle>No verified decision-maker records</CardTitle>
+              <CardDescription>No sourced decision-maker profiles are saved for this company yet. We will not invent names, email addresses, phone numbers or buying-intent scores.</CardDescription>
+            </CardHeader>
+          </Card>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {decisionMakers.map(dm => (
             <Card key={dm.id} className="flex flex-col h-full border-border">
               <CardHeader className="pb-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>{getLevelBadge(dm.level)}</TooltipTrigger>
-                        <TooltipContent>
-                          <p className="w-[200px] text-sm">
-                            {dm.level === 5 && 'Level 5: Can approve budget immediately (Founder, CEO, Owner)'}
-                            {dm.level === 4 && 'Level 4: Can recommend purchase (COO, Marketing Director)'}
-                            {dm.level === 3 && 'Level 3: Influencer (Team Lead, Project Manager)'}
-                            {dm.level === 2 && 'Level 2: Researcher (Specialist)'}
-                            {dm.level === 1 && 'Level 1: Low authority (Staff)'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    {getIntentBadge(dm.buying_intent_label)}
-                  </div>
+                <div className="mb-2">
+                  {(dm as any).source_provider ? (
+                    <Badge variant="outline">Source: {(dm as any).source_provider}</Badge>
+                  ) : (
+                    <Badge variant="outline">Source not verified</Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{dm.name}</CardTitle>
                 <CardDescription className="text-primary font-medium">{dm.job_title}</CardDescription>
@@ -204,16 +229,10 @@ export default function DecisionMakerProfilesPage() {
                   )}
                 </div>
 
-                {dm.opportunity_detection && (
-                  <div className="bg-primary/5 p-3 rounded-md border border-primary/10 mt-4">
-                    <div className="flex items-start">
-                      <Target className="h-4 w-4 text-primary mt-0.5 mr-2 shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-primary mb-1">Opportunity Detection</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed text-pretty">{dm.opportunity_detection}</p>
-                      </div>
-                    </div>
-                  </div>
+                {(dm as any).source_url && (
+                  <a href={(dm as any).source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                    View source record
+                  </a>
                 )}
               </CardContent>
               <CardFooter className="pt-4 border-t border-border mt-auto shrink-0 flex gap-2 flex-wrap">
@@ -229,6 +248,7 @@ export default function DecisionMakerProfilesPage() {
             </Card>
           ))}
         </div>
+        </>
       )}
     </div>
   );

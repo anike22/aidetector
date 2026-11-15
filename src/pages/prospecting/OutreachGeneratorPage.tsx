@@ -41,6 +41,7 @@ export default function OutreachGeneratorPage() {
         .from('prospecting_decision_makers')
         .select('*')
         .eq('id', dmId)
+        .eq('is_demo', false)
         .single();
       if (dmErr) throw dmErr;
       setDecisionMaker(dmData);
@@ -60,24 +61,32 @@ export default function OutreachGeneratorPage() {
     }
   };
 
-  const generateMessage = async () => {
-    if (!decisionMaker) return;
+  const generateMessage = () => {
+    if (!decisionMaker || !company) return;
     setGenerating(true);
-    
-    // Simulate AI Generation
-    await new Promise(r => setTimeout(r, 1500));
-    
+
+    const name = decisionMaker.name;
+    const role = decisionMaker.job_title || 'your role';
+    const business = company.name;
+    const points = keyPoints.trim();
+    const opening = tone === 'friendly'
+      ? `I hope your week is going well. I'm reaching out because of your work as ${role} at ${business}.`
+      : tone === 'casual'
+        ? `I'm getting in touch about your role at ${business}.`
+        : tone === 'formal'
+          ? `I am contacting you in your capacity as ${role} at ${business}.`
+          : `I'm reaching out because you are listed as ${role} at ${business}.`;
+    const context = points ? `\n\nThe reason for my message: ${points}` : '';
     let message = '';
-    const pointsText = keyPoints ? ` We specialize in: ${keyPoints}.` : '';
 
     if (outreachType === 'email') {
-      message = `Subject: Quick question about ${company?.name || 'your company'} growth\n\nHi ${decisionMaker.name},\n\nI noticed that you recently expanded operations, and as the ${decisionMaker.job_title}, scaling efficiently is likely top of mind.\n\n${pointsText} I'd love to share a quick idea on how we helped a similar company in your industry achieve their goals.\n\nAre you open to a brief chat next Tuesday?\n\nBest regards,\n[Your Name]`;
+      message = `Subject: Introduction — ${business}\n\nHi ${name},\n\n${opening}${context}\n\nWould you be open to a short conversation to see whether this is relevant to your current priorities?\n\nBest regards,\n[Your Name]`;
     } else if (outreachType === 'linkedin') {
-      message = `Hi ${decisionMaker.name}, saw the great news about ${company?.name || 'your team'}'s recent growth! As you focus on scaling, I'd love to connect. ${pointsText} Let me know if you're open to a brief chat.`;
+      message = `Hi ${name}, ${opening} ${points ? points + ' ' : ''}Would you be open to connecting?`;
     } else if (outreachType === 'whatsapp') {
-      message = `Hi ${decisionMaker.name}, reaching out because of ${company?.name || 'your company'}'s recent expansion. ${pointsText} Do you have 5 mins next week for a quick chat?`;
+      message = `Hello ${name}, I'm [Your Name]. I'm contacting you about ${business}. ${points ? points + ' ' : ''}Would it be convenient to share a little more information?`;
     } else {
-      message = `[Ringing]\n\nProspect: Hello?\n\nYou: Hi ${decisionMaker.name}, this is [Your Name]. I know I caught you out of the blue, do you have 30 seconds?\n\nProspect: Sure.\n\nYou: Great. I was researching ${company?.name || 'your company'} and saw your recent expansion. ${pointsText} Is that something you are actively looking to improve right now?\n\n[Wait for response]`;
+      message = `Opening: Hello ${name}, this is [Your Name]. Is now a convenient time for a brief introduction?\n\nContext: I'm contacting you because you are listed as ${role} at ${business}.${context}\n\nQuestion: Is this an area you are responsible for, or is there someone else I should contact?\n\nClose: Thank you for your time.`;
     }
 
     setGeneratedMessage(message);
@@ -112,10 +121,15 @@ export default function OutreachGeneratorPage() {
           user_id: user.id,
           company_name: company.name,
           decision_maker_name: decisionMaker.name,
-          lead_score: decisionMaker.buying_intent_score,
+          lead_score: null,
           stage: 'Contacted',
           last_activity: `Generated ${outreachType} message`,
-          details: { job_title: decisionMaker.job_title, email: decisionMaker.email }
+          details: {
+            job_title: decisionMaker.job_title,
+            email: decisionMaker.email,
+            source_provider: (decisionMaker as any).source_provider || null,
+            source_url: (decisionMaker as any).source_url || null
+          }
         });
       }
 
@@ -143,7 +157,7 @@ export default function OutreachGeneratorPage() {
         <Card>
           <CardHeader>
             <CardTitle>Configuration</CardTitle>
-            <CardDescription>Target: {decisionMaker.name} ({decisionMaker.job_title}) at {company?.name}</CardDescription>
+            <CardDescription>Draft for {decisionMaker.name} ({decisionMaker.job_title || 'role not listed'}) at {company?.name}. The draft uses only saved company/contact details and facts you enter below.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -202,7 +216,7 @@ export default function OutreachGeneratorPage() {
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center text-muted-foreground border-2 border-dashed border-muted rounded-md p-8 text-center">
-                    Click 'Generate Outreach' to create a personalized {outreachType} message for {decisionMaker.name}.
+                    Click 'Generate draft' to prepare a {outreachType} message for {decisionMaker.name}.
                   </div>
                 )}
               </CardContent>
