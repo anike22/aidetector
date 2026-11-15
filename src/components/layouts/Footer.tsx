@@ -89,7 +89,7 @@ const footerColumns = [
       { label: 'Terms of Service', href: '/terms' },
       { label: 'Affiliate Agreement', href: '/affiliate-agreement' },
       { label: 'Cookie Policy', href: '/cookies' },
-      { label: 'All Pages Directory', href: '/all-pages', isHighlight: true },
+      { label: 'HTML Sitemap', href: '/sitemap', isHighlight: true },
     ],
   },
 ];
@@ -161,11 +161,11 @@ export default function Footer() {
 
           <div className="flex flex-wrap items-center gap-4">
             <Link
-              to="/all-pages"
+              to="/sitemap"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
             >
               <Globe className="w-4 h-4" />
-              <span>Browse All Pages Directory</span>
+              <span>View HTML Sitemap</span>
             </Link>
             {socialLinks.length > 0 && (
               <div className="flex items-center gap-2.5">
@@ -225,8 +225,8 @@ export default function Footer() {
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> GDPR & CCPA Compliant
             </span>
-            <Link to="/all-pages" className="hover:text-primary transition-colors font-medium underline">
-              Site Directory
+            <Link to="/sitemap" className="hover:text-primary transition-colors font-medium underline">
+              Sitemap
             </Link>
           </div>
         </div>

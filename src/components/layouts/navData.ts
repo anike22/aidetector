@@ -98,6 +98,7 @@ export const navStructure: NavGroup[] = [
           { label: 'Case Studies', href: '/case-studies', icon: Layers, desc: 'Real client results & detection benchmarks' },
           { label: 'Comparisons', href: '/comparisons', icon: Search, desc: 'Side-by-side detector evaluations' },
           { label: 'Blog & News', href: '/blog', icon: Newspaper, desc: 'AI industry developments & updates' },
+          { label: 'HTML Sitemap', href: '/sitemap', icon: Globe, desc: 'Browse every public page on AIDetector.cx' },
         ],
       },
       {
@@ -124,6 +125,7 @@ export const navStructure: NavGroup[] = [
       { label: 'Case Studies', href: '/case-studies', icon: Layers, desc: 'Real client results & detection benchmarks' },
       { label: 'Comparisons', href: '/comparisons', icon: Search, desc: 'Side-by-side tool comparisons' },
       { label: 'Blog & News', href: '/blog', icon: Newspaper, desc: 'AI industry news and product updates' },
+      { label: 'HTML Sitemap', href: '/sitemap', icon: Globe, desc: 'Browse every public page on AIDetector.cx' },
       { label: 'TikTok AI Label Guide', href: '/studies/why-tiktok-flagged-my-real-video', icon: Video, desc: 'Troubleshoot false AI labels on TikTok' },
       { label: 'WhatsApp Compression', href: '/studies/whatsapp-compression-ai-video', icon: Video, desc: 'Codec effects on video detectors' },
       { label: 'Authentic Video Guide', href: '/studies/authentic-video-false-positives', icon: ShieldCheck, desc: 'Why real footage gets flagged' },
@@ -268,7 +270,7 @@ export const adminNavStructure: NavGroup = {
 
 export const directLinks = [
   { label: 'Pricing', href: '/pricing', icon: Crown },
-  { label: 'All Pages', href: '/all-pages', icon: Globe },
+  { label: 'Sitemap', href: '/sitemap', icon: Globe },
 ];
 
 export function normalizeRoute(path: string): string {

@@ -612,8 +612,8 @@ export default function AllPagesDirectoryPage() {
   return (
     <MainLayout>
       <PageMeta
-        title="All Pages Directory · Complete Site Index | AIDetector.cx"
-        description="Browse the complete directory of AIDetector.cx pages, tools, research studies, integrations, APIs, and guides. Search and access all public destinations."
+        title="HTML Sitemap · All Pages & Tools | AIDetector.cx"
+        description="Explore the AIDetector.cx HTML sitemap: public tools, services, research, guides, integrations, API resources, and company pages."
       />
 
       <div className="bg-gradient-to-b from-primary/5 via-background to-background py-16 md:py-24 border-b border-border/50">
@@ -621,14 +621,17 @@ export default function AllPagesDirectoryPage() {
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 text-primary font-semibold text-sm mb-3">
               <Globe className="w-4 h-4" />
-              <span>AIDetector.cx Site Directory</span>
+              <span>AIDetector.cx HTML Sitemap</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4">
-              Explore All Pages & Tools
+              AIDetector.cx HTML Sitemap
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl leading-relaxed text-pretty mb-8">
-              Discover every verified tool, research study, API endpoint, guide, and service across the AIDetector.cx ecosystem.
+              Browse the public pages of AIDetector.cx by category, or use the XML sitemap index for search-engine discovery.
             </p>
+            <a href="/sitemap-index.xml" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-6">
+              View XML sitemap index <ExternalLink className="w-4 h-4" />
+            </a>
 
             {/* Search and Filters */}
             <div className="space-y-4">
