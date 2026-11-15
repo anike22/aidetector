@@ -35,7 +35,7 @@ const SCHEMAS = [
     '@type': 'WebSite',
     name: 'AIDetector.cx',
     url: 'https://www.aidetector.cx/',
-    description: 'Free AI detector for ChatGPT, Claude, Gemini and AI-generated text. Dual detection modes, multilingual support, sentence-level analysis and explainable results.',
+    description: 'Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results.',
     potentialAction: {
       '@type': 'SearchAction',
       target: 'https://www.aidetector.cx/detector?q={search_term_string}',
@@ -66,7 +66,7 @@ const SCHEMAS = [
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Web',
     url: 'https://www.aidetector.cx/',
-    description: 'Free AI content detector supporting dual-mode analysis (Balanced and High-Sensitivity), multilingual AI detection across 19+ languages, and sentence-level explainability.',
+    description: 'Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results.',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
     featureList: [
       'Free AI Detector',
@@ -112,12 +112,12 @@ export default function HomePage() {
   return (
     <MainLayout>
       <PageMeta
-        title="Free AI Detector for ChatGPT & AI Text | AIDetector.cx"
-        description="Check text for ChatGPT, Claude and other AI writing. Get sentence-level insights, dual analysis modes and multilingual support with AIDetector.cx."
+        title="AI Detector: ChatGPT-6, Gemini & Claude | Free AI Checker"
+        description="Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
         canonicalUrl="https://www.aidetector.cx/"
         ogImage="https://www.aidetector.cx/brand/aidetector-icon.png"
-        ogTitle="AI Detector – Detect ChatGPT & AI-Generated Text | AIDetector.cx"
-        ogDescription="Detect ChatGPT, Claude, Gemini and AI-generated text free. Dual detection engines, 19+ languages, sentence-level breakdown — try it now, no account needed."
+        ogTitle="AI Detector: ChatGPT-6, Gemini & Claude | Free AI Checker"
+        ogDescription="Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
         schemas={SCHEMAS}
       />
       <div className="flex flex-col w-full">
