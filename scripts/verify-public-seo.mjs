@@ -25,6 +25,15 @@ assert(config.redirects?.some(r => r.source === '/embed/widget' && r.destination
 assert(!config.rewrites.some(r => r.source === '/embed/widget'), 'Legacy widget URL must not serve an application route');
 
 
+assert(urls.includes('https://www.aidetector.cx/embed'), 'Embed page missing from public sitemap');
+assert(urls.includes('https://www.aidetector.cx/sitemap'), 'HTML sitemap page missing from public sitemap');
+assert(config.rewrites.some(r => r.source === '/sitemap' && r.destination === '/prerender/sitemap/index.html'), 'HTML sitemap must have a dedicated prerender rewrite');
+assert(config.redirects?.some(r => r.source === '/all-pages' && r.destination === '/sitemap' && r.permanent === true), 'Legacy all-pages URL must redirect to the canonical HTML sitemap');
+assert(config.redirects?.some(r => r.source === '/directory' && r.destination === '/sitemap' && r.permanent === true), 'Legacy directory URL must redirect to the canonical HTML sitemap');
+const sitemapHtml = await readFile('dist/prerender/sitemap/index.html', 'utf8');
+assert(sitemapHtml.includes('AIDetector.cx HTML Sitemap'), 'HTML sitemap must prerender its main heading');
+assert(sitemapHtml.includes('/sitemap-index.xml'), 'HTML sitemap must link to the XML sitemap index');
+
 assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
 assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
