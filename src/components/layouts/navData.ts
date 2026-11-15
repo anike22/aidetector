@@ -270,6 +270,7 @@ export const adminNavStructure: NavGroup = {
 
 export const directLinks = [
   { label: 'Pricing', href: '/pricing', icon: Crown },
+  { label: 'Embed Widget', href: '/embed', icon: Code },
   { label: 'Sitemap', href: '/sitemap', icon: Globe },
 ];
 

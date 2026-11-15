@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bot, Twitter, Linkedin, Github, Mail, Shield, CheckCircle2,
-  Instagram, Facebook, Youtube, Send, Globe, Lock, ExternalLink
+  Instagram, Facebook, Youtube, Send, Globe, Lock, ExternalLink, Code
 } from 'lucide-react';
 import { supabase } from '@/db/supabase';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
@@ -160,6 +160,13 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
+            <Link
+              to="/embed"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
+            >
+              <Code className="w-4 h-4" />
+              <span>AI Detector Widget</span>
+            </Link>
             <Link
               to="/sitemap"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
