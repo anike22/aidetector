@@ -51,8 +51,8 @@ const PARA_RARE_OVERLAP_MIN = 0.30;
 const PARA_ENTITY_OVERLAP_MIN = 0.40;
 const PARA_LEX_JACCARD_MIN = 0.18;
 
-const GATEWAY =
-  "https://app-c18l1vf2nz7l-api-VaOwP8E7dJqa.gateway.appmedo.com";
+const GEMINI_EMBED_MODEL = "gemini-embedding-001";
+const GEMINI_EMBED_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBED_MODEL}:embedContent`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1470,11 +1470,11 @@ export function runNear(submitted: string, sourceText: string, existingExactRang
 
 async function embed(text: string, apiKey: string, sig: AbortSignal): Promise<number[] | null> {
   try {
-    const resp = await fetch(`${GATEWAY}/v1beta/models/text-embedding-004:embedContent`, {
+    const resp = await fetch(GEMINI_EMBED_ENDPOINT, {
       method: "POST",
       signal: sig,
-      headers: { "Content-Type": "application/json", "X-Gateway-Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "models/text-embedding-004", content: { parts: [{ text: text.slice(0, 2048) }] } }),
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({ model: `models/${GEMINI_EMBED_MODEL}`, taskType: "SEMANTIC_SIMILARITY", content: { parts: [{ text: text.slice(0, 2048) }] } }),
     });
     if (!resp.ok) return null;
     const d = await resp.json();
@@ -1605,7 +1605,7 @@ async function runAnalysis(rawText: string, apiKey: string, options?: { fastMode
     crossref: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
     openalex: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
     unpaywall: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
-    gemini: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
+    gemini: { status: apiKey ? "skipped" : "not_configured", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
     webSearch: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
     exa: { status: "skipped", state: "not_checked", queriesSent: 0, candidatesReturned: 0, verifiedSources: 0 },
   };
@@ -1862,7 +1862,7 @@ async function runAnalysis(rawText: string, apiKey: string, options?: { fastMode
 
     // Run semantic model only when needed and on uncovered sections
     let sem = { spans: [] as MatchedSpan[], ranges: [] as Array<[number, number]>, used: false };
-    if (!options?.fastMode && exact.ranges.length === 0 && near.ranges.length === 0) {
+    if (!options?.fastMode && Boolean(apiKey) && exact.ranges.length === 0 && near.ranges.length === 0) {
       const semCtrl = new AbortController();
       const semTimer = setTimeout(() => semCtrl.abort(), FETCH_TO_MS);
       sem = await runSemantic(eligibleText, srcSlice, apiKey, [...exact.ranges, ...near.ranges], semCtrl.signal);
@@ -2264,7 +2264,7 @@ if (import.meta.main) {
         );
       }
 
-      const featureSlug = "plagiarism_checker";
+      const featureSlug = "plagiarism_check";
       const idempotencyKey = req.headers.get("x-idempotency-key") || null;
       let reservation;
       try {
@@ -2321,18 +2321,19 @@ if (import.meta.main) {
         return jsonResponse({ status: "insufficient_text", errorMessage: `Text exceeds ${MAX_TEXT_CHARS} character limit.` }, 400);
       }
 
-      const apiKey = Deno.env.get("INTEGRATIONS_API_KEY") ?? "";
-      if (!apiKey) {
-        if (reservation.reservationId) {
-          await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "failed", errorReason: "missing_api_key", timezone }).catch(() => {});
-        }
-        return jsonResponse({ status: "provider_unavailable", errorMessage: "Server configuration error." }, 503);
-      }
-
+      // Gemini is an optional semantic layer. Its absence must not block lexical
+      // plagiarism checks against Crossref, OpenAlex, Google Custom Search, and Exa.
+      const apiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
       const result = await runAnalysis(text, apiKey, body.options);
 
       if (reservation.reservationId) {
-        await finalizeReservation(supabase, { reservationId: reservation.reservationId, outcome: "success", timezone }).catch(() => {});
+        const failed = result.status === "provider_unavailable" || result.status === "analysis_failed";
+        await finalizeReservation(supabase, {
+          reservationId: reservation.reservationId,
+          outcome: failed ? "failed" : "success",
+          errorReason: failed ? result.status : null,
+          timezone,
+        }).catch(() => {});
       }
 
       return jsonResponse(result);
