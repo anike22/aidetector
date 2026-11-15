@@ -582,7 +582,7 @@
     },
     {
       "source": "/services",
-      "destination": "/index.html"
+      "destination": "/prerender/services/index.html"
     },
     {
       "source": "/services/seo-consulting",

@@ -1004,7 +1004,7 @@ export const routes: RouteConfig[] = [
   {
     name: 'Services Overview',
     path: '/services',
-    element: <FeatureGate featureSlug="services"><MainLayout><ServicesOverviewPage /></MainLayout></FeatureGate>,
+    element: <MainLayout><ServicesOverviewPage /></MainLayout>,
     public: true,
   },
   {
