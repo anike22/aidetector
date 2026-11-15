@@ -6,6 +6,11 @@ const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([,url]) => url);
 assert.equal(new Set(urls).size, urls.length, 'Duplicate sitemap URLs');
 const robots = await readFile('dist/robots.txt', 'utf8');
 assert(robots.includes('Sitemap: https://www.aidetector.cx/sitemap-index.xml'), 'robots.txt must advertise the full sitemap index');
+const llms = await readFile('dist/llms.txt', 'utf8');
+assert(llms.startsWith('# AIDetector.cx'), 'llms.txt must identify AIDetector.cx');
+for (const route of ['/detector', '/humanizer', '/plagiarism-checker', '/seo-assistant', '/ai-image-detector', '/ai-video-detector', '/api/docs', '/guides', '/research']) {
+  assert(llms.includes(`https://www.aidetector.cx${route}`), `llms.txt missing key public resource: ${route}`);
+}
 const sitemapIndex = await readFile('dist/sitemap-index.xml', 'utf8');
 for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml']) {
   assert(sitemapIndex.includes(`<loc>https://www.aidetector.cx/${file}</loc>`), `Missing sitemap index entry: ${file}`);
