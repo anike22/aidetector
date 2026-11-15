@@ -9,11 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import ServiceInquiryForm from '@/components/forms/ServiceInquiryForm';
 import PageMeta from '@/components/common/PageMeta';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export default function ServicesOverviewPage() {
-  const { isFeatureVisible: checkFeatureVisible } = useFeatureFlags();
-
   const allServices = [
     {
       id: 'seo-consulting',
@@ -67,7 +64,8 @@ export default function ServicesOverviewPage() {
     }
   ];
 
-  const services = allServices.filter(service => checkFeatureVisible(service.href, 'all'));
+  // The public services catalogue is editorial content, not a gated product feature.
+  const services = allServices;
 
   const serviceCatalogSchema = {
     "@context": "https://schema.org",
