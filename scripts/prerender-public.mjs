@@ -45,12 +45,17 @@ try {
     let page;
     let lastError;
     let browserErrors = [];
+    let failedResponses = [];
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         context = await createPrerenderContext();
         page = await context.newPage();
         browserErrors = [];
+        failedResponses = [];
         page.on('pageerror', error => browserErrors.push(String(error).slice(0, 600)));
+        page.on('response', response => {
+          if (response.status() >= 400 && failedResponses.length < 20) failedResponses.push({status: response.status(), url: response.url().slice(0, 240)});
+        });
         page.on('requestfailed', request => {
           if (browserErrors.length < 12) browserErrors.push(`Failed request: ${request.url().slice(0, 180)} (${request.failure()?.errorText || 'unknown'})`);
         });
@@ -65,10 +70,17 @@ try {
       } catch (error) {
         const bodyPreview = await page?.locator('body').innerText({timeout:1500}).catch(() => '') || '';
         const title = await page?.title().catch(() => '') || '';
+        const runtimeSnapshot = await page?.evaluate(() => ({
+          readyState: document.readyState,
+          rootExists: !!document.querySelector('#root'),
+          rootHtml: document.querySelector('#root')?.innerHTML?.slice(0, 1200) || '',
+          scriptUrls: [...document.scripts].map(script => script.src).filter(Boolean),
+          loadedAppResources: performance.getEntriesByType('resource').map(entry => entry.name).filter(name => /\.js(?:$|\?)/.test(name)).slice(-25),
+        })).catch(() => null);
         console.error('[prerender-debug]', JSON.stringify({
           path: pathname, attempt, error: String(error),
           url: page?.url(), title, bodyPreview: bodyPreview.slice(0, 450),
-          browserErrors: browserErrors.slice(0, 8),
+          browserErrors: browserErrors.slice(0, 8), failedResponses, runtimeSnapshot,
         }));
         lastError = error;
         await context?.close().catch(() => {});
