@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bot, Twitter, Linkedin, Github, Mail, Shield, CheckCircle2,
-  Instagram, Facebook, Youtube, Send, Globe, Lock, ExternalLink
+  Instagram, Facebook, Youtube, Send, Globe, Lock, ExternalLink, Code
 } from 'lucide-react';
 import { supabase } from '@/db/supabase';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
