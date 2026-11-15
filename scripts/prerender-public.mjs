@@ -104,7 +104,7 @@ try {
       const descriptions = [...document.querySelectorAll('meta[name="description"]')]
         .map(el => el.getAttribute('content')?.trim()).filter(Boolean);
       // RouteMeta supplies a generic fallback, but page-specific metadata is authoritative.
-      const description = descriptions.find(value => !value.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'))
+      const description = descriptions.filter(value => !value.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.')).at(-1)
         || descriptions.at(-1)
         || `${h1}. Explore AIDetector.cx tools, guidance and resources for content integrity.`;
       if (['/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(pathname) && description.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.')) {
