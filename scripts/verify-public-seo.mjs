@@ -18,11 +18,12 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
 const embedHtml = await readFile('dist/prerender/embed/index.html', 'utf8');
-assert(embedHtml.includes('Add an AI detector to your website'), 'Embed distribution page must prerender its main heading');
-assert(embedHtml.includes('https://www.aidetector.cx/embed/widget'), 'Embed page must preview the isolated widget endpoint');
+assert(embedHtml.includes('Free AI detector widget for your website'), 'Embed distribution page must prerender its main heading');
+assert(embedHtml.includes('https://www.aidetector.cx/detector'), 'Embed page must preview the public AI detector');
 assert(config.rewrites.some(r => r.source === '/embed' && r.destination === '/prerender/embed/index.html'), 'Embed distribution page missing dedicated prerender');
-assert(config.rewrites.some(r => r.source === '/embed/widget' && r.destination === '/index.html'), 'Widget endpoint missing SPA route');
-assert(config.headers.some(h => h.source === '/embed/widget' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value === 'noindex, nofollow')), 'Widget endpoint must be excluded from indexing');
+assert(config.redirects?.some(r => r.source === '/embed/widget' && r.destination === '/embed' && r.permanent === true), 'Legacy widget URL must permanently redirect to the embed landing page');
+assert(!config.rewrites.some(r => r.source === '/embed/widget'), 'Legacy widget URL must not serve an application route');
+
 
 assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
