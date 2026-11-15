@@ -103,6 +103,17 @@ const SCHEMAS = [
       },
     })),
   },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'AIDetector.cx',
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any',
+    url: 'https://www.aidetector.cx/',
+    image: 'https://www.aidetector.cx/brand/aidetector-detection-results.webp',
+    description: 'Free AI detector and checker for ChatGPT-6, Gemini, and Claude text, with dual detection modes, 19+ languages, and explainable sentence-level results.',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  },
   YOUTUBE_METADATA.schemaJsonLd,
 ];
 
@@ -115,7 +126,8 @@ export default function HomePage() {
         title="AI Detector: ChatGPT-6, Gemini & Claude | Free AI Checker"
         description="Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
         canonicalUrl="https://www.aidetector.cx/"
-        ogImage="https://www.aidetector.cx/brand/aidetector-icon.png"
+        ogImage="https://www.aidetector.cx/brand/aidetector-home-og.webp"
+        robots="index, follow, max-image-preview:large"
         ogTitle="AI Detector: ChatGPT-6, Gemini & Claude | Free AI Checker"
         ogDescription="Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
         schemas={SCHEMAS}
