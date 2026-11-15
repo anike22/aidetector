@@ -317,10 +317,6 @@
       "destination": "/prerender/ai-video-detector/index.html"
     },
     {
-      "source": "/all-pages",
-      "destination": "/index.html"
-    },
-    {
       "source": "/api",
       "destination": "/prerender/api/index.html"
     },
@@ -454,10 +450,6 @@
     },
     {
       "source": "/developer",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/directory",
       "destination": "/index.html"
     },
     {
@@ -846,7 +838,7 @@
     },
     {
       "source": "/sitemap",
-      "destination": "/index.html"
+      "destination": "/prerender/sitemap/index.html"
     },
     {
       "source": "/studies/authentic-video-false-positives",
@@ -1071,6 +1063,16 @@
     {
       "source": "/ai-detection-accuracy-tests",
       "destination": "/research/ai-detection-accuracy-tests",
+      "permanent": true
+    },
+    {
+      "source": "/all-pages",
+      "destination": "/sitemap",
+      "permanent": true
+    },
+    {
+      "source": "/directory",
+      "destination": "/sitemap",
       "permanent": true
     }
   ],
