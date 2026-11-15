@@ -78,7 +78,10 @@ export async function prepare() {
       config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
     }
   }
+  const redirectSources = new Set((config.redirects || []).map(({source}) => source));
   for (const route of registeredRoutes) {
+    // A permanent redirect must win over any stale or accidentally reintroduced SPA route.
+    if (redirectSources.has(route)) continue;
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
