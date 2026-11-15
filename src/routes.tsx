@@ -1413,21 +1413,21 @@ export const routes: RouteConfig[] = [
     element: <OwnerRecordManagementPage />,
   },
   {
-    name: 'All Pages Directory',
+    name: 'All Pages Directory (Legacy URL)',
     path: '/all-pages',
-    element: <AllPagesDirectoryPage />,
+    element: <Navigate to="/sitemap" replace />,
     public: true,
   },
   {
-    name: 'Site Directory (Alias)',
+    name: 'Site Directory (Legacy URL)',
     path: '/directory',
-    element: <Navigate to="/all-pages" replace />,
+    element: <Navigate to="/sitemap" replace />,
     public: true,
   },
   {
-    name: 'HTML Sitemap (Alias)',
+    name: 'HTML Sitemap',
     path: '/sitemap',
-    element: <Navigate to="/all-pages" replace />,
+    element: <AllPagesDirectoryPage />,
     public: true,
   },
   {
