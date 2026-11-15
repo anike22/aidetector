@@ -12,6 +12,7 @@ interface PageMetaProps {
   ogType?: 'website' | 'article';
   schemas?: any[];
   noindex?: boolean;
+  robots?: string;
 }
 
 const PageMeta = ({
@@ -24,16 +25,13 @@ const PageMeta = ({
   ogType = 'website',
   schemas = [],
   noindex = false,
+  robots,
 }: PageMetaProps) => (
   <Helmet>
     <html lang="en" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    {noindex ? (
-      <meta name="robots" content="noindex, nofollow" />
-    ) : (
-      <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    )}
+    <meta name="robots" content={noindex ? "noindex, nofollow" : (robots || "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1")} />
     
     {canonicalUrl && <link rel="canonical" href={canonicalUrl.replace("https://aidetector.cx", "https://www.aidetector.cx")} />}
     
