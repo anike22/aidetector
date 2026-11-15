@@ -473,6 +473,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/embed",
+      "destination": "/prerender/embed/index.html"
+    },
+    {
+      "source": "/embed/widget",
+      "destination": "/index.html"
+    },
+    {
       "source": "/essay-studio",
       "destination": "/prerender/essay-studio/index.html"
     },
@@ -1270,6 +1278,15 @@
         {
           "key": "X-Robots-Tag",
           "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/embed/widget",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
         }
       ]
     }
