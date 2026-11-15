@@ -12,6 +12,8 @@ const AUTHORITY_AREAS = [
       { label: 'How AI Detection Works', to: '/guides/how-ai-detection-works' },
       { label: 'Why Essays Get Flagged as AI', to: '/guides/why-was-my-essay-flagged-as-ai' },
       { label: 'Words That Trigger AI Detection', to: '/guides/words-that-trigger-ai-detection' },
+      { label: 'Best Practices for Educators', to: '/guides/best-practices-for-educators' },
+      { label: 'Multilingual Detection Guide', to: '/guides/multilingual-detection-guide' },
     ],
   },
   {
@@ -23,6 +25,8 @@ const AUTHORITY_AREAS = [
       { label: 'AI Detection Accuracy Tests', to: '/research/ai-detection-accuracy-tests' },
       { label: 'GPT vs Gemini Detection', to: '/research/gpt-5-vs-gemini-detection' },
       { label: 'Authentic Video False Positives', to: '/studies/authentic-video-false-positives' },
+      { label: 'How Our Dual-Engine Works', to: '/research/dual-engine-detection-methodology' },
+      { label: 'Language Benchmark Overview', to: '/research/language-benchmark-overview' },
     ],
   },
   {
