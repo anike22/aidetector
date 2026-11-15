@@ -51,6 +51,7 @@ export async function prepare() {
   }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
   const seoRedirects = [
+    {source: '/embed/widget', destination: '/embed', permanent: true},
     {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
     {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
@@ -77,7 +78,10 @@ export async function prepare() {
       config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
     }
   }
+  const redirectSources = new Set((config.redirects || []).map(({source}) => source));
   for (const route of registeredRoutes) {
+    // A permanent redirect must win over any stale or accidentally reintroduced SPA route.
+    if (redirectSources.has(route)) continue;
     // The article route is intentionally broad in React; narrow the server match to real content hubs.
     if (route === '/tools/:id' || route === '/ai-tools/:id') {
       // Exact directory routes were generated above; unknown IDs must be HTTP 404.
@@ -100,7 +104,7 @@ export async function prepare() {
   // Exact paths protect root-level private pages even when a catch-all parameter does not match an empty suffix.
   const privateExactPaths = ['/technical-seo'];
   const unpublishedNoindexPaths = ['/essay-template/:path*', '/services/growth-marketing', '/marketplace', '/marketplace/:path*'];
-  config.headers = [{source: '/embed/widget', headers: [{key: 'X-Robots-Tag', value: 'noindex, nofollow'}]}, {source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...unpublishedNoindexPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
+  config.headers = [{source: '/:path*', headers: [{key: 'X-Content-Type-Options', value: 'nosniff'}]}, ...privateExactPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...unpublishedNoindexPaths.map(source => ({source, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), ...['admin','dashboard','account','settings','content-studio','organizations','workspaces','prospecting','api/dashboard','authorship/dashboard','humanizer/history','signup','register','reset-password','payment-success','payment-cancel'].map(p => ({source: `/${p}/:path*`, headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]})), {source: '/reports/:reportId/collaborate', headers: [{key: 'X-Robots-Tag', value: 'noindex, follow'}]}];
   for (const source of unpublishedNoindexPaths) {
     if (!config.headers.some(h => h.source === source && h.headers?.some(x => x.key === 'X-Robots-Tag' && x.value === 'noindex, follow'))) throw new Error(`Missing unpublished-route noindex header: ${source}`);
   }
