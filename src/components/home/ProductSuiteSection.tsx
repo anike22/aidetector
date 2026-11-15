@@ -42,8 +42,15 @@ const PRODUCTS = [
     cta: 'Optimize Content',
   },
   {
+    title: 'Free AI Detector Widget',
+    href: '/embed',
+    icon: LinkIcon,
+    description: 'Embed a responsive AI text detector on WordPress, Wix, or a custom website with a simple iframe snippet and no API key.',
+    cta: 'Get Embed Code',
+  },
+  {
     title: 'API & Integrations',
-    href: '/api-platform',
+    href: '/api',
     icon: LinkIcon,
     description: 'Integrate detection and analysis into your own workflows, products, and content pipelines.',
     cta: 'View API Docs',
