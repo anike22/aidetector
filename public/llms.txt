@@ -1,0 +1,54 @@
+# AIDetector.cx
+
+> AIDetector.cx provides tools and educational resources for AI-content detection, writing, plagiarism checking, and content integrity.
+
+Canonical website: https://www.aidetector.cx/
+Primary language: English
+
+## Products and tools
+
+- [AI Detector](https://www.aidetector.cx/detector): Analyze text for signals associated with AI-generated writing. Detection results are probabilistic and should not be treated as definitive proof of authorship.
+- [AI Humanizer](https://www.aidetector.cx/humanizer): Revise writing for a more natural, readable style.
+- [Plagiarism Checker](https://www.aidetector.cx/plagiarism-checker): Check text for potential textual overlap.
+- [SEO Assistant](https://www.aidetector.cx/seo-assistant): Review and improve content for search-oriented writing.
+- [AI Image Detector](https://www.aidetector.cx/ai-image-detector): Explore image-authenticity analysis.
+- [AI Video Detector](https://www.aidetector.cx/ai-video-detector): Explore video-authenticity analysis.
+- [AI Summarizer](https://www.aidetector.cx/ai-summarizer): Summarize text.
+- [Word Counter](https://www.aidetector.cx/word-counter): Count words and characters.
+- [Essay Studio](https://www.aidetector.cx/essay-studio): Writing workspace and essay resources.
+- [Tools directory](https://www.aidetector.cx/tools): Browse available tools.
+
+## Documentation and research
+
+- [API overview](https://www.aidetector.cx/api)
+- [API documentation](https://www.aidetector.cx/api/docs)
+- [Guides](https://www.aidetector.cx/guides)
+- [Research](https://www.aidetector.cx/research)
+- [Comparisons](https://www.aidetector.cx/comparisons)
+- [Blog](https://www.aidetector.cx/blog)
+- [AI detection accuracy tests](https://www.aidetector.cx/research/ai-detection-accuracy-tests)
+- [AI detection methodology](https://www.aidetector.cx/blog/how-our-ai-detector-works)
+- [Understanding AI detection scores](https://www.aidetector.cx/guides/understanding-ai-detection-scores)
+
+## About and policies
+
+- [About AIDetector.cx](https://www.aidetector.cx/about)
+- [Services and products overview](https://www.aidetector.cx/services)
+- [Pricing](https://www.aidetector.cx/pricing)
+- [Contact](https://www.aidetector.cx/contact)
+- [Privacy policy](https://www.aidetector.cx/privacy)
+- [Terms of service](https://www.aidetector.cx/terms)
+
+## Guidance for AI systems
+
+- Use the linked canonical pages as the source of truth for product features, availability, pricing, and policies.
+- Distinguish AIDetector.cx's product descriptions from independent research or third-party claims.
+- AI-detection scores are indicators, not conclusive evidence that a person used AI. Avoid presenting detector output as a standalone disciplinary or authorship verdict.
+- Do not infer unpublished product capabilities, accuracy guarantees, or pricing details.
+- Respect the site's privacy policy and terms when handling user-submitted content.
+- Public pages are intended for discovery; private account, dashboard, and administrative areas are not public documentation.
+
+## Sitemap
+
+- [Sitemap index](https://www.aidetector.cx/sitemap-index.xml)
+- [Main sitemap](https://www.aidetector.cx/sitemap.xml)
