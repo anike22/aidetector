@@ -985,6 +985,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/services/conversion-optimization",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
       "source": "/ai-tools",
       "destination": "/tools",
       "permanent": true
