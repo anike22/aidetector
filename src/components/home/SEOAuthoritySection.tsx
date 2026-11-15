@@ -14,6 +14,7 @@ const AUTHORITY_AREAS = [
       { label: 'Words That Trigger AI Detection', to: '/guides/words-that-trigger-ai-detection' },
       { label: 'Best Practices for Educators', to: '/guides/best-practices-for-educators' },
       { label: 'Multilingual Detection Guide', to: '/guides/multilingual-detection-guide' },
+      { label: 'Embed the Free AI Detector on Your Website', to: '/embed' },
     ],
   },
   {
