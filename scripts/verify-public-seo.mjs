@@ -17,6 +17,13 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+const embedHtml = await readFile('dist/prerender/embed/index.html', 'utf8');
+assert(embedHtml.includes('Add an AI detector to your website'), 'Embed distribution page must prerender its main heading');
+assert(embedHtml.includes('https://www.aidetector.cx/embed/widget'), 'Embed page must preview the isolated widget endpoint');
+assert(config.rewrites.some(r => r.source === '/embed' && r.destination === '/prerender/embed/index.html'), 'Embed distribution page missing dedicated prerender');
+assert(config.rewrites.some(r => r.source === '/embed/widget' && r.destination === '/index.html'), 'Widget endpoint missing SPA route');
+assert(config.headers.some(h => h.source === '/embed/widget' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value === 'noindex, nofollow')), 'Widget endpoint must be excluded from indexing');
+
 assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
 assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
