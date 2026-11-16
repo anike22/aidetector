@@ -5,7 +5,7 @@ import PageMeta from '@/components/common/PageMeta';
 
 const EMBED_CODE = `<!-- AIDetector.cx Widget Start -->
 <div class="ai-detector-widget-container" style="width:100%; max-width:800px; margin:0 auto; font-family:sans-serif;">
-  <iframe src="https://www.aidetector.cx/detector" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
+  <iframe src="https://www.aidetector.cx/embed/widget" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
   <p style="text-align:center; font-size:12px; color:#64748b; margin-top:8px;">
     AI scanning technology provided by <a href="https://www.aidetector.cx" target="_blank" rel="noopener noreferrer" style="color:#3b82f6; text-decoration:underline; font-weight:600;">AIDetector.cx</a>
   </p>
@@ -120,10 +120,10 @@ export default function EmbedDistributionPage() {
             <div className="mb-5">
               <p className="text-sm font-semibold text-primary">LIVE PREVIEW</p>
               <h2 className="mt-2 text-2xl font-bold">Preview the embedded AI checker</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">Try the same public AI detector page that your website visitors will use.</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">Try the same isolated widget endpoint that your website visitors will use.</p>
             </div>
             <div className="overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-lg">
-              <iframe src="https://www.aidetector.cx/detector" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+              <iframe src="https://www.aidetector.cx/embed/widget" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
             </div>
             <p className="mt-3 text-xs text-muted-foreground">The preview is interactive. Enter text and run a scan to try the widget.</p>
           </div>
@@ -192,7 +192,7 @@ export default function EmbedDistributionPage() {
             <div className="mt-7 grid gap-5 md:grid-cols-3">
               <article className="rounded-2xl border border-border bg-card p-6"><h3 className="font-bold">No API key for the standard embed</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">Use the supplied iframe snippet without provisioning or exposing an API key on your website.</p></article>
               <article className="rounded-2xl border border-border bg-card p-6"><h3 className="font-bold">Responsive iframe layout</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">The widget uses a 100% width iframe so it can fit common content columns and responsive page layouts. Adjust its height to suit your design.</p></article>
-              <article className="rounded-2xl border border-border bg-card p-6"><h3 className="font-bold">Isolated detector interface</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">The AI detector page loads from AIDetector.cx inside an iframe rather than being bundled with your site's JavaScript. The iframe still uses network and rendering resources, so test its placement and loading behavior as part of your page performance checks.</p></article>
+              <article className="rounded-2xl border border-border bg-card p-6"><h3 className="font-bold">Isolated detector interface</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">The detector application runs in an iframe hosted by AIDetector.cx rather than being bundled with your site's JavaScript. The iframe still uses network and rendering resources, so test its placement and loading behavior as part of your page performance checks.</p></article>
             </div>
           </div>
         </section>
