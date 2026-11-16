@@ -111,6 +111,33 @@ try {
         throw new Error(`Generic fallback metadata on public page: ${pathname}`);
       }
       setMeta('description', description);
+      // Social crawlers read the saved HTML, not React's later client-side head updates.
+      // Explicitly serialize route-specific Open Graph and Twitter metadata into each prerender.
+      const setPropertyMeta = (property, content) => {
+        document.querySelectorAll(`meta[property="${property}"]`).forEach(el => el.remove());
+        const el = document.createElement('meta'); el.setAttribute('property', property); el.content = content; document.head.append(el);
+      };
+      const setNameMeta = (name, content) => {
+        document.querySelectorAll(`meta[name="${name}"]`).forEach(el => el.remove());
+        const el = document.createElement('meta'); el.name = name; el.content = content; document.head.append(el);
+      };
+      const canonicalUrl = 'https://www.aidetector.cx' + pathname;
+      const existingOgImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content')?.trim();
+      const ogImage = pathname === '/'
+        ? (existingOgImage || 'https://www.aidetector.cx/brand/aidetector-home-og.webp')
+        : (existingOgImage && !existingOgImage.includes('aidetector-home-og.webp')
+          ? existingOgImage
+          : 'https://www.aidetector.cx/brand/aidetector-icon.png');
+      setPropertyMeta('og:title', title);
+      setPropertyMeta('og:description', description);
+      setPropertyMeta('og:type', 'website');
+      setPropertyMeta('og:url', canonicalUrl);
+      setPropertyMeta('og:image', ogImage);
+      setPropertyMeta('og:site_name', 'AIDetector.cx');
+      setNameMeta('twitter:card', 'summary_large_image');
+      setNameMeta('twitter:title', title);
+      setNameMeta('twitter:description', description);
+      setNameMeta('twitter:image', ogImage);
       setMeta('robots', 'index, follow, max-image-preview:large');
       document.querySelectorAll('link[rel="canonical"]').forEach(el => el.remove());
       const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = 'https://www.aidetector.cx' + pathname; document.head.append(canonical);

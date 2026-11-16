@@ -114,6 +114,23 @@ for (const url of urls) {
   assert(html.includes(`href="${url}"`), `Wrong canonical: ${url}`);
   assert(/<h1\b/.test(html), `Missing heading: ${url}`);
   assert(/name="description"/.test(html), `Missing description: ${url}`);
+  const title = html.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim();
+  const ogTitle = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]*)"/)?.[1]
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:title"/)?.[1];
+  const twitterTitle = html.match(/<meta[^>]*name="twitter:title"[^>]*content="([^"]*)"/)?.[1]
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*name="twitter:title"/)?.[1];
+  const description = html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/)?.[1]
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*name="description"/)?.[1];
+  const ogDescription = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]*)"/)?.[1]
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:description"/)?.[1];
+  const twitterDescription = html.match(/<meta[^>]*name="twitter:description"[^>]*content="([^"]*)"/)?.[1]
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*name="twitter:description"/)?.[1];
+  assert(title && ogTitle === title && twitterTitle === title, `Social title does not match page title: ${url}`);
+  assert(description && ogDescription === description && twitterDescription === description, `Social description does not match page description: ${url}`);
+  assert(/property="og:image"/.test(html) && /name="twitter:image"/.test(html), `Missing social image metadata: ${url}`);
+  if (parsed.pathname === '/ai-checker-for-bloggers') {
+    assert(html.includes('https://www.aidetector.cx/AI%20Checker%20For%20Bloggers.jpg'), 'Bloggers page must retain its page-specific social image');
+  }
   if (['/', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(parsed.pathname)) {
     assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
   }
