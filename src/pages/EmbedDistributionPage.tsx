@@ -5,7 +5,7 @@ import PageMeta from '@/components/common/PageMeta';
 
 const EMBED_CODE = `<!-- AIDetector.cx Widget Start -->
 <div class="ai-detector-widget-container" style="width:100%; max-width:800px; margin:0 auto; font-family:sans-serif;">
-  <iframe src="https://www.aidetector.cx/embed/widget?v=2" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
+  <iframe src="https://www.aidetector.cx/embed/widget?v=3" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
   <p style="text-align:center; font-size:12px; color:#64748b; margin-top:8px;">
     AI scanning technology provided by <a href="https://www.aidetector.cx" target="_blank" rel="noopener noreferrer" style="color:#3b82f6; text-decoration:underline; font-weight:600;">AIDetector.cx</a>
   </p>
@@ -123,7 +123,7 @@ export default function EmbedDistributionPage() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">Try the same isolated widget endpoint that your website visitors will use.</p>
             </div>
             <div className="overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-lg">
-              <iframe src="https://www.aidetector.cx/embed/widget?v=2" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+              <iframe src="https://www.aidetector.cx/embed/widget?v=3" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
             </div>
             <p className="mt-3 text-xs text-muted-foreground">The preview is interactive. Enter text and run a scan to try the widget.</p>
           </div>
