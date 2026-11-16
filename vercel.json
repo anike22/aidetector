@@ -981,6 +981,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/services",
+      "destination": "/services/ai-consulting",
+      "permanent": true
+    },
+    {
       "source": "/embed/widget",
       "destination": "/embed",
       "permanent": true
