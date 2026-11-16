@@ -39,6 +39,7 @@ const PrivacyControlsPage = lazy(() => import('./pages/account/PrivacyControlsPa
 const ContentHubPage = lazy(() => import('./pages/ContentHubPage'));
 const ArticlePage = lazy(() => import('./pages/ArticlePage'));
 const DualEngineDetectionMethodologyPage = lazy(() => import('./pages/research/DualEngineDetectionMethodologyPage'));
+const EducationAIDetectionStudyPage = lazy(() => import('./pages/research/EducationAIDetectionStudyPage'));
 const GonePage = lazy(() => import('./pages/GonePage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const NewsletterPage = lazy(() => import('./pages/NewsletterPage'));
@@ -715,6 +716,12 @@ export const routes: RouteConfig[] = [
     name: 'Dual-Engine Detection Methodology',
     path: '/research/dual-engine-detection-methodology',
     element: <DualEngineDetectionMethodologyPage />,
+    public: true,
+  },
+  {
+    name: 'Education AI Detection Research Study',
+    path: '/research/education-ai-detection-study',
+    element: <EducationAIDetectionStudyPage />,
     public: true,
   },
   {
