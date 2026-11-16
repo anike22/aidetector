@@ -469,6 +469,10 @@
       "destination": "/prerender/embed/index.html"
     },
     {
+      "source": "/embed/widget",
+      "destination": "/index.html"
+    },
+    {
       "source": "/essay-studio",
       "destination": "/prerender/essay-studio/index.html"
     },
@@ -986,11 +990,6 @@
       "permanent": true
     },
     {
-      "source": "/embed/widget",
-      "destination": "/embed",
-      "permanent": true
-    },
-    {
       "source": "/services/conversion-optimization",
       "destination": "/services",
       "permanent": true
@@ -1082,6 +1081,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/embed/widget",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
     {
       "source": "/:path*",
       "headers": [

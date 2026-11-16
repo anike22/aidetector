@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import HomePage from './pages/HomePage';
 const DetectorPage = lazy(() => import('./pages/DetectorPage'));
 const EmbedDistributionPage = lazy(() => import('./pages/EmbedDistributionPage'));
+const EmbedWidgetPage = lazy(() => import('./pages/EmbedWidgetPage'));
 const ToolsPage = lazy(() => import('./pages/ToolsPage'));
 const PlagiarismCheckerPage = lazy(() => import('./pages/PlagiarismCheckerPage'));
 const ToolDetailPage = lazy(() => import('./pages/ToolDetailPage'));
@@ -355,6 +356,13 @@ export const routes: RouteConfig[] = [
     path: '/embed',
     element: <EmbedDistributionPage />,
     public: true,
+  },
+  {
+    name: 'AI Detector Embed Widget',
+    path: '/embed/widget',
+    element: <EmbedWidgetPage />,
+    public: true,
+    visible: false,
   },
   {
     name: 'AI Detector',
