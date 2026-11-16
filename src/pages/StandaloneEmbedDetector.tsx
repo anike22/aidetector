@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { runBalancedDetector, type BalancedDetectorResult, AnalysisError } from '@/lib/detection/balancedDetectorService';
+import { runBalancedDetector, type BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
+import { AnalysisError } from '@/lib/detection/detectorApi';
 
 export default function StandaloneEmbedDetector() {
   const [text, setText] = useState('');
