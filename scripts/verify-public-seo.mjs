@@ -114,7 +114,7 @@ for (const url of urls) {
   assert(html.includes(`href="${url}"`), `Wrong canonical: ${url}`);
   assert(/<h1\b/.test(html), `Missing heading: ${url}`);
   assert(/name="description"/.test(html), `Missing description: ${url}`);
-  const title = html.match(/<title>([\\s\\S]*?)<\\/title>/)?.[1]?.trim();
+  const title = html.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim();
   const ogTitle = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]*)"/)?.[1]
     || html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:title"/)?.[1];
   const twitterTitle = html.match(/<meta[^>]*name="twitter:title"[^>]*content="([^"]*)"/)?.[1]
