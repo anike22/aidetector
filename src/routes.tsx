@@ -1114,7 +1114,7 @@ export const routes: RouteConfig[] = [
   {
     name: 'Case Studies',
     path: '/case-studies',
-    element: <MainLayout><CaseStudiesPage /></MainLayout>,
+    element: <CaseStudiesPage />,
     public: true,
   },
   {
