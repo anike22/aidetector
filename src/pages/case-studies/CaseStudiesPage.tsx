@@ -51,6 +51,14 @@ export default function CaseStudiesPage() {
             View AIDetector.cx on Product Hunt <ArrowRight className="w-4 h-4 ml-2" />
           </a>
         </section>
+
+        <section className="rounded-2xl border border-border bg-card p-7 md:p-9">
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-3">Further reading</p>
+          <h2 className="text-2xl font-bold text-navy mb-3">Understanding AI Detector Differences</h2>
+          <p className="text-muted-foreground leading-relaxed mb-5">AI detection systems can produce different results when analyzing the same text because they use different statistical methods, detection thresholds, classification approaches and sensitivity settings. Understanding these differences is important when interpreting AI detection scores and evaluating potential false positives.</p>
+          <p className="text-muted-foreground leading-relaxed mb-5">For a deeper discussion, read <a href="https://medium.com/@anikeex22/why-do-different-ai-detectors-give-different-results-07f54ade08ad" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:opacity-80">Why AI Detectors Disagree: Understanding Different Detection Results</a>.</p>
+          <p className="text-xs text-muted-foreground">External article by AIDetector.cx author Anike Tobechukwu. The examples discussed are illustrative and should not be treated as an independently validated accuracy benchmark.</p>
+        </section>
       </div>
     </MainLayout>
   );
