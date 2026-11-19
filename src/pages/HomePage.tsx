@@ -36,11 +36,6 @@ const SCHEMAS = [
     name: 'AIDetector.cx',
     url: 'https://www.aidetector.cx/',
     description: 'Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results.',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: 'https://www.aidetector.cx/detector?q={search_term_string}',
-      'query-input': 'required name=search_term_string',
-    },
   },
   {
     '@context': 'https://schema.org',
