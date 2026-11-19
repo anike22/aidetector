@@ -37,6 +37,20 @@ export default function CaseStudiesPage() {
             <BookOpen className="w-5 h-5 shrink-0" /> Performance results will be published only after the dataset is selected, evaluated and documented.
           </div>
         </section>
+
+        <section className="rounded-2xl border border-border bg-card p-7 md:p-9">
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-3">External product profile</p>
+          <h2 className="text-2xl font-bold text-navy mb-3">AIDetector.cx on Product Hunt</h2>
+          <p className="text-muted-foreground leading-relaxed mb-5">Explore the AIDetector.cx launch profile on Product Hunt, including the product overview and community discussion about its AI detection, plagiarism and content-integrity tools.</p>
+          <a
+            href="https://www.producthunt.com/products/aidetector-cx?comment=5997281"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-lg border border-border px-5 py-3 font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            View AIDetector.cx on Product Hunt <ArrowRight className="w-4 h-4 ml-2" />
+          </a>
+        </section>
       </div>
     </MainLayout>
   );
