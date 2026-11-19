@@ -194,3 +194,9 @@ for (const pathname of ['/research', '/studies/authentic-video-false-positives']
 }
 
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
+
+// The detector page does not implement a site-search query endpoint. Do not publish
+// a SearchAction target containing the literal search_term_string placeholder.
+const homeHtml = await readFile('dist/prerender/home/index.html', 'utf8');
+assert(!homeHtml.includes('SearchAction'), 'Homepage must not advertise an unsupported SearchAction endpoint');
+assert(!homeHtml.includes('{search_term_string}'), 'Homepage must not expose an unresolved search URL placeholder');
