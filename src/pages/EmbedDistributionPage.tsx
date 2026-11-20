@@ -5,7 +5,7 @@ import PageMeta from '@/components/common/PageMeta';
 
 const EMBED_CODE = `<!-- AIDetector.cx Widget Start -->
 <div class="ai-detector-widget-container" style="width:100%; max-width:800px; margin:0 auto; font-family:sans-serif;">
-  <iframe src="https://www.aidetector.cx/embed/widget?v=3" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
+  <iframe src="https://aidetector.cx/embed/widget?v=3" title="AIDetector.cx AI Text Detector" width="100%" height="450" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></iframe>
   <p style="text-align:center; font-size:12px; color:#64748b; margin-top:8px;">
     AI scanning technology provided by <a href="https://www.aidetector.cx" target="_blank" rel="noopener noreferrer" style="color:#3b82f6; text-decoration:underline; font-weight:600;">AIDetector.cx</a>
   </p>
@@ -46,7 +46,7 @@ const SCHEMAS = [
     name: 'AIDetector.cx Embeddable AI Detector Widget',
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Web',
-    url: 'https://www.aidetector.cx/embed',
+    url: 'https://aidetector.cx/embed',
     description: 'A responsive iframe widget that lets website owners embed the AIDetector.cx AI text detector in WordPress, Wix, or custom HTML websites.',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     featureList: ['Responsive iframe embed', 'No API key required for the standard embed', 'WordPress Custom HTML support', 'Wix Embed HTML support', 'Custom HTML support'],
@@ -100,7 +100,7 @@ export default function EmbedDistributionPage() {
       <PageMeta
         title="Free AI Detector Widget & Embed Code for Websites | AIDetector.cx"
         description="Add a free, responsive AI text detector widget to your website or blog in minutes. Embed it in WordPress, Wix, or custom HTML—no API key required."
-        canonicalUrl="https://www.aidetector.cx/embed"
+        canonicalUrl="https://aidetector.cx/embed"
         ogTitle="Free AI Detector Widget & Embed Code for Websites | AIDetector.cx"
         ogDescription="Embed the AIDetector.cx AI text checker on WordPress, Wix, or a custom website with a responsive iframe. No API key required."
         schemas={SCHEMAS}
@@ -123,7 +123,7 @@ export default function EmbedDistributionPage() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">Try the same isolated widget endpoint that your website visitors will use.</p>
             </div>
             <div className="overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-lg">
-              <iframe src="https://www.aidetector.cx/embed/widget?v=3" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+              <iframe src="https://aidetector.cx/embed/widget?v=3" title="Live AIDetector.cx AI detector widget preview" className="block h-[490px] w-full rounded-xl border-0" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
             </div>
             <p className="mt-3 text-xs text-muted-foreground">The preview is interactive. Enter text and run a scan to try the widget.</p>
           </div>
