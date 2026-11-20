@@ -392,10 +392,11 @@ export const routes: RouteConfig[] = [
     errorElement: <RouteErrorBoundary />,
   },
   {
-    name: 'AI Video Detector (Redirect)',
+    name: 'AI Video Detector',
     path: '/video-detector',
-    element: <Navigate to="/ai-video-detector" replace />,
+    element: <AIVideoDetectorPage />,
     public: true,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     name: 'TikTok Video Detection Study',
