@@ -2,42 +2,42 @@
 
 > AIDetector.cx provides tools and educational resources for AI-content detection, writing, plagiarism checking, and content integrity.
 
-Canonical website: https://www.aidetector.cx/
+Canonical website: https://aidetector.cx/
 Primary language: English
 
 ## Products and tools
 
-- [AI Detector](https://www.aidetector.cx/detector): Analyze text for signals associated with AI-generated writing. Detection results are probabilistic and should not be treated as definitive proof of authorship.
-- [AI Humanizer](https://www.aidetector.cx/humanizer): Revise writing for a more natural, readable style.
-- [Plagiarism Checker](https://www.aidetector.cx/plagiarism-checker): Check text for potential textual overlap.
-- [SEO Assistant](https://www.aidetector.cx/seo-assistant): Review and improve content for search-oriented writing.
-- [AI Image Detector](https://www.aidetector.cx/ai-image-detector): Explore image-authenticity analysis.
-- [AI Video Detector](https://www.aidetector.cx/ai-video-detector): Explore video-authenticity analysis.
-- [AI Summarizer](https://www.aidetector.cx/ai-summarizer): Summarize text.
-- [Word Counter](https://www.aidetector.cx/word-counter): Count words and characters.
-- [Essay Studio](https://www.aidetector.cx/essay-studio): Writing workspace and essay resources.
-- [Tools directory](https://www.aidetector.cx/tools): Browse available tools.
+- [AI Detector](https://aidetector.cx/detector): Analyze text for signals associated with AI-generated writing. Detection results are probabilistic and should not be treated as definitive proof of authorship.
+- [AI Humanizer](https://aidetector.cx/humanizer): Revise writing for a more natural, readable style.
+- [Plagiarism Checker](https://aidetector.cx/plagiarism-checker): Check text for potential textual overlap.
+- [SEO Assistant](https://aidetector.cx/seo-assistant): Review and improve content for search-oriented writing.
+- [AI Image Detector](https://aidetector.cx/ai-image-detector): Explore image-authenticity analysis.
+- [AI Video Detector](https://aidetector.cx/ai-video-detector): Explore video-authenticity analysis.
+- [AI Summarizer](https://aidetector.cx/ai-summarizer): Summarize text.
+- [Word Counter](https://aidetector.cx/word-counter): Count words and characters.
+- [Essay Studio](https://aidetector.cx/essay-studio): Writing workspace and essay resources.
+- [Tools directory](https://aidetector.cx/tools): Browse available tools.
 
 ## Documentation and research
 
-- [API overview](https://www.aidetector.cx/api)
-- [API documentation](https://www.aidetector.cx/api/docs)
-- [Guides](https://www.aidetector.cx/guides)
-- [Research](https://www.aidetector.cx/research)
-- [Comparisons](https://www.aidetector.cx/comparisons)
-- [Blog](https://www.aidetector.cx/blog)
-- [AI detection accuracy tests](https://www.aidetector.cx/research/ai-detection-accuracy-tests)
-- [AI detection methodology](https://www.aidetector.cx/blog/how-our-ai-detector-works)
-- [Understanding AI detection scores](https://www.aidetector.cx/guides/understanding-ai-detection-scores)
+- [API overview](https://aidetector.cx/api)
+- [API documentation](https://aidetector.cx/api/docs)
+- [Guides](https://aidetector.cx/guides)
+- [Research](https://aidetector.cx/research)
+- [Comparisons](https://aidetector.cx/comparisons)
+- [Blog](https://aidetector.cx/blog)
+- [AI detection accuracy tests](https://aidetector.cx/research/ai-detection-accuracy-tests)
+- [AI detection methodology](https://aidetector.cx/blog/how-our-ai-detector-works)
+- [Understanding AI detection scores](https://aidetector.cx/guides/understanding-ai-detection-scores)
 
 ## About and policies
 
-- [About AIDetector.cx](https://www.aidetector.cx/about)
-- [Services and products overview](https://www.aidetector.cx/services)
-- [Pricing](https://www.aidetector.cx/pricing)
-- [Contact](https://www.aidetector.cx/contact)
-- [Privacy policy](https://www.aidetector.cx/privacy)
-- [Terms of service](https://www.aidetector.cx/terms)
+- [About AIDetector.cx](https://aidetector.cx/about)
+- [Services and products overview](https://aidetector.cx/services)
+- [Pricing](https://aidetector.cx/pricing)
+- [Contact](https://aidetector.cx/contact)
+- [Privacy policy](https://aidetector.cx/privacy)
+- [Terms of service](https://aidetector.cx/terms)
 
 ## Guidance for AI systems
 
@@ -50,5 +50,5 @@ Primary language: English
 
 ## Sitemap
 
-- [Sitemap index](https://www.aidetector.cx/sitemap-index.xml)
-- [Main sitemap](https://www.aidetector.cx/sitemap.xml)
+- [Sitemap index](https://aidetector.cx/sitemap-index.xml)
+- [Main sitemap](https://aidetector.cx/sitemap.xml)
