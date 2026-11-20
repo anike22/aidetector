@@ -525,6 +525,10 @@
       "destination": "/prerender/guides/index.html"
     },
     {
+      "source": "/guides/does-google-penalize-ai-generated-content",
+      "destination": "/index.html"
+    },
+    {
       "source": "/guides/best-ai-detector",
       "destination": "/prerender/guides/best-ai-detector/index.html"
     },
