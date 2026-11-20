@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
 import { ArrowRight, BookOpen, CalendarDays, CheckCircle2, ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-react';
 
-const canonical = 'https://www.aidetector.cx/guides/does-google-penalize-ai-generated-content';
-const image = 'https://www.aidetector.cx/images/google-ai-content-seo-guide.svg';
+const canonical = 'https://aidetector.cx/guides/does-google-penalize-ai-generated-content';
+const image = 'https://aidetector.cx/images/google-ai-content-seo-guide.svg';
 
 const faqs = [
   { q: 'Does Google penalize AI-generated content?', a: 'Google does not apply a blanket penalty simply because content was generated with AI. Its policies focus on whether content is helpful, original, accurate and created for people, or whether automation is being used to manipulate Search through scaled, unoriginal or otherwise spammy pages.' },
@@ -23,8 +24,8 @@ const articleSchema = {
   headline: 'Does Google Penalize AI-Generated Content? Google’s SEO Rules Explained',
   description: 'A practical, source-led guide to Google’s AI content guidance, scaled content abuse, ranking risks, disclosure, editorial review and an AI-assisted publishing workflow.',
   image: [image],
-  author: { '@type': 'Organization', name: 'AIDetector.cx Editorial Team', url: 'https://www.aidetector.cx/about' },
-  publisher: { '@type': 'Organization', name: 'AIDetector.cx', url: 'https://www.aidetector.cx' },
+  author: { '@type': 'Organization', name: 'AIDetector.cx Editorial Team', url: 'https://aidetector.cx/about' },
+  publisher: { '@type': 'Organization', name: 'AIDetector.cx', url: 'https://aidetector.cx' },
   mainEntityOfPage: canonical,
   datePublished: '2026-11-20',
   dateModified: '2026-11-20',
@@ -37,13 +38,13 @@ const breadcrumbSchema = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
-    { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://www.aidetector.cx/guides' },
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://aidetector.cx/' },
+    { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://aidetector.cx/guides' },
     { '@type': 'ListItem', position: 3, name: 'Does Google Penalize AI-Generated Content?', item: canonical },
   ],
 };
 
-function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
+function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">{children}<ExternalLink className="inline w-3.5 h-3.5 ml-1" /></a>;
 }
 
