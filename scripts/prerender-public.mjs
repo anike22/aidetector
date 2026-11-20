@@ -123,11 +123,13 @@ try {
       };
       const canonicalUrl = 'https://aidetector.cx' + pathname;
       const existingOgImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content')?.trim();
-      const ogImage = pathname === '/'
-        ? (existingOgImage || 'https://aidetector.cx/brand/aidetector-home-og.webp')
-        : (existingOgImage && !existingOgImage.includes('aidetector-home-og.webp')
-          ? existingOgImage
-          : 'https://aidetector.cx/brand/aidetector-icon.png');
+      const ogImage = pathname === '/ai-checker-for-bloggers'
+        ? 'https://aidetector.cx/AI%20Checker%20For%20Bloggers.jpg'
+        : pathname === '/'
+          ? (existingOgImage || 'https://aidetector.cx/brand/aidetector-home-og.webp')
+          : (existingOgImage && !existingOgImage.includes('aidetector-home-og.webp')
+            ? existingOgImage
+            : 'https://aidetector.cx/brand/aidetector-icon.png');
       setPropertyMeta('og:title', title);
       setPropertyMeta('og:description', description);
       setPropertyMeta('og:type', 'website');
