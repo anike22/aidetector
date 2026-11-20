@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,7 +69,6 @@ const EMPTY_FORM: FormState = {
 
 export default function SellPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,11 +77,6 @@ export default function SellPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!user) navigate('/login');
-  }, [user, navigate]);
 
   const fetchProducts = async () => {
     if (!user) return;
@@ -188,7 +182,22 @@ export default function SellPage() {
   const publishedCount = products.filter((p) => p.status === 'published').length;
   const totalSales = products.reduce((sum, p) => sum + p.sales_count, 0);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <MainLayout>
+        <section className="max-w-4xl mx-auto px-4 md:px-6 py-16 text-center">
+          <Badge variant="outline" className="mb-4 text-success border-success/30 bg-success/5">Become a Seller</Badge>
+          <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4">Sell Your Digital Products on AIDetector.cx</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">List AI prompts, templates, workflows, courses and other digital products. Manage your listings, track sales and reach customers through the AIDetector.cx marketplace.</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button asChild className="gap-2"><Link to="/login">Log in to your seller account <ArrowRight className="w-4 h-4" /></Link></Button>
+            <Button asChild variant="outline"><Link to="/signup">Create an account</Link></Button>
+            <Button asChild variant="ghost"><Link to="/marketplace">Browse marketplace</Link></Button>
+          </div>
+        </section>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
