@@ -104,6 +104,19 @@ export const AI_TOOLS: AiTool[] = AI_DIRECTORY_PRODUCTS.map(product => {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    id: 'does-google-penalize-ai-generated-content',
+    hub: 'guides',
+    title: 'Does Google Penalize AI-Generated Content? Google’s SEO Rules Explained',
+    excerpt: 'Google does not ban AI content simply because AI helped create it. Learn the real risks: scaled content abuse, thin pages, inaccuracies, search-first publishing, and how to build a responsible AI-assisted editorial workflow.',
+    category: 'SEO',
+    author: 'AIDetector.cx Editorial Team',
+    authorAvatar: '🔎',
+    date: 'November 20, 2026',
+    readTime: '15–18 min read',
+    image: '/images/google-ai-content-seo-guide.svg',
+    featured: true,
+  },
+  {
     id: 'can-turnitin-detect-chatgpt',
     hub: 'guides',
     title: 'Can Turnitin Detect ChatGPT? What Students and Educators Need to Know in 2026',
