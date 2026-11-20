@@ -187,7 +187,7 @@ export default function AICheckerForBloggersPage() {
         title="AI Checker for Bloggers: Scan & Optimize Content for SEO"
         description="Scan, detect, and fully optimize your blog posts for SEO in one click. The ultimate free AI checker for bloggers to protect rankings and outshine competitors. Try it now!"
         canonicalUrl="https://www.aidetector.cx/ai-checker-for-bloggers"
-        ogImage="https://www.aidetector.cx/AI%20Checker%20For%20Bloggers.jpg"
+        ogImage="https://aidetector.cx/AI%20Checker%20For%20Bloggers.jpg"
       />
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         
