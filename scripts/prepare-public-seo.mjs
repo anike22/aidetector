@@ -2,12 +2,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const origin = 'https://www.aidetector.cx';
+const origin = 'https://aidetector.cx';
 for (const name of ['.env.local', '.env']) {
   try { process.loadEnvFile(path.join(root, name)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 // Explicit editorial inventory: routing's `public` flag also includes account workspaces.
-export const publicPaths = ['/', '/embed', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/services', '/sitemap', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores', '/guides/best-practices-for-educators', '/research/dual-engine-detection-methodology', '/research/language-benchmark-overview'];
+export const publicPaths = ['/', '/embed', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/video-detector', '/sell', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/services', '/sitemap', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores', '/guides/best-practices-for-educators', '/research/dual-engine-detection-methodology', '/research/language-benchmark-overview'];
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
   const paths = new Set(publicPaths);
@@ -31,7 +31,7 @@ export async function prepare() {
   await writeFile(path.join(root, 'public/sitemap.xml'), xml);
   for (const name of [...maps, 'sitemap-index.xml']) {
     let xml = await readFile(path.join(root, 'public', name), 'utf8');
-    xml = xml.replaceAll('https://aidetector.cx', origin).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
+    xml = xml.replace(/https:\/\/(?:www\.)?aidetector\.cx/g, origin).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
     await writeFile(path.join(root, 'public', name), xml);
   }
   const configPath = path.join(root, 'vercel.json');
@@ -54,7 +54,7 @@ export async function prepare() {
     {source: '/all-pages', destination: '/sitemap', permanent: true},
     {source: '/directory', destination: '/sitemap', permanent: true},
     {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
-    {source: '/video-detector', destination: '/ai-video-detector', permanent: true},
+    {source: '/video-detector', destination: '/ai-video-detector', '/video-detector', '/sell', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
   ];
   config.redirects = [
