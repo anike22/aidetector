@@ -21,7 +21,7 @@ const PageMeta = ({
   canonicalUrl,
   ogTitle,
   ogDescription,
-  ogImage = "https://www.aidetector.cx/brand/aidetector-icon.png",
+  ogImage = "https://aidetector.cx/brand/aidetector-icon.png",
   ogType = 'website',
   schemas = [],
   noindex = false,
@@ -33,7 +33,7 @@ const PageMeta = ({
     <meta name="description" content={description} />
     <meta name="robots" content={noindex ? "noindex, nofollow" : (robots || "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1")} />
     
-    {canonicalUrl && <link rel="canonical" href={canonicalUrl.replace("https://aidetector.cx", "https://www.aidetector.cx")} />}
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
     
     {/* OpenGraph */}
     <meta property="og:site_name" content="AIDetector.cx" />
@@ -41,7 +41,7 @@ const PageMeta = ({
     <meta property="og:description" content={ogDescription || description} />
     <meta property="og:type" content={ogType} />
     <meta property="og:image" content={ogImage} />
-    {canonicalUrl && <meta property="og:url" content={canonicalUrl.replace("https://aidetector.cx", "https://www.aidetector.cx")} />}
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
     
     {/* Twitter */}
     <meta name="twitter:card" content="summary_large_image" />
