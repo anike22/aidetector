@@ -59,7 +59,7 @@ try {
         });
         // Commit confirms the local route responded; the H1/content checks below prove the app rendered.
         await page.goto(origin + pathname, {waitUntil:'commit',timeout:45000});
-        await page.waitForSelector('h1', {timeout:45000});
+        await page.waitForSelector('h1', {state:'attached', timeout:45000});
         lastError = null;
         break;
       } catch (error) {
