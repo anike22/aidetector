@@ -762,7 +762,7 @@
     },
     {
       "source": "/sell",
-      "destination": "/index.html"
+      "destination": "/prerender/sell/index.html"
     },
     {
       "source": "/seo-agent",
@@ -962,7 +962,7 @@
     },
     {
       "source": "/video-detector",
-      "destination": "/index.html"
+      "destination": "/prerender/video-detector/index.html"
     },
     {
       "source": "/webhooks",
@@ -1027,11 +1027,6 @@
     {
       "source": "/image-detector",
       "destination": "/ai-image-detector",
-      "permanent": true
-    },
-    {
-      "source": "/video-detector",
-      "destination": "/ai-video-detector",
       "permanent": true
     },
     {
