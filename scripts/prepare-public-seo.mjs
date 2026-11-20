@@ -54,7 +54,6 @@ export async function prepare() {
     {source: '/all-pages', destination: '/sitemap', permanent: true},
     {source: '/directory', destination: '/sitemap', permanent: true},
     {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
-    {source: '/video-detector', destination: '/ai-video-detector', '/video-detector', '/sell', permanent: true},
     {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
   ];
   config.redirects = [
