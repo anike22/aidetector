@@ -11,15 +11,15 @@ const routeMetadata: Record<string, { title: string; description: string; schema
         '@type': 'WebPage',
         name: 'Log In to AIDetector.cx',
         description: 'Sign in to access AIDetector.cx AI detection and content integrity tools.',
-        url: 'https://www.aidetector.cx/login',
-        isPartOf: { '@type': 'WebSite', name: 'AIDetector.cx', url: 'https://www.aidetector.cx/' },
+        url: 'https://aidetector.cx/login',
+        isPartOf: { '@type': 'WebSite', name: 'AIDetector.cx', url: 'https://aidetector.cx/' },
       },
       {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
-          { '@type': 'ListItem', position: 2, name: 'Log In', item: 'https://www.aidetector.cx/login' },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://aidetector.cx/' },
+          { '@type': 'ListItem', position: 2, name: 'Log In', item: 'https://aidetector.cx/login' },
         ],
       },
     ],
@@ -41,15 +41,15 @@ const routeMetadata: Record<string, { title: string; description: string; schema
         '@type': 'WebPage',
         name: 'Shared AI Detection Reports & Team Collaboration',
         description: 'A workspace feature for organizing AI detection, humanization, and plagiarism reports, discussing findings, and managing approvals.',
-        url: 'https://www.aidetector.cx/reports/shared',
-        isPartOf: { '@type': 'WebSite', name: 'AIDetector.cx', url: 'https://www.aidetector.cx/' },
+        url: 'https://aidetector.cx/reports/shared',
+        isPartOf: { '@type': 'WebSite', name: 'AIDetector.cx', url: 'https://aidetector.cx/' },
       },
       {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.aidetector.cx/' },
-          { '@type': 'ListItem', position: 2, name: 'Shared Reports', item: 'https://www.aidetector.cx/reports/shared' },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://aidetector.cx/' },
+          { '@type': 'ListItem', position: 2, name: 'Shared Reports', item: 'https://aidetector.cx/reports/shared' },
         ],
       },
     ],
@@ -62,7 +62,7 @@ export default function RouteMeta({ name }: { name: string }) {
   return <PageMeta
     title={metadata?.title || `${name} | AIDetector.cx`}
     description={metadata?.description || `${name}. Explore AIDetector.cx tools, guidance and resources for content integrity.`}
-    canonicalUrl={`https://www.aidetector.cx${pathname}`}
+    canonicalUrl={`https://aidetector.cx${pathname}`}
     schemas={metadata?.schemas || []}
   />;
 }
