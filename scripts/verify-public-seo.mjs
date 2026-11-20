@@ -5,28 +5,28 @@ const xml = await readFile('dist/sitemap.xml', 'utf8');
 const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([,url]) => url);
 assert.equal(new Set(urls).size, urls.length, 'Duplicate sitemap URLs');
 const robots = await readFile('dist/robots.txt', 'utf8');
-assert(robots.includes('Sitemap: https://www.aidetector.cx/sitemap-index.xml'), 'robots.txt must advertise the full sitemap index');
+assert(robots.includes('Sitemap: https://aidetector.cx/sitemap-index.xml'), 'robots.txt must advertise the full sitemap index');
 const llms = await readFile('dist/llms.txt', 'utf8');
 assert(llms.startsWith('# AIDetector.cx'), 'llms.txt must identify AIDetector.cx');
 for (const route of ['/detector', '/humanizer', '/plagiarism-checker', '/seo-assistant', '/ai-image-detector', '/ai-video-detector', '/api/docs', '/guides', '/research']) {
-  assert(llms.includes(`https://www.aidetector.cx${route}`), `llms.txt missing key public resource: ${route}`);
+  assert(llms.includes(`https://aidetector.cx${route}`), `llms.txt missing key public resource: ${route}`);
 }
 const sitemapIndex = await readFile('dist/sitemap-index.xml', 'utf8');
 for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml']) {
-  assert(sitemapIndex.includes(`<loc>https://www.aidetector.cx/${file}</loc>`), `Missing sitemap index entry: ${file}`);
+  assert(sitemapIndex.includes(`<loc>https://aidetector.cx/${file}</loc>`), `Missing sitemap index entry: ${file}`);
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
 const embedHtml = await readFile('dist/prerender/embed/index.html', 'utf8');
 assert(embedHtml.includes('Free AI detector widget for your website'), 'Embed distribution page must prerender its main heading');
-assert(embedHtml.includes('https://www.aidetector.cx/embed/widget'), 'Embed page must preview the isolated widget endpoint');
+assert(embedHtml.includes('https://aidetector.cx/embed/widget'), 'Embed page must preview the isolated widget endpoint');
 assert(config.rewrites.some(r => r.source === '/embed' && r.destination === '/prerender/embed/index.html'), 'Embed distribution page missing dedicated prerender');
 assert(config.rewrites.some(r => r.source === '/embed/widget' && r.destination === '/index.html'), 'Standalone widget endpoint missing SPA route');
 assert(config.headers.some(h => h.source === '/embed/widget' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value === 'noindex, nofollow')), 'Widget endpoint must remain excluded from indexing');
 
 
-assert(urls.includes('https://www.aidetector.cx/embed'), 'Embed page missing from public sitemap');
-assert(urls.includes('https://www.aidetector.cx/sitemap'), 'HTML sitemap page missing from public sitemap');
+assert(urls.includes('https://aidetector.cx/embed'), 'Embed page missing from public sitemap');
+assert(urls.includes('https://aidetector.cx/sitemap'), 'HTML sitemap page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/sitemap' && r.destination === '/prerender/sitemap/index.html'), 'HTML sitemap must have a dedicated prerender rewrite');
 assert(config.redirects?.some(r => r.source === '/all-pages' && r.destination === '/sitemap' && r.permanent === true), 'Legacy all-pages URL must redirect to the canonical HTML sitemap');
 assert(config.redirects?.some(r => r.source === '/directory' && r.destination === '/sitemap' && r.permanent === true), 'Legacy directory URL must redirect to the canonical HTML sitemap');
@@ -34,17 +34,17 @@ const sitemapHtml = await readFile('dist/prerender/sitemap/index.html', 'utf8');
 assert(sitemapHtml.includes('AIDetector.cx HTML Sitemap'), 'HTML sitemap must prerender its main heading');
 assert(sitemapHtml.includes('/sitemap-index.xml'), 'HTML sitemap must link to the XML sitemap index');
 
-assert(urls.includes('https://www.aidetector.cx/login'), 'Login page missing from public sitemap');
+assert(urls.includes('https://aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
 assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
-assert(urls.includes('https://www.aidetector.cx/services'), 'Services overview missing from public sitemap');
+assert(urls.includes('https://aidetector.cx/services'), 'Services overview missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/services' && r.destination === '/prerender/services/index.html'), 'Services overview missing dedicated prerender');
 const servicesHtml = await readFile('dist/prerender/services/index.html', 'utf8');
 assert(servicesHtml.includes('Tools for writing, originality, and content intelligence'), 'Wrong prerender content for /services');
-assert(urls.includes('https://www.aidetector.cx/reports/shared'), 'Shared reports feature page missing from sitemap');
+assert(urls.includes('https://aidetector.cx/reports/shared'), 'Shared reports feature page missing from sitemap');
 assert(config.rewrites.some(r => r.source === '/reports/shared' && r.destination === '/prerender/reports/shared/index.html'), 'Shared reports page missing dedicated prerender');
 assert(config.headers.some(h => h.source === '/reports/:reportId/collaborate' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Individual collaboration reports must remain noindex');
-for (const [oldPath, newPath] of [['/video-detector', '/ai-video-detector'], ['/image-detector', '/ai-image-detector']]) {
+for (const [oldPath, newPath] of [['/image-detector', '/ai-image-detector']]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing permanent redirect ${oldPath}`);
 }
 // Old video-study links must permanently redirect to the registered canonical destinations.
@@ -53,8 +53,8 @@ for (const [oldPath, newPath] of [
   ['/guides/authentic-video-false-positives', '/studies/authentic-video-false-positives'],
 ]) {
   assert(config.redirects?.some(r => r.source === oldPath && r.destination === newPath && r.permanent === true), `Missing canonical redirect: ${oldPath}`);
-  assert(!urls.includes('https://www.aidetector.cx' + oldPath), `Legacy URL must not be in sitemap: ${oldPath}`);
-  assert(urls.includes('https://www.aidetector.cx' + newPath), `Canonical destination missing from sitemap: ${newPath}`);
+  assert(!urls.includes('https://aidetector.cx' + oldPath), `Legacy URL must not be in sitemap: ${oldPath}`);
+  assert(urls.includes('https://aidetector.cx' + newPath), `Canonical destination missing from sitemap: ${newPath}`);
   assert(!config.rewrites.some(r => r.source === oldPath), `Legacy redirect must not serve a 200 rewrite: ${oldPath}`);
 }
 // Guard against soft-404 regressions without disabling legitimate feature-controlled pages.
@@ -84,13 +84,13 @@ assert(!config.rewrites.some(r => r.source === '/tools/nonexistent-tool-seo-test
 assert(!config.rewrites.some(r => ['/blog/:slug', '/guides/:slug', '/research/:slug', '/comparisons/:slug'].includes(r.source)), 'Unpublished or nonexistent articles must not return the generic SPA shell');
 assert(!config.rewrites.some(r => r.source === '/:hub/:slug'), 'Generic article hub rewrite is too broad');
 
-assert(urls.includes('https://www.aidetector.cx/aeo-optimizer'), 'AEO Optimizer missing from sitemap');
+assert(urls.includes('https://aidetector.cx/aeo-optimizer'), 'AEO Optimizer missing from sitemap');
 for (const route of ['/research/ai-detection-accuracy-tests', '/research/gpt-5-vs-gemini-detection', '/comparisons/turnitin-vs-aidetector-cx', '/comparisons/chatgpt-detector-comparison', '/guides/best-ai-detector']) {
-  assert(urls.includes(`https://www.aidetector.cx${route}`), `Known indexed-content candidate missing: ${route}`);
+  assert(urls.includes(`https://aidetector.cx${route}`), `Known indexed-content candidate missing: ${route}`);
   assert(config.rewrites.some(r => r.source === route && r.destination === `/prerender${route}/index.html`), `Known content must have its own prerender: ${route}`);
 }
 for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/shared', '/login']) {
-  const url = 'https://www.aidetector.cx' + pathname;
+  const url = 'https://aidetector.cx' + pathname;
   assert(urls.includes(url), `Public Essay Studio page missing from sitemap: ${pathname}`);
   const rewrite = config.rewrites.find(entry => entry.source === pathname && entry.destination === `/prerender${pathname}/index.html`);
   assert(rewrite, `Missing dedicated Essay Studio prerender rewrite: ${pathname}`);
@@ -104,7 +104,7 @@ for (const pathname of ['/essay-studio', '/essay-studio/templates', '/reports/sh
 
 for (const url of urls) {
   const parsed = new URL(url);
-  assert.equal(parsed.origin, 'https://www.aidetector.cx');
+  assert.equal(parsed.origin, 'https://aidetector.cx');
   assert(!/^\/(admin|account|dashboard|essay-studio\/|signup|register|content-studio)(\/|$)/.test(parsed.pathname));
   const rewrite = config.rewrites.find(r => r.source === parsed.pathname);
   assert(rewrite, `Missing rewrite: ${url}`);
@@ -129,7 +129,7 @@ for (const url of urls) {
   assert(description && ogDescription === description && twitterDescription === description, `Social description does not match page description: ${url}`);
   assert(/property="og:image"/.test(html) && /name="twitter:image"/.test(html), `Missing social image metadata: ${url}`);
   if (parsed.pathname === '/ai-checker-for-bloggers') {
-    assert(html.includes('https://www.aidetector.cx/AI%20Checker%20For%20Bloggers.jpg'), 'Bloggers page must retain its page-specific social image');
+    assert(html.includes('https://aidetector.cx/AI%20Checker%20For%20Bloggers.jpg'), 'Bloggers page must retain its page-specific social image');
   }
   if (['/', '/ai-image-detector', '/ai-video-detector', '/plagiarism-checker', '/ai-checker-for-bloggers'].includes(parsed.pathname)) {
     assert(!html.includes('Explore AIDetector.cx tools, guidance and resources for content integrity.'), `Generic SEO description: ${url}`);
@@ -156,7 +156,7 @@ const flaggedPaths = [
 const flaggedTitles = new Set();
 const flaggedDescriptions = new Set();
 for (const pathname of flaggedPaths) {
-  const target = 'https://www.aidetector.cx' + pathname;
+  const target = 'https://aidetector.cx' + pathname;
   assert(urls.includes(target), 'Known public article missing from sitemap: ' + pathname);
   const rewrite = config.rewrites.find(entry => entry.source === pathname);
   assert(rewrite && rewrite.destination.startsWith('/prerender/'), 'Missing article prerender: ' + pathname);
@@ -187,12 +187,17 @@ for (const [file, expected, broken] of videoStudyLinks) {
   assert(!source.includes(broken), `Broken study-cluster link returned in ${file}: ${broken}`);
 }
 for (const pathname of ['/research', '/studies/authentic-video-false-positives']) {
-  assert(urls.includes('https://www.aidetector.cx' + pathname), `Study-cluster destination missing from sitemap: ${pathname}`);
+  assert(urls.includes('https://aidetector.cx' + pathname), `Study-cluster destination missing from sitemap: ${pathname}`);
   const rewrite = config.rewrites.find(r => r.source === pathname && r.destination === `/prerender${pathname}/index.html`);
   assert(rewrite, `Study-cluster destination missing dedicated prerender: ${pathname}`);
   await readFile(path.join('dist', rewrite.destination), 'utf8');
 }
 
+assert(urls.includes('https://aidetector.cx/video-detector'), 'Video detector direct URL missing from sitemap');
+assert(config.rewrites.some(r => r.source === '/video-detector' && r.destination === '/prerender/video-detector/index.html'), 'Video detector must have a direct prerender rewrite');
+assert(!config.redirects?.some(r => r.source === '/video-detector'), 'Video detector must not redirect');
+assert(urls.includes('https://aidetector.cx/sell'), 'Public seller entry missing from sitemap');
+assert(config.rewrites.some(r => r.source === '/sell' && r.destination === '/prerender/sell/index.html'), 'Seller entry must have a direct prerender rewrite');
 console.log(`Verified initial HTML, canonicals and rewrites for ${urls.length} public pages.`);
 
 // The detector page does not implement a site-search query endpoint. Do not publish
