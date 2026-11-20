@@ -121,13 +121,13 @@ try {
         document.querySelectorAll(`meta[name="${name}"]`).forEach(el => el.remove());
         const el = document.createElement('meta'); el.name = name; el.content = content; document.head.append(el);
       };
-      const canonicalUrl = 'https://www.aidetector.cx' + pathname;
+      const canonicalUrl = 'https://aidetector.cx' + pathname;
       const existingOgImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content')?.trim();
       const ogImage = pathname === '/'
-        ? (existingOgImage || 'https://www.aidetector.cx/brand/aidetector-home-og.webp')
+        ? (existingOgImage || 'https://aidetector.cx/brand/aidetector-home-og.webp')
         : (existingOgImage && !existingOgImage.includes('aidetector-home-og.webp')
           ? existingOgImage
-          : 'https://www.aidetector.cx/brand/aidetector-icon.png');
+          : 'https://aidetector.cx/brand/aidetector-icon.png');
       setPropertyMeta('og:title', title);
       setPropertyMeta('og:description', description);
       setPropertyMeta('og:type', 'website');
@@ -140,7 +140,7 @@ try {
       setNameMeta('twitter:image', ogImage);
       setMeta('robots', 'index, follow, max-image-preview:large');
       document.querySelectorAll('link[rel="canonical"]').forEach(el => el.remove());
-      const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = 'https://www.aidetector.cx' + pathname; document.head.append(canonical);
+      const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = 'https://aidetector.cx' + pathname; document.head.append(canonical);
       // Transient overlays do not belong in a saved anonymous page.
       document.querySelectorAll('[role="dialog"], [data-sonner-toaster]').forEach(el => el.remove());
       return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
