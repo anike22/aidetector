@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnConnect = document.getElementById('btnConnect');
 
   let authToken = null;
-  const API_URL = 'https://hzjnrmxwzkeaodvusszx.supabase.co/functions/v1';
+  const API_URL = 'https://opivtrfgurwndilnbfmm.supabase.co/functions/v1';
 
   chrome.storage.local.get(['sb_token', 'pendingDetection'], (result) => {
     if (result.sb_token) {

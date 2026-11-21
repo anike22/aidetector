@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 // ─── preserved download logic ───────────────────────────────────────────────
-const DOWNLOAD_URL = 'https://hzjnrmxwzkeaodvusszx.supabase.co/storage/v1/object/public/plugins/aidetector-chrome.zip?v=1.0.7';
+const DOWNLOAD_URL = 'https://www.aidetector.cx/aidetector-chrome.zip?v=1.0.8';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const META_STATS = [
