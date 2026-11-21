@@ -145,7 +145,7 @@ export default function HowAIDetectionWorksPage() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8">
-            AI text detection evaluates statistical distributions, token predictability, and neural representations to estimate whether a document originated from an autoregressive model or a human writer.
+            AI text detection evaluates statistical distributions, token predictability, and neural representations to estimate whether a document originated from an autoregressive model or a human writer. You can explore these principles with our <Link to="/" className="text-primary underline underline-offset-4">AI content detector</Link>, which provides an applied example of text analysis.
           </p>
 
           <div className="flex flex-wrap items-center gap-6 p-5 bg-card rounded-xl border border-border">

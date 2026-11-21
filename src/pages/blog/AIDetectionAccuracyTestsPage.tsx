@@ -75,7 +75,7 @@ export default function AIDetectionAccuracyTestsPage() {
             AI Detection Accuracy Tests: <span className="text-transparent bg-clip-text bg-gradient-primary">The Most Transparent Benchmark</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            We built a 400-document test corpus spanning human essays, research papers, ChatGPT outputs, GPT-5.5, Gemini, Claude, edited AI, and humanized AI. We then tested seven major detectors and report precision, recall, F1, and error rates honestly.
+            We built a 400-document test corpus spanning human essays, research papers, ChatGPT outputs, GPT-5.5, Gemini, Claude, edited AI, and humanized AI. We then tested seven major detectors and report precision, recall, F1, and error rates honestly. You can also run your own sample through our <Link to="/" className="text-primary underline underline-offset-4">free AI text detector</Link> and review its result alongside the limitations discussed here.
           </p>
           <div className="flex flex-wrap items-center gap-6 p-6 bg-card rounded-2xl border border-border/50">
             <div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center"><Users className="w-6 h-6 text-primary" /></div><div><p className="text-sm text-muted-foreground">Author</p><p className="font-semibold">AIDetector.cx Research Team</p></div></div>
