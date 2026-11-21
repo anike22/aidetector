@@ -723,7 +723,7 @@ export default function BestAIDetectorPage() {
               The Best AI Detector in 2026: <span className="text-transparent bg-clip-text bg-gradient-primary">Definitive Comparison</span>
             </h1>
             <p className="mb-8 text-lg leading-relaxed text-muted-foreground md:text-xl">
-              We analyzed the leading AI detectors — AIDetector.cx, GPTZero, Originality.ai, Copyleaks, Winston AI, ZeroGPT, Sapling, Scribbr, QuillBot, Pangram, and Turnitin — across accuracy, pricing, languages, API access, and enterprise readiness. This guide explains how they work, where they fail, and how to choose the right tool.
+              We analyzed the leading AI detectors — AIDetector.cx, GPTZero, Originality.ai, Copyleaks, Winston AI, ZeroGPT, Sapling, Scribbr, QuillBot, Pangram, and Turnitin — across accuracy, pricing, languages, API access, and enterprise readiness. This guide explains how they work, where they fail, and how to choose the right tool. If you want to put AI detection into practice, try our <Link to="/" className="text-primary underline underline-offset-4">free AI detector</Link>.
             </p>
 
             <div className="flex flex-col gap-6 rounded-2xl border border-border bg-card p-5 md:flex-row md:items-center">
