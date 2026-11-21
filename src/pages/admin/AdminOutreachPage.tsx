@@ -73,7 +73,9 @@ export default function AdminOutreachPage({ growth = false, clients = false, out
 	const [config, setConfig] = useState<Config | null>(null),
 		[queue, setQueue] = useState<QueueRow[]>([]),
 		[mail, setMail] = useState<Mail[]>([]);
-	const [imports, setImports] = useState(""),
+	const [researching, setResearching] = useState(false),
+		[researchResult, setResearchResult] = useState(""),
+		[imports, setImports] = useState(""),
 		[selected, setSelected] = useState<QueueRow | null>(null),
 		[opened, setOpened] = useState<Mail | null>(null),
 		[reply, setReply] = useState("");
@@ -284,6 +286,25 @@ export default function AdminOutreachPage({ growth = false, clients = false, out
 					</Button>
 				))}
 			</nav>
+			<Card>
+				<CardHeader><CardTitle>Research new prospects</CardTitle></CardHeader>
+				<CardContent className="space-y-3">
+					<p className="text-sm text-muted-foreground">Discover new public business contacts using Gemini and Google Search. Existing contacts, suppressions, and previously queued addresses are excluded across all four outreach accounts. Results are imported as drafts for source and message review; no emails are sent by this action.</p>
+					<Button disabled={researching || busy} onClick={async () => {
+						setResearching(true);
+						setResearchResult("");
+						try {
+							const channel = outreachMail ? "outreach" : clients ? "clients" : growth ? "growth" : "partnerships";
+							const { data, error: researchError } = await supabase.functions.invoke("outreach-prospect-research", { body: { channel } });
+							if (researchError || data?.error) throw new Error(data?.error || researchError?.message || "Research failed");
+							setResearchResult(`Added ${data?.added || 0} new draft prospects. Review source URLs and approve valid entries in Queue before sending. Skipped ${data?.skipped?.duplicate || 0} duplicates and ${data?.skipped?.invalid || 0} invalid entries.`);
+							await load();
+						} catch (e) { setResearchResult(e instanceof Error ? e.message : "Research failed"); }
+						finally { setResearching(false); }
+					}}> {researching ? "Researching…" : "Research new prospects"} </Button>
+					{researchResult && <p role="status" className="text-sm">{researchResult}</p>}
+				</CardContent>
+			</Card>
 			{tab === "import" && (
 				<Card>
 					<CardHeader>
