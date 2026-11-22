@@ -77,13 +77,50 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const showError = (msg) => {
-    errorBox.innerHTML = msg + ' <button id="btnReconnect" style="margin-top:8px; width:100%; background:#ef4444; color:white; border:none; padding:6px; border-radius:4px;">Reconnect / Check Login</button>';
-    errorBox.style.display = 'block';
-    resultBox.classList.remove('visible');
-    
-    document.getElementById('btnReconnect').addEventListener('click', () => {
+    errorBox.replaceChildren();
+    const message = document.createElement('div');
+    message.textContent = msg || 'Something went wrong. Please try again.';
+    errorBox.appendChild(message);
+
+    const reconnectButton = document.createElement('button');
+    reconnectButton.id = 'btnReconnect';
+    reconnectButton.type = 'button';
+    reconnectButton.textContent = 'Reconnect / Check Login';
+    reconnectButton.style.cssText = 'margin-top:8px; width:100%; background:#ef4444; color:white; border:none; padding:6px; border-radius:4px;';
+    reconnectButton.addEventListener('click', () => {
       chrome.tabs.create({ url: "https://aidetector.cx/dashboard" });
     });
+    errorBox.appendChild(reconnectButton);
+    errorBox.style.display = 'block';
+    resultBox.classList.remove('visible');
+  };
+
+  const getApiErrorMessage = async (response) => {
+    const raw = await response.text().catch(() => '');
+    let message = '';
+    if (raw) {
+      try {
+        const payload = JSON.parse(raw);
+        message = payload.message || payload.error_description || payload.error || payload.details || payload.hint;
+        if (typeof message !== 'string') message = '';
+      } catch (_) {
+        message = raw.trim();
+      }
+    }
+
+    if (response.status === 401) {
+      return message || 'Your session has expired. Reconnect your AIDetector.cx account and try again.';
+    }
+    if (response.status === 403) {
+      return message || 'Your account does not have enough free checks or credits for this action. Please review your plan or credits.';
+    }
+    if (response.status === 429) {
+      return message || 'Too many requests. Please wait a moment and try again.';
+    }
+    if (response.status >= 500) {
+      return message || 'AIDetector.cx is temporarily unavailable. Please try again shortly.';
+    }
+    return message || `Request failed (HTTP ${response.status}). Please try again.`;
   };
 
   const processApi = async (action, text) => {
@@ -118,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        throw new Error('API Error or Rate Limit. Try reconnecting.');
+        throw new Error(await getApiErrorMessage(res));
       }
 
       if (action === 'detect') {
