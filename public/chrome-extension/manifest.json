@@ -4,8 +4,6 @@
   "version": "1.0.7",
   "description": "Detect AI content and humanize text directly in your browser.",
   "permissions": [
-    "activeTab",
-    "scripting",
     "contextMenus",
     "storage"
   ],
@@ -27,13 +25,25 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.aidetector.cx/*", "*://localhost/*", "*://127.0.0.1/*"],
-      "js": ["sync.js"]
+      "matches": [
+        "*://*.aidetector.cx/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*"
+      ],
+      "js": [
+        "sync.js"
+      ]
     },
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ]
     }
   ],
   "icons": {
