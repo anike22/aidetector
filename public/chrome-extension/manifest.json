@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AIDetector.cx - AI Detector & Humanizer",
   "version": "1.0.9",
-  "description": "Detect AI content and humanize text directly in your browser.",
+  "description": "AI Detector and checker for AI-generated content. Analyze text and humanize it directly in Chrome using selected webpage text or by pasting your own content with AIDetector.cx.",
   "permissions": [
     "contextMenus",
     "storage"
