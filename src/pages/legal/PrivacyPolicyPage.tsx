@@ -62,8 +62,38 @@ const sections = [
     ],
   },
   {
+    id: 'chrome-extension',
+    title: '4. Chrome Extension Privacy & Permissions',
+    content: [
+      {
+        subtitle: 'Information the extension can access',
+        text: 'When you use the AIDetector.cx Chrome extension, its webpage content feature can read text you select on a webpage and, when you choose the current-page text option, readable text from the webpage you are viewing. The extension may also read the title and web address of that page to identify the source of the submitted text. The extension displays a small Detect AI control after you select text. Webpage text is not submitted for analysis merely because the extension is installed or because you visit a page; you must use an extension feature or choose a detection or humanization action.',
+      },
+      {
+        subtitle: 'How submitted text is processed',
+        text: 'When you choose Detect AI or Humanize, the text you submit is sent to AIDetector.cx over an encrypted connection for the requested service. Requests from the extension popup are sent to our Supabase-hosted service API. The extension also provides right-click actions that open the corresponding AIDetector.cx website tool and include the selected text in the destination web address. Web addresses can be retained in browser history and may be visible to systems that process website requests. Do not submit confidential or sensitive text unless you are comfortable sending it to the service.',
+      },
+      {
+        subtitle: 'Account authentication and local storage',
+        text: 'To connect your account, the extension reads the AIDetector.cx sign-in access token from the website local storage on AIDetector.cx pages and copies that token into Chrome extension local storage. The token is used to authenticate requests to our service. The extension also temporarily stores selected text and its source page details when needed to open the extension interface. These values are stored locally by Chrome; they are not sold or used for advertising.',
+      },
+      {
+        subtitle: 'Why website access is requested',
+        text: 'The extension uses webpage access to support selected-text detection, current-page text extraction and the floating Detect AI control on webpages. It uses Chrome storage to retain the account connection and hand off text to the extension interface, and context-menu access to provide right-click Detect AI and Humanize actions. Access to AIDetector.cx pages is used to connect your signed-in website account to the extension. The extension does not use webpage access to collect browsing history for advertising.',
+      },
+      {
+        subtitle: 'Data sharing and retention',
+        text: 'Text submitted for analysis is processed by AIDetector.cx and its infrastructure provider, Supabase, to return the requested result and support account usage. Analysis history may be retained according to the Analysis History section of this policy when an account feature stores results. Authentication tokens and temporary handoff data are stored in Chrome extension local storage and remain there until replaced, cleared by the extension or removed when you uninstall the extension; you can also clear the extension data through Chrome. Website browser history for right-click actions is managed by Chrome and your browser settings.',
+      },
+      {
+        subtitle: 'Your choices',
+        text: 'You can avoid submitting webpage text by not using the extension actions, disconnect your account by signing out of AIDetector.cx and clear the extension data or uninstall the extension through Chrome. Uninstalling the extension does not itself delete account data or analysis history stored by AIDetector.cx; use your account settings or contact privacy@aidetector.cx for account-data requests.',
+      },
+    ],
+  },
+  {
     id: 'data-retention',
-    title: '4. Data Retention',
+    title: '5. Data Retention',
     content: [
       {
         subtitle: 'Account Data',
@@ -77,7 +107,7 @@ const sections = [
   },
   {
     id: 'your-rights',
-    title: '5. Your Rights',
+    title: '6. Your Rights',
     content: [
       {
         subtitle: 'Access, Correction & Deletion',
@@ -95,7 +125,7 @@ const sections = [
   },
   {
     id: 'cookies',
-    title: '6. Cookies',
+    title: '7. Cookies',
     content: [
       {
         subtitle: 'Essential Cookies',
@@ -127,7 +157,7 @@ const sections = [
   },
   {
     id: 'security',
-    title: '7. Security',
+    title: '8. Security',
     content: [
       {
         subtitle: 'Technical Safeguards',
@@ -141,7 +171,7 @@ const sections = [
   },
   {
     id: 'changes',
-    title: '8. Changes to This Policy',
+    title: '9. Changes to This Policy',
     content: [
       {
         subtitle: '',
@@ -151,7 +181,7 @@ const sections = [
   },
   {
     id: 'contact',
-    title: '9. Contact',
+    title: '10. Contact',
     content: [
       {
         subtitle: '',
@@ -169,7 +199,7 @@ export default function PrivacyPolicyPage() {
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           <Badge className="bg-primary/20 text-primary border-primary/30 mb-5">Legal</Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-3 text-balance">Privacy Policy</h1>
-          <p className="text-white/60 text-sm">Last Updated: October 2, 2026 · Effective: October 2, 2026</p>
+          <p className="text-white/60 text-sm">Last Updated: November 22, 2026 · Effective: November 22, 2026</p>
         </div>
       </section>
 

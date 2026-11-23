@@ -75,36 +75,91 @@ document.addEventListener('mousedown', (e) => {
 });
 
 function getMainPageText() {
-  const allElements = document.querySelectorAll('div, article, main, section');
-  let bestElement = document.body;
-  let maxScore = 0;
-  
-  allElements.forEach(el => {
-    // Basic heuristic: length of text and number of paragraphs
-    const textLen = el.innerText.length;
-    const pCount = el.querySelectorAll('p').length;
-    
-    // Ignore containers that are too small
-    if (textLen < 200) return;
-    
-    // Score based on paragraph density to text length ratio
-    const score = pCount * 200 + textLen;
-    
-    // Prevent selecting the whole body if a more specific container is better
-    if (el.tagName !== 'BODY' && score > maxScore) {
-      // Ensure the container actually has a good density of text, to avoid grabbing main wrappers
-      const wrapperElements = ['HEADER', 'FOOTER', 'NAV', 'ASIDE'];
-      if (!wrapperElements.includes(el.tagName)) {
-         maxScore = score;
-         bestElement = el;
+  // Work on detached copies so the live webpage is never modified.
+  const excludedSelectors = [
+    'script', 'style', 'noscript', 'svg', 'canvas',
+    'header', 'footer', 'nav', 'aside',
+    '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]',
+    '[role="complementary"]', '[aria-hidden="true"]',
+    'form', 'button', 'input', 'textarea', 'select',
+    '[class*="subscribe" i]', '[class*="subscription" i]',
+    '[class*="paywall" i]', '[class*="modal" i]',
+    '[class*="popover" i]', '[class*="tooltip" i]',
+    '[class*="comment" i]', '[class*="recommend" i]',
+    '[class*="related" i]', '[class*="share" i]',
+    '[class*="social" i]', '[class*="advert" i]',
+    '[id*="subscribe" i]', '[id*="paywall" i]',
+    '[id*="comment" i]', '[id*="recommend" i]'
+  ];
+
+  const cleanClone = (element) => {
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll(excludedSelectors.join(',')).forEach(node => node.remove());
+    return clone;
+  };
+
+  const getTextMetrics = (element) => {
+    const clone = cleanClone(element);
+    const text = (clone.innerText || clone.textContent || '')
+      .replace(/[\\t\\u00a0 ]+/g, ' ')
+      .replace(/ *\\n */g, '\\n')
+      .replace(/\\n{3,}/g, '\\n\\n')
+      .trim();
+    if (!text) return { text: '', score: 0 };
+
+    const paragraphs = Array.from(clone.querySelectorAll('p, h1, h2, h3, blockquote, pre'))
+      .map(node => (node.innerText || node.textContent || '').trim())
+      .filter(value => value.length >= 35);
+    const paragraphText = paragraphs.join('\\n\\n');
+    const linkTextLength = Array.from(clone.querySelectorAll('a'))
+      .reduce((total, link) => total + (link.innerText || link.textContent || '').trim().length, 0);
+    const linkDensity = text.length ? Math.min(1, linkTextLength / text.length) : 1;
+    const meaningfulLength = paragraphText.length || text.length;
+    const score = meaningfulLength + (paragraphs.length * 180) - (linkDensity * text.length * 1.5);
+    return { text: paragraphText.length >= 180 ? paragraphText : text, score, linkDensity };
+  };
+
+  const selectors = [
+    '[itemprop="articleBody"]',
+    'article',
+    'main',
+    '[role="main"]',
+    '.available-content',
+    '.post-content',
+    '.entry-content',
+    '.article-content',
+    '.article-body',
+    '.post-body',
+    '.story-body'
+  ];
+
+  const candidates = [];
+  const seen = new Set();
+  selectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(element => {
+      if (seen.has(element)) return;
+      seen.add(element);
+      const metrics = getTextMetrics(element);
+      if (metrics.text.length >= 180 && metrics.linkDensity < 0.45) {
+        const semanticBoost = selector === '[itemprop="articleBody"]' ? 1800
+          : selector === 'article' ? 1200
+          : selector === '.available-content' ? 900
+          : selector === 'main' || selector === '[role="main"]' ? 500 : 0;
+        candidates.push({ ...metrics, score: metrics.score + semanticBoost });
       }
-    }
+    });
   });
-  
-  if (maxScore > 0 && bestElement) {
-    return bestElement.innerText;
+
+  // Prefer a focused article/content region over a large page wrapper.
+  candidates.sort((a, b) => b.score - a.score);
+  if (candidates.length && candidates[0].text.length >= 180) {
+    return candidates[0].text;
   }
-  return document.body.innerText;
+
+  // Fallback for sites without semantic article markup: clean the body and
+  // remove navigation, controls, promotions and other non-reading regions.
+  const bodyMetrics = getTextMetrics(document.body);
+  return bodyMetrics.text || '';
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
