@@ -101,16 +101,16 @@ function getMainPageText() {
   const getTextMetrics = (element) => {
     const clone = cleanClone(element);
     const text = (clone.innerText || clone.textContent || '')
-      .replace(/[\\t\\u00a0 ]+/g, ' ')
-      .replace(/ *\\n */g, '\\n')
-      .replace(/\\n{3,}/g, '\\n\\n')
+      .replace(/[\t\u00a0 ]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
     if (!text) return { text: '', score: 0 };
 
     const paragraphs = Array.from(clone.querySelectorAll('p, h1, h2, h3, blockquote, pre'))
       .map(node => (node.innerText || node.textContent || '').trim())
       .filter(value => value.length >= 35);
-    const paragraphText = paragraphs.join('\\n\\n');
+    const paragraphText = paragraphs.join('\n\n');
     const linkTextLength = Array.from(clone.querySelectorAll('a'))
       .reduce((total, link) => total + (link.innerText || link.textContent || '').trim().length, 0);
     const linkDensity = text.length ? Math.min(1, linkTextLength / text.length) : 1;
