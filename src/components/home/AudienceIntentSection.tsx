@@ -66,7 +66,7 @@ export default function AudienceIntentSection() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-foreground mb-4 text-balance">
-            AI Detection for Every Type of Writing
+            Who Uses AIDetector.cx?
           </h2>
           <p className="text-base md:text-lg text-muted-foreground text-pretty">
             Different workflows need different perspectives. Here is how AIDetector.cx supports each one.
