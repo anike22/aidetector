@@ -40,7 +40,7 @@ export const navStructure: NavGroup[] = [
       {
         title: 'Writing & Text Detection',
         items: [
-          { label: 'AI Detector', href: '/detector', icon: BarChart2, desc: 'Enterprise text detection engine' },
+          { label: 'AI Detector', href: '/', icon: BarChart2, desc: 'Enterprise text detection engine' },
           { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers', icon: Sparkles, desc: 'AI, SEO, readability & uniqueness check' },
           { label: 'Word Counter', href: '/word-counter', icon: FileText, desc: 'Count words & check for AI patterns' },
           { label: 'AI Summarizer', href: '/ai-summarizer', icon: Layers, desc: 'Summarize text, articles & documents' },
@@ -69,7 +69,7 @@ export const navStructure: NavGroup[] = [
       },
     ],
     items: [
-      { label: 'AI Detector', href: '/detector', icon: BarChart2, desc: 'Enterprise text detection engine' },
+      { label: 'AI Detector', href: '/', icon: BarChart2, desc: 'Enterprise text detection engine' },
       { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers', icon: Sparkles, desc: 'AI, SEO & publishing analysis' },
       { label: 'AI Humanizer', href: '/humanizer', icon: User, desc: 'Bypass detection seamlessly' },
       { label: 'Plagiarism Checker', href: '/plagiarism-checker', icon: FileSearch, desc: 'Multi-source originality check' },
