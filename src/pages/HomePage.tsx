@@ -19,7 +19,6 @@ const AccuracySection = lazy(() => import('@/components/home/AccuracySection'));
 const CapabilitiesSection = lazy(() => import('@/components/home/CapabilitiesSection'));
 const ResponsibleVerificationSection = lazy(() => import('@/components/home/ResponsibleVerificationSection'));
 const ProductSuiteSection = lazy(() => import('@/components/home/ProductSuiteSection'));
-const UseCasesSection = lazy(() => import('@/components/home/UseCasesSection'));
 const FAQSection = lazy(() => import('@/components/home/FAQSection'));
 const SEOAuthoritySection = lazy(() => import('@/components/home/SEOAuthoritySection'));
 const NewsletterComponent = lazy(() => import('@/components/home/NewsletterComponent').then((m) => ({ default: m.NewsletterComponent })));
@@ -148,7 +147,6 @@ export default function HomePage() {
 
         {/* 3. Relevant Active Tools Suite & Use Cases */}
         <LazySection><ProductSuiteSection /></LazySection>
-        <LazySection><UseCasesSection /></LazySection>
         <LazySection><AudienceIntentSection /></LazySection>
 
         {/* 4. Verification and Authorship Features */}
