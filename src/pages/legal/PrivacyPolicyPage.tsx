@@ -185,7 +185,7 @@ const sections = [
     content: [
       {
         subtitle: '',
-        text: 'For privacy-related questions or requests, contact our Data Protection Officer at privacy@aidetector.cx, or write to: AIDetector.cx Inc., 2150 Shattuck Ave, Suite 510, Berkeley, CA 94704, USA.',
+        text: 'For privacy-related questions or requests, contact us at privacy@aidetector.cx.',
       },
     ],
   },
