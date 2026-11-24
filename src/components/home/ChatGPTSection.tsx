@@ -11,14 +11,14 @@ export default function ChatGPTSection() {
             <BotMessageSquare className="w-6 h-6" />
           </div>
           <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-foreground mb-5 text-balance">
-            Can This AI Detector Detect ChatGPT-6?
+            Can This AI Detector Detect ChatGPT?
           </h2>
         </div>
 
         <figure className="mb-8 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
           <img
             src="/brand/aidetector-detection-results.webp"
-            alt="AI Detector results showing Balanced Detector and High-Sensitivity Analysis for ChatGPT-6, Gemini, and Claude"
+            alt="AI Detector results showing Balanced Detector and High-Sensitivity Analysis for ChatGPT, Gemini, and Claude"
             width="1200"
             height="963"
             loading="lazy"
