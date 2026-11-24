@@ -11,7 +11,7 @@ const footerColumns = [
   {
     title: 'Tools',
     links: [
-      { label: 'AI Detector', href: '/detector' },
+      { label: 'AI Detector', href: '/' },
       { label: 'Word Counter', href: '/word-counter' },
       { label: 'AI Summarizer', href: '/ai-summarizer' },
       { label: 'AI Humanizer', href: '/humanizer' },
