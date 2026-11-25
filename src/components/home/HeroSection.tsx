@@ -3,23 +3,20 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Shield, FileText, ArrowRight, Loader2, CheckCircle2, AlertTriangle,
-  Globe, Activity, Zap, Languages, Sparkles, UserPlus, ArrowUpRight, Lock, Coins,
-  Trash2, RefreshCw, Play
+  Globe, Activity, Zap, Languages, Sparkles, ArrowUpRight, Lock, Trash2, RefreshCw, Play, LogIn
 } from 'lucide-react';
 const PromoVideoModal = lazy(() => import('@/components/promo/PromoVideoModal').then(m => ({ default: m.PromoVideoModal })));
 import { StudentModeToggle } from '@/components/student-policy/StudentModeToggle';
 import { StudentModePanel } from '@/components/student-policy/StudentModePanel';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import type { BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
 import type { AggressiveDetectorResult } from '@/lib/detection/aggressiveDetectorService';
 import { preserveDraftText, getPreservedDraftText, clearPreservedDraftText } from '@/lib/visitorId';
-import { calculateOperationCreditCost, isTrialEligibleOperation } from '@/lib/entitlements';
 
 const SAMPLE_TEXT = `Artificial intelligence has revolutionized the way businesses operate in the modern era. The implementation of machine learning algorithms enables companies to process vast amounts of data with unprecedented efficiency. Furthermore, natural language processing capabilities allow for automated content generation that is indistinguishable from human writing. Organizations leveraging these technologies experience substantial improvements in productivity metrics and operational cost reduction. The utilization of AI-powered tools represents a paradigm shift in how enterprises approach problem-solving and decision-making processes.`;
 
@@ -90,7 +87,7 @@ function ResultCard({
 }
 
 export default function HeroSection() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { summary, entitlement, loading: entitlementLoading, refresh } = useEntitlement('text_detect_balanced');
   const [content, setContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -115,23 +112,13 @@ export default function HeroSection() {
 
   const wordCount = (content.match(/\S+/g) || []).length;
   const hasResult = balancedResult || aggressiveResult;
-  const currentPlan = profile?.subscription_plan || (user ? 'free' : 'guest');
   const isPaid = summary?.isPaidActive ?? false;
-
   const trialRemaining = typeof summary?.trialChecksRemaining === 'number'
     ? summary.trialChecksRemaining
     : typeof entitlement?.trialChecksRemaining === 'number'
     ? entitlement.trialChecksRemaining
-    : (user ? 4 : 1);
-  const trialTotal = summary?.trialChecksTotal ?? entitlement?.trialChecksTotal ?? (user ? 5 : 1);
-  const trialUsed = summary?.trialChecksUsed ?? Math.max(0, trialTotal - trialRemaining);
+    : (user ? 5 : 1);
   const creditsBalance = summary?.creditsBalance ?? 0;
-  const monthlyAllocation = summary?.monthlyCreditAllocation ?? 0;
-
-  // Calculate allowance progress
-  const progressPercent = isPaid
-    ? (!monthlyAllocation || monthlyAllocation <= 0 ? 100 : Math.max(0, Math.min(100, Math.round((creditsBalance / monthlyAllocation) * 100))))
-    : (!trialTotal || trialTotal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round((trialRemaining / trialTotal) * 100))));
 
   const isLimitReached = !summary?.isUnlimited && !entitlementLoading && (
     isPaid ? creditsBalance < 1 : trialRemaining <= 0 && creditsBalance < 1
@@ -148,8 +135,8 @@ export default function HeroSection() {
         preserveDraftText(content, 'text_detect_balanced');
       }
       if (!user) {
-        toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
-        navigate('/signup?returnTo=' + encodeURIComponent('/'));
+        toast.error('Your free check for today has been used. Sign in to continue.');
+        navigate('/login?returnTo=' + encodeURIComponent('/'));
       } else if (!isPaid) {
         toast.error('You’ve used all your free checks. Choose a plan to continue.');
         navigate('/pricing');
@@ -190,8 +177,8 @@ export default function HeroSection() {
           preserveDraftText(content, 'text_detect_balanced');
         }
         if (!user) {
-          toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
-          navigate('/signup?returnTo=' + encodeURIComponent('/'));
+          toast.error('Your free check for today has been used. Sign in to continue.');
+          navigate('/login?returnTo=' + encodeURIComponent('/'));
         } else {
           toast.error('You’ve used all your free checks. Choose a plan to continue.');
           navigate('/pricing');
@@ -242,6 +229,9 @@ export default function HeroSection() {
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground leading-tight text-balance">
             AI Detector for <span className="text-primary">ChatGPT, AI & Human-Written Content</span>
           </h1>
+          <p className="mt-2 mx-auto max-w-2xl px-2 text-sm sm:text-base leading-relaxed text-muted-foreground text-balance">
+            Free AI Detector — Check your text below for ChatGPT, Claude, and Gemini patterns with instant, sentence-by-sentence accuracy.
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-2.5">
             <Button
               variant="outline"
@@ -257,73 +247,6 @@ export default function HeroSection() {
             </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">·</span>
             <span className="text-xs text-muted-foreground italic hidden sm:inline">“Before you trust it, check it.”</span>
-          </div>
-        </div>
-
-        {/* Compact Server-Backed Trial Allowance Bar */}
-        <div className="mb-3 rounded-xl border border-border/70 bg-card/90 shadow-sm p-2.5 sm:p-3 text-xs">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {isPaid ? (
-                <Coins className="h-4 w-4 text-primary shrink-0" />
-              ) : (
-                <Zap className={`h-4 w-4 shrink-0 ${trialRemaining > 0 ? 'text-primary' : 'text-amber-500'}`} />
-              )}
-              <span className="font-semibold text-foreground truncate">
-                {isPaid
-                  ? summary?.isUnlimited ? 'Unlimited checks included · No credit top-ups' : `${creditsBalance} credits available · 1 credit per check`
-                  : !user
-                  ? trialRemaining > 0
-                    ? '1 free check remaining · No signup required.'
-                    : '0 free checks remaining'
-                  : `${trialRemaining} of ${trialTotal} free checks remaining`}
-              </span>
-              <Badge variant={trialRemaining <= 0 && !isPaid ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0 capitalize shrink-0 font-medium">
-                {isPaid ? `${profile?.subscription_plan || 'Pro'} Plan` : !user ? 'Guest Trial' : 'Free Account'}
-              </Badge>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0">
-              <div className="w-20 sm:w-28 bg-muted rounded-full h-1.5 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${trialRemaining <= 0 && !isPaid ? 'bg-destructive' : 'bg-primary'}`}
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              {!user && trialRemaining > 0 && (
-                <Link
-                  to="/signup"
-                  onClick={() => {
-                    if (content) preserveDraftText(content, 'text_detect_balanced');
-                  }}
-                  className="text-primary hover:underline font-medium inline-flex items-center gap-1 text-[11px]"
-                >
-                  <UserPlus className="h-3 w-3" />
-                  Register for 4 additional free checks
-                </Link>
-              )}
-              {!user && trialRemaining <= 0 && (
-                <Link
-                  to="/signup"
-                  onClick={() => {
-                    if (content) preserveDraftText(content, 'text_detect_balanced');
-                  }}
-                  className="text-amber-600 dark:text-amber-400 font-semibold hover:underline inline-flex items-center gap-1 text-[11px]"
-                >
-                  <UserPlus className="h-3 w-3" />
-                  Create account for 4 free checks
-                </Link>
-              )}
-              {user && !isPaid && trialRemaining <= 0 && (
-                <Link
-                  to="/pricing"
-                  className="text-primary hover:underline font-semibold inline-flex items-center gap-1 text-[11px]"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  Upgrade for more credits
-                </Link>
-              )}
-            </div>
           </div>
         </div>
 
@@ -477,7 +400,7 @@ export default function HeroSection() {
                 ) : isLimitReached ? (
                   !user ? (
                     <>
-                      <UserPlus className="w-4 h-4 mr-1.5" /> Guest Check Used – Sign Up for 4 More
+                      <LogIn className="w-4 h-4 mr-1.5" /> Sign In to Continue
                     </>
                   ) : (
                     <>
@@ -487,7 +410,7 @@ export default function HeroSection() {
                 ) : (
                   <>
                     <Shield className="w-4 h-4 mr-1.5" />
-                    {isPaid ? 'Analyze Text • 1 Credit' : 'Analyze Text • 1 Trial Check'}
+                    {isPaid ? 'Analyze Text • 1 Credit' : 'Analyze Text'}
                   </>
                 )}
               </Button>

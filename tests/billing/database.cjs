@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'../..');
 const schema=fs.readFileSync(path.join(root,'supabase/schema.sql'),'utf8');
 function statement(prefix,end) {const a=schema.indexOf(prefix);assert(a>=0,prefix);return schema.slice(a,schema.indexOf(end,a)+end.length);}
 const user='10000000-0000-4000-8000-000000000001', member='10000000-0000-4000-8000-000000000002';
-const freeUser='10000000-0000-4000-8000-000000000003', guest='guest-regression-0001';
+const freeUser='10000000-0000-4000-8000-000000000003', mediaFreeUser='10000000-0000-4000-8000-000000000004', guest='guest-regression-0001';
 let db; let count=0;
 async function test(name,fn){await fn();console.log('PASS '+name);count++;}
 (async()=>{
@@ -28,12 +28,13 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
  CREATE UNIQUE INDEX rates_slug ON credit_rate_table(feature_slug);
  CREATE UNIQUE INDEX reservations_key ON credit_reservations(idempotency_key) WHERE idempotency_key IS NOT NULL;
  CREATE UNIQUE INDEX teams_member ON team_credit_allocations(owner_id,member_email);`);
- for(const file of ['00142_billing_expiry_and_metering.sql','00143_verified_payment_grants.sql']) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',file),'utf8'));
+ for(const file of ['00142_billing_expiry_and_metering.sql','00143_verified_payment_grants.sql','20261124214500_daily_guest_trial_and_media_access.sql']) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',file),'utf8'));
  await db.exec(`CREATE TRIGGER profiles_billing_guard BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION protect_billing_columns();
  INSERT INTO profiles(id,email,subscription_plan,subscription_status,plan_start_date,plan_end_date,credits_balance,monthly_credit_allocation,trial_checks_remaining)
  VALUES('${user}','test@example.invalid','pro','active',now(),now()+interval '30 days',300,300,5),
  ('${member}','member@example.invalid','free','active',null,null,0,0,0),
- ('${freeUser}','free@example.invalid','free','active',null,null,0,0,5);
+ ('${freeUser}','free@example.invalid','free','active',null,null,0,0,5),
+ ('${mediaFreeUser}','media-free@example.invalid','free','active',null,null,0,0,5);
  INSERT INTO server_guest_sessions(guest_id,trial_checks_remaining,trial_checks_used,trial_checks_total)
  VALUES('${guest}',1,0,1);
  INSERT INTO credit_rate_table(feature_slug,feature_name,base_credit_cost,billing_unit,trial_eligible,min_plan)
@@ -52,6 +53,44 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
    assert.equal(wrong.settled,false);
    const right=(await query(`SELECT * FROM settle_client_reservation($1,'success','{}'::jsonb,$2)`,[first.reservation_id,guest]))[0];
    assert.equal(right.settled,true);
+   await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
+ });
+ await test('guest allowance resets once after the local usage date changes',async()=>{
+   await db.exec(`SELECT set_config('test.user_id','',false)`);
+   const dailyGuest='guest-daily-reset-0001';
+   await db.exec(`INSERT INTO server_guest_sessions(guest_id,trial_checks_remaining,trial_checks_used,trial_checks_total,daily_allowance,used_today,usage_date)
+     VALUES('${dailyGuest}',0,1,1,1,1,CURRENT_DATE - 1)`);
+   const refreshed=(await query(`SELECT * FROM issue_or_validate_guest_session($1,NULL,NULL,'UTC')`,[dailyGuest]))[0];
+   assert.equal(refreshed.trial_checks_remaining,1);
+   assert.equal(refreshed.trial_checks_used,0);
+   const first=await reserve('ai_detector',100,'daily-reset-first',dailyGuest);
+   assert.equal(first.allowed,true);
+   const second=await reserve('ai_detector',100,'daily-reset-second',dailyGuest);
+   assert.equal(second.allowed,false);
+   assert.equal(second.error_code,'TRIAL_EXHAUSTED');
+   await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
+ });
+ await test('standard image and balanced video share guest and registered free trial checks',async()=>{
+   await db.exec(`SELECT set_config('test.user_id','',false)`);
+   const mediaGuest='guest-media-shared-0001';
+   const guestImage=await reserve('ai_image_detector',1,'media-guest-image',mediaGuest);
+   assert.equal(guestImage.allowed,true);
+   const guestVideo=await reserve('video_detect_balanced',30,'media-guest-video',mediaGuest);
+   assert.equal(guestVideo.allowed,false);
+   assert.equal(guestVideo.error_code,'TRIAL_EXHAUSTED');
+
+   await db.exec(`SELECT set_config('test.user_id','${mediaFreeUser}',false)`);
+   const freeImage=await reserve('ai_image_detector',1,'media-free-image');
+   assert.equal(freeImage.allowed,true);
+   assert.equal(freeImage.is_trial_check,true);
+   const freeVideo=await reserve('video_detect_balanced',30,'media-free-video');
+   assert.equal(freeVideo.allowed,true);
+   assert.equal(freeVideo.is_trial_check,true);
+   assert.equal(freeVideo.trial_checks_remaining,3);
+
+   const videoAlias=(await query(`SELECT trial_eligible,min_plan FROM credit_rate_table WHERE feature_slug='ai_video_detector'`))[0];
+   assert.equal(videoAlias.trial_eligible,true);
+   assert.equal(videoAlias.min_plan,'guest');
    await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
  });
  await test('free account receives exactly five configured checks',async()=>{
