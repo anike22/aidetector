@@ -229,6 +229,9 @@ export default function HeroSection() {
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground leading-tight text-balance">
             AI Detector for <span className="text-primary">ChatGPT, AI & Human-Written Content</span>
           </h1>
+          <p className="mt-2 mx-auto max-w-2xl px-2 text-sm sm:text-base leading-relaxed text-muted-foreground text-balance">
+            Free AI Detector — Check your text below for ChatGPT, Claude, and Gemini patterns with instant, sentence-by-sentence accuracy.
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-2.5">
             <Button
               variant="outline"
