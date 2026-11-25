@@ -117,8 +117,8 @@ export default function HomePage() {
   return (
     <MainLayout>
       <PageMeta
-        title="AI Detector: ChatGPT-6, Gemini & Claude | Free AI Checker"
-        description="Free AI detector & checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
+        title="AI Detector: Free AI Checker For ChatGPT, Gemini, GPT-6 & Claude"
+        description="AI detector & Free AI checker for ChatGPT-6, Gemini, and Claude text. Get dual detection modes, 19+ languages, and explainable sentence-level results."
         canonicalUrl="https://aidetector.cx/"
         ogImage="https://aidetector.cx/brand/aidetector-home-og.webp"
         robots="index, follow, max-image-preview:large"
