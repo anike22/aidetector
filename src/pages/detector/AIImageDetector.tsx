@@ -83,12 +83,15 @@ export default function AIImageDetector() {
       const reservation = await reserveImageScan(FEATURE_SLUG, 5);
       if (!reservation.allowed) {
         setScanning(false);
-        if (!user) {
-          toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
-          navigate('/signup?returnTo=' + encodeURIComponent('/detector?tab=image'));
-        } else {
-          toast.error('You’ve used all your free checks. Choose a plan to continue.');
+        if (!user && ['TRIAL_EXHAUSTED', 'REGISTER_REQUIRED', 'GUEST_SESSION_RATE_LIMITED'].includes(reservation.errorCode || '')) {
+          toast.info('Your free check for today has been used. Sign in to continue.');
+          navigate('/login?returnTo=' + encodeURIComponent('/detector?tab=image'));
+        } else if (user && reservation.errorCode === 'TRIAL_EXHAUSTED') {
+          toast.info('You’ve used all your free checks. Choose a plan to continue.');
           navigate('/pricing');
+        } else {
+          toast.error(reservation.reason || 'This image analysis mode requires a paid plan.');
+          openUpgradeModal({ featureName: 'AI Image Detector', trigger: 'pro_feature', remaining: summary?.creditsBalance ?? 0, limit: 5 });
         }
         return;
       }
@@ -143,7 +146,7 @@ export default function AIImageDetector() {
       />
 
       {/* Live Usage Banner */}
-      <LiveUsagePanel featureSlug={FEATURE_SLUG} operationCost={5} />
+      <LiveUsagePanel featureSlug={FEATURE_SLUG} operationCost={5} hideGuestUsage />
 
       {/* Mode Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
