@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bot, Twitter, Linkedin, Github, Mail, Shield, CheckCircle2,
-  Instagram, Facebook, Youtube, Send, Globe, Lock, ExternalLink, Code
+  Bot, Twitter, Linkedin, Github, Shield, CheckCircle2,
+  Instagram, Facebook, Youtube, Send, Code
 } from 'lucide-react';
 import { supabase } from '@/db/supabase';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
@@ -12,84 +12,34 @@ const footerColumns = [
     title: 'Tools',
     links: [
       { label: 'AI Detector', href: '/' },
-      { label: 'Word Counter', href: '/word-counter' },
-      { label: 'AI Summarizer', href: '/ai-summarizer' },
       { label: 'AI Humanizer', href: '/humanizer' },
       { label: 'Plagiarism Checker', href: '/plagiarism-checker' },
       { label: 'AI Image Detector', href: '/ai-image-detector' },
       { label: 'AI Video Detector', href: '/ai-video-detector' },
-      { label: 'Essay Studio', href: '/essay-studio' },
-      { label: 'SEO Assistant', href: '/seo-assistant' },
-      { label: 'AI Checker for Bloggers', href: '/ai-checker-for-bloggers' },
-      { label: 'Content Studio', href: '/content-studio' },
-      { label: 'Browse AI Tools Directory', href: '/tools' },
     ],
   },
   {
-    title: 'Solutions & Services',
+    title: 'Integrations',
     links: [
-      { label: 'All Services', href: '/services' },
-      { label: 'SEO Consulting', href: '/services/seo-consulting' },
-      { label: 'AI Consulting', href: '/services/ai-consulting' },
-      { label: 'Conversion Optimization', href: '/services/conversion-optimization' },
-      { label: 'Growth Marketing', href: '/services/growth-marketing' },
-      { label: 'Website Development', href: '/services/website-development' },
-      { label: 'Hire an Expert', href: '/hire-expert' },
-    ],
-  },
-  {
-    title: 'Verification',
-    links: [
-      { label: 'Verified Authorship', href: '/authorship' },
-      { label: 'Verification Portal', href: '/verified-authorship/verify' },
-      { label: 'Register Authorship Claim', href: '/verified-authorship/register' },
-      { label: 'Author Public Profile', href: '/verified-authorship/profile' },
-      { label: 'C2PA & Provenance Standards', href: '/authorship' },
-    ],
-  },
-  {
-    title: 'Integrations & API',
-    links: [
-      { label: 'Enterprise REST API', href: '/api' },
-      { label: 'API Documentation', href: '/api/docs' },
-      { label: 'API Dashboard', href: '/api/dashboard' },
-      { label: 'Free AI Detector Widget', href: '/embed' },
       { label: 'WordPress Plugin', href: '/wordpress-plugin' },
       { label: 'Chrome Extension', href: '/chrome-extension' },
-      { label: 'Integration Hub', href: '/integrations' },
-      { label: 'Apps Marketplace', href: '/apps' },
-      { label: 'Developer Portal', href: '/developer' },
     ],
   },
   {
-    title: 'Resources & Studies',
+    title: 'Research & Resources',
     links: [
       { label: 'Educational Guides', href: '/guides' },
       { label: 'Research & Benchmarks', href: '/research' },
-      { label: 'Tool Comparisons', href: '/comparisons' },
-      { label: 'TikTok Detection Guide', href: '/studies/why-tiktok-flagged-my-real-video' },
-      { label: 'WhatsApp Compression Study', href: '/studies/whatsapp-compression-ai-video' },
-      { label: 'Authentic Video False Positives', href: '/studies/authentic-video-false-positives' },
-      { label: 'Official Blog & News', href: '/blog' },
-      { label: 'Case Studies', href: '/case-studies' },
-      { label: 'Affiliate Hub', href: '/affiliate-hub' },
-      { label: 'Community Forum', href: '/community' },
-      { label: 'Weekly Newsletter', href: '/newsletter' },
     ],
   },
   {
-    title: 'Company & Legal',
+    title: 'Company & Trust',
     links: [
+      { label: 'Pricing Plans', href: '/pricing' },
       { label: 'About Us', href: '/about' },
       { label: 'Contact Support', href: '/contact' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Press & Media', href: '/press' },
-      { label: 'Pricing Plans', href: '/pricing' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
-      { label: 'Affiliate Agreement', href: '/affiliate-agreement' },
-      { label: 'Cookie Policy', href: '/cookies' },
-      { label: 'HTML Sitemap', href: '/sitemap', isHighlight: true },
     ],
   },
 ];
@@ -167,13 +117,6 @@ export default function Footer() {
               <Code className="w-4 h-4" />
               <span>AI Detector Widget</span>
             </Link>
-            <Link
-              to="/sitemap"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
-            >
-              <Globe className="w-4 h-4" />
-              <span>View HTML Sitemap</span>
-            </Link>
             {socialLinks.length > 0 && (
               <div className="flex items-center gap-2.5">
                 {socialLinks.map(link => (
@@ -193,8 +136,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* 5-Column Navigation Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-6 mb-16">
+        {/* Four-Column Priority Navigation */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-8 mb-16">
           {visibleColumns.map((col) => (
             <div key={col.title}>
               <h3 className="font-bold text-sm mb-5 text-foreground uppercase tracking-wider text-xs font-mono text-muted-foreground">
@@ -232,9 +175,6 @@ export default function Footer() {
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> GDPR & CCPA Compliant
             </span>
-            <Link to="/sitemap" className="hover:text-primary transition-colors font-medium underline">
-              Sitemap
-            </Link>
           </div>
         </div>
       </div>
