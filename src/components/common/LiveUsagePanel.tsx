@@ -12,7 +12,7 @@ import {
   RefreshCw,
   ArrowRight,
   ShieldCheck,
-  UserPlus,
+  LogIn,
   Calendar,
   Layers,
   PlusCircle,
@@ -28,6 +28,7 @@ interface LiveUsagePanelProps {
   currentDraftText?: string;
   compact?: boolean;
   className?: string;
+  hideGuestUsage?: boolean;
 }
 
 export function LiveUsagePanel({
@@ -37,6 +38,7 @@ export function LiveUsagePanel({
   currentDraftText,
   compact = false,
   className = '',
+  hideGuestUsage = false,
 }: LiveUsagePanelProps) {
   const navigate = useNavigate();
   const { summary, entitlement, loading, refresh } = useEntitlement(featureSlug);
@@ -106,6 +108,8 @@ export function LiveUsagePanel({
     ? creditsBalance < operationCost
     : !hasTrialRemaining && creditsBalance < operationCost;
 
+  if (hideGuestUsage && !isAuthenticated) return null;
+
   if (summary?.isUnlimited) {
     return <Card className={`border-primary/30 ${className}`}><CardContent className="p-4 space-y-2">
       <p className="font-semibold">Agency Unlimited · {['api_access', 'bulk_processing'].includes(featureSlug) ? 'This feature is excluded' : 'Included — no credits deducted'}</p>
@@ -119,17 +123,17 @@ export function LiveUsagePanel({
       ? `${creditsBalance} credits`
       : !isAuthenticated
       ? trialChecksRemaining > 0
-        ? '1 free check left'
-        : '0 free checks left'
+        ? '1 check available today'
+        : 'Daily check used'
       : `${trialChecksRemaining} free check${trialChecksRemaining === 1 ? '' : 's'} left`;
 
     return (
       <div className={`flex items-center gap-1.5 shrink-0 ${className}`}>
         <button
           type="button"
-          onClick={() => handleAction(isAuthenticated ? (isPaid ? '/dashboard' : '/pricing') : '/signup')}
+          onClick={() => handleAction(isAuthenticated ? (isPaid ? '/dashboard' : '/pricing') : '/login')}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-muted/60 hover:bg-muted text-foreground border border-border/50 cursor-pointer"
-          title={!isAuthenticated ? '1 free check left. Create an account to get 4 additional checks.' : 'View usage and plans'}
+          title={!isAuthenticated ? 'One free guest check per local day. Sign in to continue after using it.' : 'View usage and plans'}
         >
           {isPaid ? (
             <Coins className="h-3 w-3 text-primary shrink-0" />
@@ -159,8 +163,8 @@ export function LiveUsagePanel({
                     ? 'Your paid entitlement has expired. Renew to continue.'
                     : !isAuthenticated
                     ? trialChecksRemaining > 0
-                      ? 'You have 1 free check remaining. Register to unlock 4 additional free checks.'
-                      : 'You’ve used your free guest check. Create an account to get 4 additional free checks.'
+                      ? 'One free guest check is available today.'
+                      : 'Today’s guest check has been used. Sign in to continue.'
                     : trialChecksRemaining > 0
                     ? `You have ${trialChecksRemaining} free check${trialChecksRemaining === 1 ? '' : 's'} remaining.`
                     : 'You’ve used all your free checks. Choose a plan to continue.'}
@@ -179,7 +183,7 @@ export function LiveUsagePanel({
                   ? `Plan ended${formattedPlanEndDate ? ` on ${formattedPlanEndDate}` : ''}; paid features and remaining period credits are inactive.`
                   : isAuthenticated
                   ? `One-time introductory trial allowance (authoritative server balance)`
-                  : `Instant single check. Create a free account anytime to unlock 4 additional free checks.`}
+                  : `One free guest check per local calendar day. Sign in to access registered free checks.`}
               </CardDescription>
             </div>
           </div>
@@ -199,10 +203,10 @@ export function LiveUsagePanel({
               <Button
                 size="sm"
                 className="h-8 text-xs bg-primary text-primary-foreground font-semibold gap-1.5"
-                onClick={() => handleAction('/signup')}
+                onClick={() => handleAction('/login')}
               >
-                <UserPlus className="h-3.5 w-3.5" />
-                Register for 4 Free Checks
+                <LogIn className="h-3.5 w-3.5" />
+                Sign In to Continue
               </Button>
             )}
           </div>
@@ -297,7 +301,7 @@ export function LiveUsagePanel({
                   ? 'Your subscription period has ended. Renew your plan to restore paid features and credits.'
                   : isAuthenticated
                   ? 'You’ve used all your free checks. Choose a plan to continue.'
-                  : 'You’ve used your free guest check. Create an account to get 4 additional free checks.'}
+                  : 'Today’s guest check has been used. Sign in to continue.'}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -315,9 +319,9 @@ export function LiveUsagePanel({
               <Button
                 size="sm"
                 className="bg-primary text-primary-foreground font-semibold shrink-0 text-xs h-7 px-3"
-                onClick={() => handleAction(isAuthenticated ? '/pricing' : '/signup')}
+                onClick={() => handleAction(isAuthenticated ? '/pricing' : '/login')}
               >
-                {isAuthenticated ? 'View Plans' : 'Create Account'}
+                {isAuthenticated ? 'View Plans' : 'Sign In'}
                 <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
