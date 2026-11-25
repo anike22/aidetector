@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Shield, FileText, ArrowRight, Loader2, CheckCircle2, AlertTriangle,
-  Globe, Activity, Zap, Languages, Sparkles, ArrowUpRight, Lock, Trash2, RefreshCw, Play
+  Globe, Activity, Zap, Languages, ArrowUpRight, Lock, Trash2, RefreshCw, Play
 } from 'lucide-react';
 const PromoVideoModal = lazy(() => import('@/components/promo/PromoVideoModal').then(m => ({ default: m.PromoVideoModal })));
 import { StudentModeToggle } from '@/components/student-policy/StudentModeToggle';
