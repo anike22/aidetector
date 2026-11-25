@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase';
-import { ensureGuestSession, preserveDraftText, getPreservedDraftText } from './visitorId';
+import { ensureGuestSession, getVisitorId, preserveDraftText, getPreservedDraftText } from './visitorId';
 import { calculateOperationCreditCost, isTrialEligibleOperation, RATE_TABLE } from './entitlements';
 
 export interface EntitlementCheckResult {
