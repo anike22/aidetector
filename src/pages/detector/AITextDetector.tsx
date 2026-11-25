@@ -291,7 +291,7 @@ export default function AITextDetector() {
       setUseSample(false);
 
       const wordCount = combinedText.trim().split(/\s+/).filter((w) => w.length > 0).length;
-      toast.success(`Document uploaded successfully. Extracted ${wordCount.toLocaleString()} / 20,000 words.`);
+      toast.success(`Document uploaded successfully. Extracted ${wordCount.toLocaleString()} words.`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to extract file content.');
     } finally {
@@ -748,7 +748,7 @@ export default function AITextDetector() {
               <div className="p-3.5 sm:p-4 bg-muted/20 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${wordCount < 50 ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border/50 bg-background text-muted-foreground'}`}>
-                    {wordCount} words
+                    {wordCount.toLocaleString()} / 20,000 words
                   </span>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
