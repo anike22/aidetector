@@ -192,12 +192,20 @@ export default function AIVideoDetector() {
     }
     const reservation = await reserveVideoScan(mode, Math.ceil(durationSeconds));
     if (!reservation.allowed) {
-      if (!user) {
-        toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
-        navigate('/signup?returnTo=' + encodeURIComponent('/detector?tab=video'));
-      } else {
-        toast.error('You’ve used all your free checks. Choose a plan to continue.');
+      if (!user && ['TRIAL_EXHAUSTED', 'REGISTER_REQUIRED', 'GUEST_SESSION_RATE_LIMITED'].includes(reservation.errorCode || '')) {
+        toast.info('Your free check for today has been used. Sign in to continue.');
+        navigate('/login?returnTo=' + encodeURIComponent('/ai-video-detector'));
+      } else if (user && reservation.errorCode === 'TRIAL_EXHAUSTED') {
+        toast.info('You’ve used all your free checks. Choose a plan to continue.');
         navigate('/pricing');
+      } else {
+        toast.error(reservation.reason || 'This video analysis mode requires a paid plan.');
+        openUpgradeModal({
+          featureName: VIDEO_MODE_CONFIGS[mode].name,
+          trigger: 'pro_feature',
+          remaining: summary?.creditsBalance ?? 0,
+          limit: 15,
+        });
       }
       return;
     }
@@ -311,6 +319,7 @@ export default function AIVideoDetector() {
             featureSlug={billingFeatureSlug}
             operationCost={VIDEO_MODE_CONFIGS[mode].creditCost}
             operationCostLabel={`${VIDEO_MODE_CONFIGS[mode].name} Video Scan`}
+            hideGuestUsage
           />
 
           {/* Mode Switcher */}
