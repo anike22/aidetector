@@ -123,8 +123,8 @@ export function LiveUsagePanel({
       ? `${creditsBalance} credits`
       : !isAuthenticated
       ? trialChecksRemaining > 0
-        ? '1 check available today'
-        : 'Daily check used'
+        ? `${trialChecksRemaining} guest checks available`
+        : 'Guest checks used'
       : `${trialChecksRemaining} free check${trialChecksRemaining === 1 ? '' : 's'} left`;
 
     return (
@@ -133,7 +133,7 @@ export function LiveUsagePanel({
           type="button"
           onClick={() => handleAction(isAuthenticated ? (isPaid ? '/dashboard' : '/pricing') : '/login')}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-muted/60 hover:bg-muted text-foreground border border-border/50 cursor-pointer"
-          title={!isAuthenticated ? 'One free guest check per local day. Sign in to continue after using it.' : 'View usage and plans'}
+          title={!isAuthenticated ? '3 free guest checks every rolling 24 hours. Sign in to access registered free checks.' : 'View usage and plans'}
         >
           {isPaid ? (
             <Coins className="h-3 w-3 text-primary shrink-0" />
@@ -163,8 +163,8 @@ export function LiveUsagePanel({
                     ? 'Your paid entitlement has expired. Renew to continue.'
                     : !isAuthenticated
                     ? trialChecksRemaining > 0
-                      ? 'One free guest check is available today.'
-                      : 'Today’s guest check has been used. Sign in to continue.'
+                      ? `You have ${trialChecksRemaining} of ${trialChecksTotal} free guest checks remaining.`
+                      : `You’ve used all ${trialChecksTotal} free guest checks for this 24-hour period. Sign in to continue.`
                     : trialChecksRemaining > 0
                     ? `You have ${trialChecksRemaining} free check${trialChecksRemaining === 1 ? '' : 's'} remaining.`
                     : 'You’ve used all your free checks. Choose a plan to continue.'}
@@ -183,7 +183,7 @@ export function LiveUsagePanel({
                   ? `Plan ended${formattedPlanEndDate ? ` on ${formattedPlanEndDate}` : ''}; paid features and remaining period credits are inactive.`
                   : isAuthenticated
                   ? `One-time introductory trial allowance (authoritative server balance)`
-                  : `One free guest check per local calendar day. Sign in to access registered free checks.`}
+                  : `Guests receive ${trialChecksTotal} free checks every rolling 24 hours. Sign in to access registered free checks.`}
               </CardDescription>
             </div>
           </div>
@@ -237,7 +237,7 @@ export function LiveUsagePanel({
                   `${creditsBalance} / ${monthlyAllocation || creditsBalance} credits`
                 )
               ) : !isAuthenticated ? (
-                `${trialChecksRemaining} of 1 check remaining`
+                `${trialChecksRemaining} of ${trialChecksTotal} checks remaining`
               ) : (
                 `${trialChecksRemaining} of ${trialChecksTotal} checks remaining`
               )}
@@ -301,7 +301,7 @@ export function LiveUsagePanel({
                   ? 'Your subscription period has ended. Renew your plan to restore paid features and credits.'
                   : isAuthenticated
                   ? 'You’ve used all your free checks. Choose a plan to continue.'
-                  : 'Today’s guest check has been used. Sign in to continue.'}
+                  : `You’ve used all ${trialChecksTotal} guest checks for this 24-hour period. Sign in to continue.`}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
