@@ -25,14 +25,15 @@ export const PLAN_TIERS: Record<string, PlanTier> = {
   free: {
     id: 'free',
     name: 'Free Trial',
-    tagline: '5 one-time introductory checks to evaluate accuracy and speed',
+    tagline: 'One free guest check per day, plus five one-time introductory checks for registered accounts',
     monthlyPrice: 0,
     annualPrice: 0,
     annualMonthlyEquivalent: 0,
     monthlyCredits: 0,
     trialChecks: 5,
     features: [
-      '1 guest check + 4 signed-in trial checks (5 total introductory)',
+      'One free guest check per local calendar day across eligible detection tools',
+      'Five one-time introductory checks for registered free accounts, shared across eligible tools',
       'Standard Text Detection (Balanced engine)',
       'Humanizer (Standard mode up to 1,000 words)',
       'Plagiarism Checker (Standard scope up to 1,000 words)',
@@ -40,7 +41,7 @@ export const PLAN_TIERS: Record<string, PlanTier> = {
       'Standard Image Detection (Balanced)',
       'Standard Video Detection (Balanced, up to 30s)',
       'Voice & Audio Detection (up to 1 min)',
-      'No recurring daily or monthly resets',
+      'Registered free trial checks do not reset daily or monthly',
     ],
     limits: {
       maxWordsPerCheck: 1000,
