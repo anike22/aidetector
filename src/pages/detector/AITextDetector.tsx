@@ -170,6 +170,7 @@ function readabilityEstimate(sentenceLength: number, lexicalDiversity: number): 
 }
 
 const FEATURE_SLUG = 'ai_detector';
+const MAX_WORDS_PER_CHECK = 20_000;
 
 function DetectorDiagnosticsPanel({ result }: { result: BalancedDetectorResult }) {
   if (!import.meta.env.DEV) return null;
@@ -290,7 +291,7 @@ export default function AITextDetector() {
       setUseSample(false);
 
       const wordCount = combinedText.trim().split(/\s+/).filter((w) => w.length > 0).length;
-      toast.success(`Document uploaded successfully. Extracted ${wordCount} words.`);
+      toast.success(`Document uploaded successfully. Extracted ${wordCount.toLocaleString()} / 20,000 words.`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to extract file content.');
     } finally {
@@ -301,8 +302,13 @@ export default function AITextDetector() {
 
   const handleAnalyze = async () => {
     const textToAnalyze = content || (useSample ? SAMPLE_TEXT : '');
-    if (!textToAnalyze.trim() || textToAnalyze.split(/\s+/).length < 20) {
+    const requestedWordCount = textToAnalyze.trim().split(/\s+/).filter(Boolean).length;
+    if (!textToAnalyze.trim() || requestedWordCount < 20) {
       toast.error('Please enter at least 20 words.');
+      return;
+    }
+    if (requestedWordCount > MAX_WORDS_PER_CHECK) {
+      toast.error(`Please keep each scan to ${MAX_WORDS_PER_CHECK.toLocaleString()} words or fewer.`);
       return;
     }
 
@@ -377,8 +383,8 @@ export default function AITextDetector() {
             preserveDraftText(textToAnalyze, FEATURE_SLUG);
           }
           if (!user) {
-            toast.error('You’ve used your free guest check. Create an account to get 4 additional free checks.');
-            navigate('/signup?returnTo=' + encodeURIComponent('/detector'));
+            toast.error('Today’s guest check has been used. Sign in or create a free account to unlock five free checks.');
+            navigate('/login?returnTo=' + encodeURIComponent('/detector'));
           } else {
             toast.error('You’ve used all your free checks. Choose a plan to continue.');
             navigate('/pricing');
