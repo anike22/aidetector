@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Shield, FileText, ArrowRight, Loader2, CheckCircle2, AlertTriangle,
-  Globe, Activity, Zap, Languages, Sparkles, ArrowUpRight, Lock, Trash2, RefreshCw, Play, LogIn
+  Globe, Activity, Zap, Languages, Sparkles, ArrowUpRight, Lock, Trash2, RefreshCw, Play
 } from 'lucide-react';
 const PromoVideoModal = lazy(() => import('@/components/promo/PromoVideoModal').then(m => ({ default: m.PromoVideoModal })));
 import { StudentModeToggle } from '@/components/student-policy/StudentModeToggle';
@@ -387,9 +387,7 @@ export default function HeroSection() {
                 onClick={handleDetect}
                 disabled={(!content && !isLimitReached) || isAnalyzing}
                 className={`flex-1 sm:flex-none font-bold rounded-xl shadow-hover transition-all text-sm h-10 px-5 ${
-                  isLimitReached
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                    : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  'bg-primary hover:bg-primary/90 text-primary-foreground'
                 }`}
               >
                 {isAnalyzing ? (
