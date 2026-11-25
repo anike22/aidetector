@@ -29,43 +29,80 @@ export function getVisitorId(): string {
 }
 
 let serverSessionPromise: Promise<string> | null = null;
+let serverSessionDateKey: string | null = null;
+
+function getGuestSessionDateContext() {
+  let timezone = 'UTC';
+  try {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    // Keep UTC as a safe fallback.
+  }
+
+  let localDate = new Date().toISOString().slice(0, 10);
+  try {
+    localDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    // Keep the UTC date if the browser cannot format the local date.
+  }
+
+  return { timezone, dateKey: `${timezone}:${localDate}` };
+}
 
 /**
- * Ensures a server-issued guest session exists for this visitor. The
- * server validates the local id (creating/upserting the row with the
- * authoritative trial counters). Call before the first billable request.
+ * Ensures a server-issued guest session exists for this visitor. The same
+ * visitor ID is revalidated once per local calendar day so the server can
+ * refresh the daily guest allowance without creating a new guest identity.
  */
 export async function ensureGuestSession(): Promise<string> {
   const localId = getVisitorId();
-  if (serverSessionPromise) return serverSessionPromise;
-  serverSessionPromise = (async () => {
-    try {
-      const { supabase } = await import('@/db/supabase');
-      const { data, error } = await supabase.rpc('issue_or_validate_guest_session', {
-        p_guest_id: localId,
-        p_ip: null,
-        p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      });
-      const row = Array.isArray(data) ? data[0] : data;
-      if (error || !row?.guest_id) throw new Error('Guest session could not be verified. Please retry.');
-      if (row?.guest_id) {
-        // Server is authoritative; adopt its id (same on upsert).
-        try {
-          if (typeof localStorage !== 'undefined' && localStorage.setItem) {
-            localStorage.setItem(VISITOR_KEY, row.guest_id);
-          }
-        } catch { /* noop */ }
-        memoryLocalStore[VISITOR_KEY] = row.guest_id;
-        return row.guest_id as string;
-      }
-    } catch (e) {
-      serverSessionPromise = null;
-      throw e;
+  const { timezone, dateKey } = getGuestSessionDateContext();
+
+  if (serverSessionPromise && serverSessionDateKey === dateKey) {
+    return serverSessionPromise;
+  }
+
+  const requestPromise = (async () => {
+    const { supabase } = await import('@/db/supabase');
+    const { data, error } = await supabase.rpc('issue_or_validate_guest_session', {
+      p_guest_id: localId,
+      p_ip: null,
+      p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      p_timezone: timezone,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row?.guest_id) {
+      throw new Error('Guest session could not be verified. Please retry.');
     }
-    return localId;
+
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.setItem) {
+        localStorage.setItem(VISITOR_KEY, row.guest_id);
+      }
+    } catch {
+      /* noop */
+    }
+    memoryLocalStore[VISITOR_KEY] = row.guest_id;
+    return row.guest_id as string;
   })();
-  return serverSessionPromise;
+
+  serverSessionPromise = requestPromise;
+  serverSessionDateKey = dateKey;
+
+  try {
+    return await requestPromise;
+  } catch (error) {
+    if (serverSessionPromise === requestPromise) {
+      serverSessionPromise = null;
+      serverSessionDateKey = null;
+    }
+    throw error;
+  }
 }
 
 export function getStoredVisitorId(): string | null {
