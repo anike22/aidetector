@@ -17,10 +17,12 @@ import { useEntitlement } from '@/hooks/useEntitlement';
 import type { BalancedDetectorResult } from '@/lib/detection/balancedDetectorService';
 import type { AggressiveDetectorResult } from '@/lib/detection/aggressiveDetectorService';
 import { preserveDraftText, getPreservedDraftText, clearPreservedDraftText } from '@/lib/visitorId';
+import { getLiveEntitlementSummary } from '@/lib/entitlementsApi';
 
 const SAMPLE_TEXT = `Artificial intelligence has revolutionized the way businesses operate in the modern era. The implementation of machine learning algorithms enables companies to process vast amounts of data with unprecedented efficiency. Furthermore, natural language processing capabilities allow for automated content generation that is indistinguishable from human writing. Organizations leveraging these technologies experience substantial improvements in productivity metrics and operational cost reduction. The utilization of AI-powered tools represents a paradigm shift in how enterprises approach problem-solving and decision-making processes.`;
 
 const BADGES = ['Advanced Multilingual AI Detection', 'Dual Detection', 'Sentence Analysis', 'Explainable Results'];
+const MAX_WORDS_PER_CHECK = 20_000;
 
 function ScoreGauge({ value, color }: { value: number; color: string }) {
   return (
@@ -130,14 +132,31 @@ export default function HeroSection() {
       return;
     }
 
-    if (isLimitReached) {
+    const currentWordCount = (content.match(/\S+/g) || []).length;
+    if (currentWordCount > MAX_WORDS_PER_CHECK) {
+      toast.error(`Please keep each scan to ${MAX_WORDS_PER_CHECK.toLocaleString()} words or fewer.`);
+      return;
+    }
+
+    // Re-fetch the server allowance on click so a new local day is recognized
+    // even when the homepage tab stayed open across midnight.
+    const latestSummary = await getLiveEntitlementSummary().catch(() => summary);
+    const latestPaid = latestSummary?.isPaidActive ?? isPaid;
+    const latestCredits = latestSummary?.creditsBalance ?? creditsBalance;
+    const latestRemaining = latestSummary?.trialChecksRemaining ?? trialRemaining;
+    const latestUnlimited = latestSummary?.isUnlimited ?? summary?.isUnlimited ?? false;
+    const latestIsLimitReached = !latestUnlimited && (
+      latestPaid ? latestCredits < 1 : latestRemaining <= 0 && latestCredits < 1
+    );
+
+    if (latestIsLimitReached) {
       if (content) {
         preserveDraftText(content, 'text_detect_balanced');
       }
       if (!user) {
         toast.error('Your free check for today has been used. Sign in to continue.');
         navigate('/login?returnTo=' + encodeURIComponent('/'));
-      } else if (!isPaid) {
+      } else if (!latestPaid) {
         toast.error('You’ve used all your free checks. Choose a plan to continue.');
         navigate('/pricing');
       } else {
@@ -277,7 +296,7 @@ export default function HeroSection() {
             </div>
 
             <div className="text-[11px] font-semibold text-muted-foreground bg-background px-2.5 py-1 rounded-md border border-border/50">
-              {wordCount} / 2,000 words
+              {wordCount.toLocaleString()} / 20,000 words
             </div>
           </div>
 
@@ -395,20 +414,10 @@ export default function HeroSection() {
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     Analyzing Content...
                   </>
-                ) : isLimitReached ? (
-                  !user ? (
-                    <>
-                      <LogIn className="w-4 h-4 mr-1.5" /> Sign In to Continue
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-1.5" /> 5 Free Checks Used – Upgrade
-                    </>
-                  )
                 ) : (
                   <>
                     <Shield className="w-4 h-4 mr-1.5" />
-                    {isPaid ? 'Analyze Text • 1 Credit' : 'Analyze Text'}
+                    Analyse
                   </>
                 )}
               </Button>
