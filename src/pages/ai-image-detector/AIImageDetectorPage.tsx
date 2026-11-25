@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layouts/MainLayout';
 import PageMeta from '@/components/common/PageMeta';
 import { Button } from '@/components/ui/button';
@@ -68,6 +68,7 @@ import BatchImageDetector from '@/components/detector/BatchImageDetector';
 import { LiveUsagePanel } from '@/components/common/LiveUsagePanel';
 import UpgradeModal from '@/components/common/UpgradeModal';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import { reserveImageScan, finalizeImageScan } from '@/lib/entitlementsApi';
 import { toast } from 'sonner';
@@ -231,9 +232,11 @@ const SCHEMAS = [
 ];
 
 export default function AIImageDetectorPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [analysisMode, setAnalysisMode] = useState<'balanced' | 'high_sensitivity'>('balanced');
   const billingFeatureSlug = analysisMode === 'high_sensitivity' ? 'image_detect_advanced' : FEATURE_SLUG;
-  const { entitlement, loading: entitlementLoading } = useEntitlement(billingFeatureSlug);
+  const { entitlement, summary, loading: entitlementLoading } = useEntitlement(billingFeatureSlug);
   const { open, featureName, trigger, remaining, limit, openUpgradeModal, closeUpgradeModal } = useUpgradeModal();
 
   // Scanner UI States
@@ -343,13 +346,21 @@ export default function AIImageDetectorPage() {
       const reservation = await reserveImageScan(billingFeatureSlug, analysisMode === 'high_sensitivity' ? 10 : 5);
       if (!reservation.allowed) {
         setScanning(false);
-        openUpgradeModal({
-          featureName: 'AI Image Detector',
-          trigger: reservation.errorCode === 'DAILY_LIMIT_REACHED' ? 'limit_reached' : 'pro_feature',
-          remaining: 0,
-          limit: 5,
-        });
-        toast.error(reservation.reason || 'Scan allowance limit reached. Please upgrade or sign in.');
+        if (!user && ['TRIAL_EXHAUSTED', 'REGISTER_REQUIRED', 'GUEST_SESSION_RATE_LIMITED'].includes(reservation.errorCode || '')) {
+          toast.info('Your free check for today has been used. Sign in to continue.');
+          navigate('/login?returnTo=' + encodeURIComponent('/ai-image-detector'));
+        } else if (user && reservation.errorCode === 'TRIAL_EXHAUSTED') {
+          toast.info('You’ve used all your free checks. Choose a plan to continue.');
+          navigate('/pricing');
+        } else {
+          openUpgradeModal({
+            featureName: 'AI Image Detector',
+            trigger: reservation.errorCode === 'DAILY_LIMIT_REACHED' ? 'limit_reached' : 'pro_feature',
+            remaining: summary?.creditsBalance ?? 0,
+            limit: 5,
+          });
+          toast.error(reservation.reason || 'This image analysis mode requires a paid plan.');
+        }
         return;
       }
       reservationId = reservation.reservationId || null;
@@ -482,7 +493,7 @@ export default function AIImageDetectorPage() {
       {/* ── SECTION 1: AI IMAGE DETECTOR TOOL (Primary Above-The-Fold Scanner) ── */}
       <section ref={scannerRef} className="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-6">
         {/* Live Usage Quota & Credit Cost */}
-        <LiveUsagePanel featureSlug={billingFeatureSlug} operationCost={analysisMode === 'high_sensitivity' ? 4 : 2} />
+        <LiveUsagePanel featureSlug={billingFeatureSlug} operationCost={analysisMode === 'high_sensitivity' ? 10 : 5} hideGuestUsage />
 
         {/* Scanner Card Container */}
         <Card className="border-border bg-card shadow-sm">
@@ -513,7 +524,13 @@ export default function AIImageDetectorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAnalysisMode('high_sensitivity')}
+                  onClick={() => {
+                    if (!summary?.isPaidActive) {
+                      openUpgradeModal({ featureName: 'High-Sensitivity Image Analysis', trigger: 'pro_feature', remaining: summary?.creditsBalance ?? 0, limit: 10 });
+                      return;
+                    }
+                    setAnalysisMode('high_sensitivity');
+                  }}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                     analysisMode === 'high_sensitivity'
                       ? 'bg-background text-primary shadow-sm'
