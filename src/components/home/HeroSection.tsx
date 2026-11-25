@@ -119,7 +119,7 @@ export default function HeroSection() {
     ? summary.trialChecksRemaining
     : typeof entitlement?.trialChecksRemaining === 'number'
     ? entitlement.trialChecksRemaining
-    : (user ? 5 : 1);
+    : (user ? 5 : 3);
   const creditsBalance = summary?.creditsBalance ?? 0;
 
   const isLimitReached = !summary?.isUnlimited && !entitlementLoading && (
