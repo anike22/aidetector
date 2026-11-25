@@ -56,6 +56,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
    await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
  });
  await test('guest allowance resets once after the local usage date changes',async()=>{
+   await db.exec(`SELECT set_config('test.user_id','',false)`);
    const dailyGuest='guest-daily-reset-0001';
    await db.exec(`INSERT INTO server_guest_sessions(guest_id,trial_checks_remaining,trial_checks_used,trial_checks_total,daily_allowance,used_today,usage_date)
      VALUES('${dailyGuest}',0,1,1,1,1,CURRENT_DATE - 1)`);
@@ -67,6 +68,7 @@ async function test(name,fn){await fn();console.log('PASS '+name);count++;}
    const second=await reserve('ai_detector',100,'daily-reset-second',dailyGuest);
    assert.equal(second.allowed,false);
    assert.equal(second.error_code,'TRIAL_EXHAUSTED');
+   await db.exec(`SELECT set_config('test.user_id','${user}',false)`);
  });
  await test('standard image and balanced video share guest and registered free trial checks',async()=>{
    await db.exec(`SELECT set_config('test.user_id','',false)`);
