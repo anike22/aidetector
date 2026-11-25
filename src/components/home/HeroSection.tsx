@@ -407,7 +407,7 @@ export default function HeroSection() {
                 ) : (
                   <>
                     <Shield className="w-4 h-4 mr-1.5" />
-                    {isPaid ? 'Analyze Text • 1 Credit' : 'Analyze Text • 1 Trial Check'}
+                    {isPaid ? 'Analyze Text • 1 Credit' : 'Analyze Text'}
                   </>
                 )}
               </Button>
