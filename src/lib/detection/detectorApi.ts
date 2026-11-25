@@ -70,7 +70,8 @@ export async function analyzeText(
     p_credits_cost: 1,
     p_timezone: tz,
     p_idempotency_key: cryptoKey(),
-    p_metadata: { text_length: text.length }
+    p_metadata: { text_length: text.length },
+    p_unit_quantity: text.trim().split(/\s+/).filter(Boolean).length,
   });
 
   if (reservationError) {
