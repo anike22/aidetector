@@ -22,6 +22,32 @@ SET allowance_reset_at = COALESCE(allowance_reset_at, NOW()),
     updated_at = NOW()
 WHERE linked_user_id IS NULL;
 
+-- The reservation RPC can create a missing guest row directly. Normalize that
+-- insert too, so its subsequent reservation consumes one of the same three checks.
+CREATE OR REPLACE FUNCTION public.initialize_anonymous_guest_allowance()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.linked_user_id IS NULL THEN
+    NEW.daily_allowance := 3;
+    NEW.trial_checks_total := 3;
+    NEW.trial_checks_remaining := 3;
+    NEW.trial_checks_used := 0;
+    NEW.allowance_reset_at := COALESCE(NEW.allowance_reset_at, NOW());
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS initialize_anonymous_guest_allowance
+  ON public.server_guest_sessions;
+CREATE TRIGGER initialize_anonymous_guest_allowance
+BEFORE INSERT ON public.server_guest_sessions
+FOR EACH ROW
+EXECUTE FUNCTION public.initialize_anonymous_guest_allowance();
+
 CREATE OR REPLACE FUNCTION public.issue_or_validate_guest_session(
   p_guest_id text,
   p_ip text,
