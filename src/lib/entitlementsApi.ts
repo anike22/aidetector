@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase';
-import { ensureGuestSession, getVisitorId, preserveDraftText, getPreservedDraftText } from './visitorId';
+import { ensureGuestSession, preserveDraftText, getPreservedDraftText } from './visitorId';
 import { calculateOperationCreditCost, isTrialEligibleOperation, RATE_TABLE } from './entitlements';
 
 export interface EntitlementCheckResult {
@@ -71,7 +71,7 @@ const reservationGuestIds = new Map<string, string>();
 export async function getLiveEntitlementSummary(): Promise<EntitlementSummary> {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id || null;
-  const guestId = userId ? null : getVisitorId();
+  const guestId = userId ? null : await ensureGuestSession();
   const tz = getTimezone();
 
   const { data, error } = await supabase.rpc('get_user_entitlement_summary', {
@@ -200,14 +200,14 @@ export async function checkEntitlement(
     } else if (minPlan === 'free' && !['text_detect_balanced', 'ai_detector', 'image_detect_standard', 'ai_image_detector', 'video_detect_balanced', 'ai_video_detector', 'voice_analysis', 'ai_summarizer', 'plagiarism_checker', 'plagiarism_check'].includes(featureSlug)) {
       allowed = false;
       errorCode = 'REGISTER_REQUIRED';
-      reason = 'This feature requires a free registered account. Please sign up to get 4 additional free checks.';
+      reason = 'Sign in or create a free account to access this feature.';
     } else if (trialEligible && hasTrialRemaining) {
       allowed = true;
       isTrialCheck = true;
     } else {
       allowed = false;
       errorCode = 'TRIAL_EXHAUSTED';
-      reason = 'You’ve used your free guest check. Create an account to get 4 additional free checks.';
+      reason = 'Your free guest check for today has been used. Sign in to continue.';
     }
   } else {
     // Authenticated Free user
@@ -306,7 +306,9 @@ export async function reserveEntitlement(
       allowed,
       reservationId: row.reservation_id || null,
       isTrialCheck: Boolean(row.is_trial_check),
-      reason: row.reason || null,
+      reason: !userId && row.error_code === 'TRIAL_EXHAUSTED'
+        ? 'Your free guest check for today has been used. Sign in to continue.'
+        : row.reason || null,
       errorCode: row.error_code || null,
     };
   } catch (err) {
