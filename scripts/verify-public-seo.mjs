@@ -12,6 +12,9 @@ for (const route of ['/detector', '/humanizer', '/plagiarism-checker', '/seo-ass
   assert(llms.includes(`https://aidetector.cx${route}`), `llms.txt missing key public resource: ${route}`);
 }
 const sitemapIndex = await readFile('dist/sitemap-index.xml', 'utf8');
+for (const [, url] of sitemapIndex.matchAll(/<loc>(.*?)<\\/loc>/g)) {
+  assert.equal(new URL(url).origin, 'https://aidetector.cx', `Non-canonical sitemap-index URL: ${url}`);
+}
 for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml']) {
   assert(sitemapIndex.includes(`<loc>https://aidetector.cx/${file}</loc>`), `Missing sitemap index entry: ${file}`);
   await readFile(path.join('dist', file), 'utf8');
@@ -46,12 +49,17 @@ async function listTextFiles(directory) {
   return files;
 }
 const sourceFiles = ['index.html', ...await listTextFiles('src'), ...await listTextFiles('public')];
-const redirectLinkPattern = /(?:to|href)\\s*[:=]\\s*[\"'](?:https?:\\/\\/(?:www\\.)?aidetector\\.cx)?\\/(?:all-pages|directory|ai-detection-accuracy-tests|image-detector)(?:[?#\"'])/;
+const redirectPaths = [...redirectSources]
+  .filter(source => !source.includes(':') && !source.includes('*'))
+  .map(source => source.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\const redirectLinkPattern = /(?:to|href)\\s*[:=]\\s*[\"'](?:https?:\\/\\/(?:www\\.)?aidetector\\.cx)?\\/(?:all-pages|directory|ai-detection-accuracy-tests|image-detector)(?:[?#\"'])/;'));
+const redirectLinkPattern = redirectPaths.length
+  ? new RegExp(`(?:to|href)\\\\s*[:=]\\\\s*[\"'](?:https?:\\\\/\\\\/(?:www\\\\.)?aidetector\\\\.cx)?(?:${redirectPaths.join('|')})(?:[?#\"'])`)
+  : null;
 for (const file of sourceFiles) {
   const source = await readFile(file, 'utf8');
   assert(!/https?:\\/\\/www\\.aidetector\\.cx/i.test(source), `Non-canonical www host reference in ${file}`);
   assert(!/http:\\/\\/aidetector\\.cx/i.test(source), `Insecure absolute internal URL in ${file}`);
-  assert(!redirectLinkPattern.test(source), `Internal link points to a redirecting path in ${file}`);
+  assert(!redirectLinkPattern?.test(source), `Internal link points to a redirecting path in ${file}`);
 }
 const embedHtml = await readFile('dist/prerender/embed/index.html', 'utf8');
 assert(embedHtml.includes('Free AI detector widget for your website'), 'Embed distribution page must prerender its main heading');
