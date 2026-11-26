@@ -51,7 +51,10 @@ export async function prepare() {
     const response = await fetch(url, {headers: {apikey: process.env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.VITE_SUPABASE_ANON_KEY}`}, signal: AbortSignal.timeout(30000)});
     if (!response.ok) throw new Error(`Published article discovery failed: HTTP ${response.status}`);
     for (const article of await response.json()) {
-      if (['blog', 'guides', 'research', 'comparisons'].includes(article.hub) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(article.slug)) paths.add(`/${article.hub}/${article.slug}`);
+      if (['blog', 'guides', 'research', 'comparisons'].includes(article.hub) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(article.slug)) {
+        const pathname = normalizePath(`/${article.hub}/${article.slug}`);
+        if (!redirectSources.has(pathname)) paths.add(pathname);
+      }
     }
   }
   const canonicalPaths = [...paths].filter(p => !redirectSources.has(p)).sort();
