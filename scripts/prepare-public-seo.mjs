@@ -100,7 +100,6 @@ export async function prepare() {
       config.rewrites.push({source: `${prefix}/${id}`, destination: '/index.html'});
     }
   }
-  const redirectSources = new Set((config.redirects || []).map(({source}) => source));
   for (const route of registeredRoutes) {
     // A permanent redirect must win over any stale or accidentally reintroduced SPA route.
     if (redirectSources.has(route)) continue;
