@@ -20,16 +20,16 @@ export async function prepare() {
   ];
   const redirects = [...seoRedirects, ...(config.redirects || []).filter(r => !seoRedirects.some(s => s.source === r.source))];
   const redirectSources = new Set(redirects.map(({source}) => source));
-  const normalizePath = pathname => pathname !== '/' ? pathname.replace(/\\/+$/, '') : '/';
+  const normalizePath = pathname => pathname !== '/' ? pathname.replace(/\/+$/, '') : '/';
   const normalizeSitemapXml = source => source
-    .replace(/<url\\b[\\s\\S]*?<\\/url>/g, block => {
-      const match = block.match(/<loc>(.*?)<\\/loc>/);
+    .replace(/<url\b[\s\S]*?<\/url>/g, block => {
+      const match = block.match(/<loc>(.*?)<\/loc>/);
       if (!match) return block;
       const parsed = new URL(match[1]);
       const pathname = normalizePath(parsed.pathname);
       return redirectSources.has(pathname) ? '' : block;
     })
-    .replace(/<loc>(.*?)<\\/loc>/g, (_, loc) => {
+    .replace(/<loc>(.*?)<\/loc>/g, (_, loc) => {
       const parsed = new URL(loc);
       parsed.protocol = 'https:';
       parsed.hostname = 'aidetector.cx';
@@ -54,11 +54,12 @@ export async function prepare() {
       if (['blog', 'guides', 'research', 'comparisons'].includes(article.hub) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(article.slug)) paths.add(`/${article.hub}/${article.slug}`);
     }
   }
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + [...paths].sort().map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
+  const canonicalPaths = [...paths].filter(p => !redirectSources.has(p)).sort();
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + canonicalPaths.map(p => `  <url><loc>${origin}${p}</loc></url>`).join('\n') + '\n</urlset>\n';
   await writeFile(path.join(root, 'public/sitemap.xml'), xml);
   for (const name of [...maps, 'sitemap-index.xml']) {
     let xml = await readFile(path.join(root, 'public', name), 'utf8');
-    xml = xml.replace(/https:\/\/(?:www\.)?aidetector\.cx/g, origin).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
+    xml = normalizeSitemapXml(xml).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
     await writeFile(path.join(root, 'public', name), xml);
   }
   // Vercel deploys the checked-in routing file; the generated build config alone
