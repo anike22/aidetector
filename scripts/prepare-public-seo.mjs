@@ -10,12 +10,39 @@ for (const name of ['.env.local', '.env']) {
 export const publicPaths = ['/', '/embed', '/detector', '/humanizer', '/word-counter', '/grammar-checker', '/ai-summarizer', '/ai-image-detector', '/ai-video-detector', '/video-detector', '/sell', '/plagiarism-checker', '/ai-checker-for-bloggers', '/seo-assistant', '/aeo-optimizer', '/tools', '/blog', '/guides', '/research', '/comparisons', '/about', '/contact', '/privacy', '/terms', '/cookies', '/pricing', '/chrome-extension', '/wordpress-plugin', '/affiliate-hub', '/affiliate-agreement', '/authorship', '/api', '/api/docs', '/essay-studio', '/essay-studio/templates', '/reports/shared', '/login', '/services', '/sitemap', '/studies/why-tiktok-flagged-my-real-video', '/studies/whatsapp-compression-ai-video', '/studies/authentic-video-false-positives', '/guides/understanding-ai-detection-scores', '/guides/best-practices-for-educators', '/research/dual-engine-detection-methodology', '/research/language-benchmark-overview'];
 export async function prepare() {
   const maps = ['sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
-  const paths = new Set(publicPaths);
+  const configPath = path.join(root, 'vercel.json');
+  const config = JSON.parse(await readFile(configPath, 'utf8'));
+  const seoRedirects = [
+    {source: '/all-pages', destination: '/sitemap', permanent: true},
+    {source: '/directory', destination: '/sitemap', permanent: true},
+    {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
+    {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
+  ];
+  const redirects = [...seoRedirects, ...(config.redirects || []).filter(r => !seoRedirects.some(s => s.source === r.source))];
+  const redirectSources = new Set(redirects.map(({source}) => source));
+  const normalizePath = pathname => pathname !== '/' ? pathname.replace(/\\/+$/, '') : '/';
+  const normalizeSitemapXml = source => source
+    .replace(/<url\\b[\\s\\S]*?<\\/url>/g, block => {
+      const match = block.match(/<loc>(.*?)<\\/loc>/);
+      if (!match) return block;
+      const parsed = new URL(match[1]);
+      const pathname = normalizePath(parsed.pathname);
+      return redirectSources.has(pathname) ? '' : block;
+    })
+    .replace(/<loc>(.*?)<\\/loc>/g, (_, loc) => {
+      const parsed = new URL(loc);
+      parsed.protocol = 'https:';
+      parsed.hostname = 'aidetector.cx';
+      parsed.port = '';
+      parsed.pathname = normalizePath(parsed.pathname);
+      return `<loc>${parsed.href}</loc>`;
+    });
+  const paths = new Set(publicPaths.map(normalizePath).filter(p => !redirectSources.has(p)));
   for (const name of maps) {
     const xml = await readFile(path.join(root, 'public', name), 'utf8');
     for (const [, url] of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
-      const pathname = new URL(url).pathname;
-      paths.add(pathname);
+      const pathname = normalizePath(new URL(url).pathname);
+      if (!redirectSources.has(pathname)) paths.add(pathname);
     }
   }
   if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
@@ -34,8 +61,6 @@ export async function prepare() {
     xml = xml.replace(/https:\/\/(?:www\.)?aidetector\.cx/g, origin).replace(/\s*<lastmod>.*?<\/lastmod>/g, '');
     await writeFile(path.join(root, 'public', name), xml);
   }
-  const configPath = path.join(root, 'vercel.json');
-  const config = JSON.parse(await readFile(configPath, 'utf8'));
   // Vercel deploys the checked-in routing file; the generated build config alone
   // cannot establish that public canonical URLs serve their prerendered HTML.
   // Catch omissions in the explicit editorial inventory before this script overwrites vercel.json.
@@ -50,17 +75,8 @@ export async function prepare() {
     }
   }
   // Preserve established legacy detector URLs with permanent server redirects for crawlers.
-  const seoRedirects = [
-    {source: '/all-pages', destination: '/sitemap', permanent: true},
-    {source: '/directory', destination: '/sitemap', permanent: true},
-    {source: '/ai-detection-accuracy-tests', destination: '/research/ai-detection-accuracy-tests', permanent: true},
-    {source: '/image-detector', destination: '/ai-image-detector', permanent: true},
-  ];
-  config.redirects = [
-    ...seoRedirects,
-    ...(config.redirects || []).filter(r => !seoRedirects.some(s => s.source === r.source)),
-  ];
-  config.rewrites = [...paths].sort().map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
+  config.redirects = redirects;
+  config.rewrites = canonicalPaths.map(p => ({source: p, destination: `/prerender${p === '/' ? '/home' : p}/index.html`}));
   config.rewrites.push({source: '/embed/widget', destination: '/index.html'});
   // Keep valid feature-controlled, account, and dynamic SPA routes. Unknown URLs fall through to HTTP 404. Public Essay Studio landing/template routes are prerendered; private essay records retain client noindex metadata.
   const routeSource = await readFile(path.join(root, 'src/routes.tsx'), 'utf8');
