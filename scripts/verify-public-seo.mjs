@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 const xml = await readFile('dist/sitemap.xml', 'utf8');
 const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(([,url]) => url);
@@ -17,6 +17,42 @@ for (const file of ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml',
   await readFile(path.join('dist', file), 'utf8');
 }
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+const redirectSources = new Set((config.redirects || []).map(({source}) => source));
+const sitemapFiles = ['sitemap.xml', 'sitemap-guides.xml', 'sitemap-research.xml', 'sitemap-comparisons.xml', 'sitemap-blog.xml'];
+const allSitemapUrls = [];
+for (const file of sitemapFiles) {
+  const sitemapXml = await readFile(path.join('dist', file), 'utf8');
+  for (const [, url] of sitemapXml.matchAll(/<loc>(.*?)<\\/loc>/g)) {
+    const parsed = new URL(url);
+    assert.equal(parsed.origin, 'https://aidetector.cx', `Non-canonical sitemap host/protocol in ${file}: ${url}`);
+    assert(parsed.pathname === '/' || !parsed.pathname.endsWith('/'), `Non-canonical trailing slash in ${file}: ${url}`);
+    assert(!redirectSources.has(parsed.pathname), `Redirecting URL included in ${file}: ${url}`);
+    allSitemapUrls.push(url);
+  }
+}
+assert(allSitemapUrls.includes('https://aidetector.cx/guides/does-google-penalize-ai-generated-content'), 'Google AI-content guide missing from the guide sitemap');
+assert(urls.includes('https://aidetector.cx/detector'), 'Detector page missing from the primary sitemap');
+assert(urls.includes('https://aidetector.cx/plagiarism-checker'), 'Plagiarism checker missing from the primary sitemap');
+assert(urls.includes('https://aidetector.cx/'), 'Homepage missing from the primary sitemap');
+
+async function listTextFiles(directory) {
+  const entries = await readdir(directory, {withFileTypes: true});
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await listTextFiles(fullPath));
+    else if (/\\.(?:tsx?|jsx?|html|json|xml|md|txt|css)$/i.test(entry.name)) files.push(fullPath);
+  }
+  return files;
+}
+const sourceFiles = ['index.html', ...await listTextFiles('src'), ...await listTextFiles('public')];
+const redirectLinkPattern = /(?:to|href)\\s*[:=]\\s*[\"'](?:https?:\\/\\/(?:www\\.)?aidetector\\.cx)?\\/(?:all-pages|directory|ai-detection-accuracy-tests|image-detector)(?:[?#\"'])/;
+for (const file of sourceFiles) {
+  const source = await readFile(file, 'utf8');
+  assert(!/https?:\\/\\/www\\.aidetector\\.cx/i.test(source), `Non-canonical www host reference in ${file}`);
+  assert(!/http:\\/\\/aidetector\\.cx/i.test(source), `Insecure absolute internal URL in ${file}`);
+  assert(!redirectLinkPattern.test(source), `Internal link points to a redirecting path in ${file}`);
+}
 const embedHtml = await readFile('dist/prerender/embed/index.html', 'utf8');
 assert(embedHtml.includes('Free AI detector widget for your website'), 'Embed distribution page must prerender its main heading');
 assert(embedHtml.includes('https://aidetector.cx/embed/widget'), 'Embed page must preview the isolated widget endpoint');
