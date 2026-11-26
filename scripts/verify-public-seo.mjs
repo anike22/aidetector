@@ -73,10 +73,8 @@ assert(sitemapHtml.includes('/sitemap-index.xml'), 'HTML sitemap must link to th
 assert(urls.includes('https://aidetector.cx/login'), 'Login page missing from public sitemap');
 assert(config.rewrites.some(r => r.source === '/login' && r.destination === '/prerender/login/index.html'), 'Login page missing dedicated prerender');
 assert(!config.headers.some(h => ['/login', '/login/:path*'].includes(h.source) && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Login page must not receive an HTTP noindex header');
-assert(urls.includes('https://aidetector.cx/services'), 'Services overview missing from public sitemap');
-assert(config.rewrites.some(r => r.source === '/services' && r.destination === '/prerender/services/index.html'), 'Services overview missing dedicated prerender');
-const servicesHtml = await readFile('dist/prerender/services/index.html', 'utf8');
-assert(servicesHtml.includes('Tools for writing, originality, and content intelligence'), 'Wrong prerender content for /services');
+assert(!allSitemapUrls.includes('https://aidetector.cx/services'), 'Redirecting /services URL must not appear in any sitemap');
+assert(config.redirects?.some(r => r.source === '/services' && r.destination === '/services/ai-consulting' && r.permanent === true), 'Services legacy URL must retain its permanent redirect');
 assert(urls.includes('https://aidetector.cx/reports/shared'), 'Shared reports feature page missing from sitemap');
 assert(config.rewrites.some(r => r.source === '/reports/shared' && r.destination === '/prerender/reports/shared/index.html'), 'Shared reports page missing dedicated prerender');
 assert(config.headers.some(h => h.source === '/reports/:reportId/collaborate' && h.headers?.some(v => v.key === 'X-Robots-Tag' && v.value.includes('noindex'))), 'Individual collaboration reports must remain noindex');
