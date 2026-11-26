@@ -49,11 +49,9 @@ async function listTextFiles(directory) {
   return files;
 }
 const sourceFiles = ['index.html', ...await listTextFiles('src'), ...await listTextFiles('public')];
-const redirectPaths = [...redirectSources]
-  .filter(source => !source.includes(':') && !source.includes('*'))
-  .map(source => source.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\const redirectLinkPattern = /(?:to|href)\\s*[:=]\\s*[\"'](?:https?:\\/\\/(?:www\\.)?aidetector\\.cx)?\\/(?:all-pages|directory|ai-detection-accuracy-tests|image-detector)(?:[?#\"'])/;'));
+const redirectPaths = [...redirectSources].filter(source => !source.includes(':') && !source.includes('*'));
 const redirectLinkPattern = redirectPaths.length
-  ? new RegExp(`(?:to|href)\\\\s*[:=]\\\\s*[\"'](?:https?:\\\\/\\\\/(?:www\\\\.)?aidetector\\\\.cx)?(?:${redirectPaths.join('|')})(?:[?#\"'])`)
+  ? new RegExp("(?:to|href)\\s*[:=]\\s*[\"'](?:https?:\\/\\/(?:www\\.)?aidetector\\.cx)?(?:" + redirectPaths.join('|') + ")(?:[?#\"'])")
   : null;
 for (const file of sourceFiles) {
   const source = await readFile(file, 'utf8');
