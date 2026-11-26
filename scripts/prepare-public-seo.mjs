@@ -70,6 +70,7 @@ export async function prepare() {
   // Catch omissions in the explicit editorial inventory before this script overwrites vercel.json.
   // Sitemap-discovered articles/guides are intentionally generated below and need not be checked in.
   for (const pathname of publicPaths) {
+    if (redirectSources.has(pathname)) continue;
     const expected = `/prerender${pathname === '/' ? '/home' : pathname}/index.html`;
     assertCheckedInPublicRewrite(pathname, expected);
   }
